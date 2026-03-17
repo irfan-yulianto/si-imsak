@@ -276,7 +276,7 @@ export default function MosqueFinder() {
       const cached = getCached(cacheKey);
       if (cached) {
         setMosques(cached);
-        setError(cached.length === 0 ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}.` : null);
+        setError(cached.length === 0 ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.` : null);
         lastFetchCoordsRef.current = targetCoords;
         lastFetchAccuracyRef.current = currentAccuracy;
         lastFetchWasGpsRef.current = !!gpsSource;
