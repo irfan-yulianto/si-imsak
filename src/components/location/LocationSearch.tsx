@@ -99,8 +99,13 @@ export default function LocationSearch() {
             fetchSchedule(parsed.id, parsed.daerah || "", parsed);
             return;
           }
-        } catch {
-          try { localStorage.removeItem("selectedLocation"); } catch {}
+        } catch (e) {
+          console.warn("Failed to parse saved location", e);
+          try {
+            localStorage.removeItem("selectedLocation");
+          } catch (e2) {
+            console.warn("Failed to remove invalid selected location", e2);
+          }
         }
       }
 
@@ -115,10 +120,13 @@ export default function LocationSearch() {
             localStorage.removeItem("locationPermissionDismissed");
             setShowLocationPrompt(true);
           }
-        } catch { /* ignore */ }
+        } catch (e) {
+          console.warn("Failed to process dismissed location prompt", e);
+        }
       }
-    } catch {
+    } catch (e) {
       // localStorage unavailable (Safari private mode)
+      console.warn("localStorage unavailable, showing location prompt", e);
       setShowLocationPrompt(true);
     }
 
@@ -138,15 +146,19 @@ export default function LocationSearch() {
       if (currentMonth !== lastMonth) {
         lastMonth = currentMonth;
         let savedLocation: string | null = null;
-        try { savedLocation = localStorage.getItem("selectedLocation"); } catch {}
+        try {
+          savedLocation = localStorage.getItem("selectedLocation");
+        } catch (e) {
+          console.warn("Failed to get selected location for auto-refresh", e);
+        }
         if (savedLocation) {
           try {
             const parsed = JSON.parse(savedLocation);
             if (parsed.id && parsed.lokasi) {
               fetchSchedule(parsed.id, parsed.daerah || "", parsed);
             }
-          } catch {
-            // ignore
+          } catch (e) {
+            console.warn("Failed to parse saved location for auto-refresh", e);
           }
         }
       }
@@ -205,13 +217,19 @@ export default function LocationSearch() {
     try {
       localStorage.setItem("selectedLocation", JSON.stringify(city));
       localStorage.removeItem("detectedKecamatan"); // clean up legacy key
-    } catch {}
+    } catch (e) {
+      console.warn("Failed to save selected location", e);
+    }
     fetchSchedule(city.id, city.daerah || "", city);
   };
 
   const handleDismissPrompt = () => {
     setShowLocationPrompt(false);
-    try { localStorage.setItem("locationPermissionDismissed", String(Date.now())); } catch {}
+    try {
+      localStorage.setItem("locationPermissionDismissed", String(Date.now()));
+    } catch (e) {
+      console.warn("Failed to save location dismissal", e);
+    }
   };
 
   return (
