@@ -15,7 +15,8 @@ function evictOldScheduleCaches() {
         if (!val._ts || now - val._ts > SCHEDULE_CACHE_MAX_AGE) {
           keysToRemove.push(key);
         }
-      } catch {
+      } catch (e) {
+        console.warn(`Failed to parse cached schedule for key ${key}:`, e);
         if (key) keysToRemove.push(key);
       }
     }
@@ -63,13 +64,15 @@ export async function getSchedule(
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(cacheKey, JSON.stringify({ _ts: Date.now(), ...data }));
-        } catch {
+        } catch (e) {
           // localStorage full — evict old schedule caches and retry
+          console.warn("localStorage full, attempting to evict old caches:", e);
           try {
             evictOldScheduleCaches();
             localStorage.setItem(cacheKey, JSON.stringify({ _ts: Date.now(), ...data }));
-          } catch {
+          } catch (e2) {
             // Still full or Safari private mode — give up
+            console.warn("Failed to cache schedule even after eviction (Storage full or Safari private mode):", e2);
           }
         }
       }
@@ -93,12 +96,14 @@ export async function getSchedule(
             } else {
               return parsed;
             }
-          } catch {
+          } catch (e) {
+            console.warn(`Failed to parse cached schedule for fallback (${cacheKey}):`, e);
             localStorage.removeItem(cacheKey);
           }
         }
-      } catch {
+      } catch (e) {
         // localStorage not available (Safari private mode)
+        console.warn("localStorage not available for offline fallback (Safari private mode?):", e);
       }
     }
     throw error;
