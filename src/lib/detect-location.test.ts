@@ -53,6 +53,14 @@ describe("detectAndUpdateLocation", () => {
     expect(r.error).toContain("habis");
   });
 
+  it("returns generic error on unknown geolocation error", async () => {
+    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: (_: unknown, e: Function) => e({ code: 2, PERMISSION_DENIED: 1, TIMEOUT: 3 }) } });
+    const { detectAndUpdateLocation } = await import("./detect-location");
+    const r = await detectAndUpdateLocation();
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("Gagal mendeteksi lokasi");
+  });
+
   it("succeeds with full GPS flow", async () => {
     mockGeoSuccess();
     const { detectAndUpdateLocation } = await import("./detect-location");
@@ -68,11 +76,69 @@ describe("detectAndUpdateLocation", () => {
   });
 
   it("returns error when searchCities returns empty", async () => {
+    const c = await import("./cities");
     const a = await import("./api");
+    vi.mocked(c.getCityGuess).mockReturnValue("KOTA JAKARTA");
     vi.mocked(a.searchCities).mockResolvedValue({ status: true, data: [] });
     mockGeoSuccess();
     const { detectAndUpdateLocation } = await import("./detect-location");
-    expect((await detectAndUpdateLocation()).success).toBe(false);
+    const r = await detectAndUpdateLocation();
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("Kota tidak ditemukan");
+  });
+
+  it("returns error when searchCities returns false status", async () => {
+    const c = await import("./cities");
+    const a = await import("./api");
+    vi.mocked(c.getCityGuess).mockReturnValue("KOTA JAKARTA");
+    vi.mocked(a.searchCities).mockResolvedValue({ status: false, data: undefined } as never);
+    mockGeoSuccess();
+    const { detectAndUpdateLocation } = await import("./detect-location");
+    const r = await detectAndUpdateLocation();
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("Kota tidak ditemukan");
+  });
+
+  it("returns error when getSchedule returns unavailable schedule", async () => {
+    const c = await import("./cities");
+    const a = await import("./api");
+    vi.mocked(c.getCityGuess).mockReturnValue("KOTA JAKARTA");
+    vi.mocked(a.searchCities).mockResolvedValue({ status: true, data: [{ id: "abc", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }] });
+    vi.mocked(a.getSchedule).mockResolvedValue({ status: false, data: { id: "abc", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA", jadwal: undefined } } as never);
+    mockGeoSuccess();
+    const { detectAndUpdateLocation } = await import("./detect-location");
+    const r = await detectAndUpdateLocation();
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("Data jadwal tidak tersedia");
+  });
+
+  it("returns offline error when exception occurs and navigator is offline", async () => {
+    const c = await import("./cities");
+    const a = await import("./api");
+    vi.mocked(c.getCityGuess).mockReturnValue("KOTA JAKARTA");
+    vi.mocked(a.searchCities).mockResolvedValue({ status: true, data: [{ id: "abc", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }] });
+    vi.mocked(a.getSchedule).mockRejectedValue(new Error("Network error"));
+    vi.stubGlobal("navigator", {
+      geolocation: { getCurrentPosition: (cb: Function) => cb({ coords: { latitude: -6.17, longitude: 106.85 } }) },
+      onLine: false,
+    });
+    const { detectAndUpdateLocation } = await import("./detect-location");
+    const r = await detectAndUpdateLocation();
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("Gagal memuat jadwal");
+  });
+
+  it("returns general error when exception occurs and navigator is online", async () => {
+    const c = await import("./cities");
+    const a = await import("./api");
+    vi.mocked(c.getCityGuess).mockReturnValue("KOTA JAKARTA");
+    vi.mocked(a.searchCities).mockResolvedValue({ status: true, data: [{ id: "abc", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }] });
+    vi.mocked(a.getSchedule).mockRejectedValue(new Error("Network error"));
+    mockGeoSuccess();
+    const { detectAndUpdateLocation } = await import("./detect-location");
+    const r = await detectAndUpdateLocation();
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("Gagal memuat jadwal");
   });
 
   it("saves location to localStorage on success", async () => {
