@@ -21,7 +21,9 @@ describe("searchCities", () => {
     await searchCities("banda aceh");
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/cities?q=banda%20aceh",
-      expect.any(Object)
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      })
     );
   });
 
@@ -85,7 +87,9 @@ describe("getSchedule", () => {
     await getSchedule("abc123", 2026, 3);
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/schedule?city_id=abc123&year=2026&month=3",
-      expect.any(Object)
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      })
     );
   });
 
