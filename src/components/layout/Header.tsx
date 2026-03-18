@@ -22,7 +22,8 @@ export default function Header() {
         // Default dark — matches layout.tsx inline script
         setTheme("dark");
       }
-    } catch {
+    } catch (e) {
+      console.warn("Failed to access localStorage", e);
       // localStorage unavailable (Safari private mode) — default dark
       setTheme("dark");
     }
