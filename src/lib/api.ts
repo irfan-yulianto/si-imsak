@@ -15,7 +15,8 @@ function evictOldScheduleCaches() {
         if (!val._ts || now - val._ts > SCHEDULE_CACHE_MAX_AGE) {
           keysToRemove.push(key);
         }
-      } catch {
+      } catch (e) {
+        console.warn(`Failed to parse cached schedule for key ${key}:`, e);
         if (key) keysToRemove.push(key);
       }
     }
@@ -68,8 +69,9 @@ export async function getSchedule(
           try {
             evictOldScheduleCaches();
             localStorage.setItem(cacheKey, JSON.stringify({ _ts: Date.now(), ...data }));
-          } catch {
+          } catch (e2) {
             // Still full or Safari private mode — give up
+            console.warn("Failed to save schedule to localStorage:", e2);
           }
         }
       }
@@ -93,12 +95,14 @@ export async function getSchedule(
             } else {
               return parsed;
             }
-          } catch {
+          } catch (e) {
+            console.warn(`Failed to parse cached schedule for key ${cacheKey}:`, e);
             localStorage.removeItem(cacheKey);
           }
         }
-      } catch {
+      } catch (e) {
         // localStorage not available (Safari private mode)
+        console.warn("Failed to access localStorage:", e);
       }
     }
     throw error;
