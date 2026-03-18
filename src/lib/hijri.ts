@@ -29,9 +29,16 @@ function parseHijri(dateStr: string): { day: number; month: number; year: number
     const date = new Date(`${dateStr}T12:00:00Z`);
     if (isNaN(date.getTime())) return { day: 0, month: 0, year: 0 };
     const parts = hijriFormatter.formatToParts(date);
-    const get = (type: string) =>
-      parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
-    const result = { day: get("day"), month: get("month"), year: get("year") };
+    let day = 0,
+      month = 0,
+      year = 0;
+    for (let i = 0, len = parts.length; i < len; i++) {
+      const p = parts[i];
+      if (p.type === "day") day = parseInt(p.value, 10);
+      else if (p.type === "month") month = parseInt(p.value, 10);
+      else if (p.type === "year") year = parseInt(p.value, 10);
+    }
+    const result = { day, month, year };
     hijriCache.set(dateStr, result);
     return result;
   } catch {
