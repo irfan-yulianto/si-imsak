@@ -261,8 +261,9 @@ export default function MosqueFinder() {
     forceRefresh?: boolean,
     gpsSource?: boolean,
     radiusOverride?: number,
+    offline?: boolean,
   ) => {
-    if (isOffline) {
+    if (offline) {
       setError("Anda sedang offline. Periksa koneksi internet Anda.");
       return;
     }
@@ -315,7 +316,7 @@ export default function MosqueFinder() {
     } finally {
       setLoading(false);
     }
-  }, [isOffline]);
+  }, []);
 
   // Auto-fetch when coords change, but defer during GPS detection to avoid fetching with inaccurate coords.
   // Refetch if: position moved >200m OR accuracy improved significantly OR switching from city→GPS.
@@ -341,8 +342,8 @@ export default function MosqueFinder() {
       if (dist < 200 && !accuracyImproved && !radiusChanged) return;
     }
 
-    fetchMosques(coords, accuracy, switchingToGps, isGps);
-  }, [coords, accuracy, detecting, isGps, fetchMosques]);
+    fetchMosques(coords, accuracy, switchingToGps, isGps, undefined, isOffline);
+  }, [coords, accuracy, detecting, isGps, isOffline, fetchMosques]);
 
   const googleMapsSearchUrl = coords
     ? `https://www.google.com/maps/search/?api=1&query=masjid&center=${coords.lat},${coords.lng}`
@@ -355,7 +356,7 @@ export default function MosqueFinder() {
     if (!coords) return;
     const newRadius = Math.min(radius * 2, MAX_RADIUS);
     setCustomRadius(newRadius);
-    fetchMosques(coords, accuracy, true, isGps, newRadius);
+    fetchMosques(coords, accuracy, true, isGps, newRadius, isOffline);
   };
 
   return (
@@ -372,7 +373,7 @@ export default function MosqueFinder() {
           {coords && !loading && (
             <button
               type="button"
-              onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              onClick={() => fetchMosques(coords, accuracy, true, isGps, undefined, isOffline)}
               className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
               Refresh
@@ -494,7 +495,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
-              onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              onClick={() => fetchMosques(coords, accuracy, true, isGps, undefined, isOffline)}
               className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
               Coba Lagi
