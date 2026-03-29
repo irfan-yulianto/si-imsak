@@ -8,6 +8,17 @@ export const DEFAULT_LOCATION = {
 // API base URL (v3 LTS)
 export const MYQURAN_API_BASE = "https://api.myquran.com/v3/sholat";
 
+// Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
+export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
+
+// Indonesia geographic bounds for input validation
+export const INDONESIA_BOUNDS = {
+  latMin: -11,
+  latMax: 6,
+  lngMin: 95,
+  lngMax: 141,
+} as const;
+
 // Timezone mapping based on province/region
 export const TIMEZONE_MAP: Record<string, string> = {
   // WIB (UTC+7)
