@@ -1,5 +1,6 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
+import { INDONESIA_BOUNDS } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 const OVERPASS_ENDPOINTS = [
@@ -53,14 +54,13 @@ export async function GET(request: NextRequest) {
   const lngNum = parseFloat(lng);
   const radiusNum = parseInt(radius, 10);
 
-  // Validate Indonesia bounds (roughly)
-  if (isNaN(latNum) || latNum < -11 || latNum > 6) {
+  if (isNaN(latNum) || latNum < INDONESIA_BOUNDS.latMin || latNum > INDONESIA_BOUNDS.latMax) {
     return NextResponse.json(
       { status: false, error: "Invalid latitude" },
       { status: 400 }
     );
   }
-  if (isNaN(lngNum) || lngNum < 95 || lngNum > 141) {
+  if (isNaN(lngNum) || lngNum < INDONESIA_BOUNDS.lngMin || lngNum > INDONESIA_BOUNDS.lngMax) {
     return NextResponse.json(
       { status: false, error: "Invalid longitude" },
       { status: 400 }

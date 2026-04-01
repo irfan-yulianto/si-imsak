@@ -1,5 +1,6 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { extractCityFromNominatim, normalizeToMyquranName } from "@/lib/geocode";
+import { INDONESIA_BOUNDS } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
@@ -27,13 +28,13 @@ export async function GET(request: NextRequest) {
   const latNum = parseFloat(lat);
   const lngNum = parseFloat(lng);
 
-  if (isNaN(latNum) || latNum < -11 || latNum > 6) {
+  if (isNaN(latNum) || latNum < INDONESIA_BOUNDS.latMin || latNum > INDONESIA_BOUNDS.latMax) {
     return NextResponse.json(
       { status: false, city: "" },
       { status: 400 }
     );
   }
-  if (isNaN(lngNum) || lngNum < 95 || lngNum > 141) {
+  if (isNaN(lngNum) || lngNum < INDONESIA_BOUNDS.lngMin || lngNum > INDONESIA_BOUNDS.lngMax) {
     return NextResponse.json(
       { status: false, city: "" },
       { status: 400 }

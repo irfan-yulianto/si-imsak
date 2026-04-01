@@ -1,10 +1,25 @@
+/**
+ * In-process rate limiter using a sliding window algorithm.
+ *
+ * ⚠️ SERVERLESS LIMITATION:
+ * On Vercel (or any serverless platform), each function instance has its own
+ * isolated memory. This map is NOT shared across concurrent instances — meaning
+ * a single client can bypass limits by hitting different instances.
+ *
+ * This provides best-effort protection against unsophisticated abuse
+ * (e.g., accidental loops, basic scrapers). For strict rate limiting in
+ * production, replace with a distributed store such as Vercel KV (Redis).
+ *
+ * Acceptable trade-off for this app's current scale; upgrade path is clear.
+ */
+
 const windowMs = 60_000; // 1 minute window
 const maxRequests = 30; // max requests per window per IP
 const MAX_IPS = 10000; // max tracked IPs to prevent memory exhaustion
 
 const requests = new Map<string, number[]>();
 
-// Clean up old entries every 5 minutes
+// Clean up stale entries every 5 minutes to prevent memory leak
 setInterval(() => {
   const now = Date.now();
   for (const [key, timestamps] of requests) {
