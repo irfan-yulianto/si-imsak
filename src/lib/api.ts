@@ -1,8 +1,8 @@
 import { CitySearchResponse, ScheduleResponse } from "@/types";
+import { SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
 
 const API_BASE = "/api";
 const REQUEST_TIMEOUT = 15000; // 15 seconds
-const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
 
 function evictOldScheduleCaches() {
   const now = Date.now();
@@ -107,8 +107,8 @@ export async function getSchedule(
         if (cached) {
           try {
             const parsed = JSON.parse(cached);
-            // Reject cache older than 7 days
-            if (parsed._ts && Date.now() - parsed._ts > 7 * 24 * 3600000) {
+            // Reject cache older than TTL
+            if (parsed._ts && Date.now() - parsed._ts > SCHEDULE_CACHE_MAX_AGE) {
               localStorage.removeItem(cacheKey);
             } else {
               return parsed;

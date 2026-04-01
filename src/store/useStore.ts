@@ -2,11 +2,9 @@
 
 import { create } from "zustand";
 import { Location, ScheduleDay, TimezoneLabel } from "@/types";
-import { DEFAULT_LOCATION } from "@/lib/constants";
+import { DEFAULT_LOCATION, SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
 import { getSchedule } from "@/lib/api";
 import { getTimezone } from "@/lib/timezone";
-
-const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
 
 /** Sync-read cached location from localStorage for instant first render */
 function getInitialLocationFromCache(): {
