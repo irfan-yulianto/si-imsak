@@ -610,5 +610,7 @@ export function getCityGuess(lat: number, lng: number): string | null {
   return closest.name;
 }
 
-export { CITIES };
+const CITY_MAP = new Map<string, CityCoord>(CITIES.map((c) => [c.name, c]));
+
+export { CITIES, CITY_MAP };
 export type { CityCoord };

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
-import { CITIES } from "@/lib/cities";
+import { CITIES, CITY_MAP } from "@/lib/cities";
 import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
 
 function NavigationIcon({ size = 16 }: { size?: number }) {
@@ -39,7 +39,7 @@ function CrosshairIcon({ size = 16 }: { size?: number }) {
 
 function getCoordsFromCityName(cityName: string): { lat: number; lng: number } | null {
   const norm = cityName.toUpperCase().trim();
-  const city = CITIES.find((c) => c.name === norm);
+  const city = CITY_MAP.get(norm);
   return city ? { lat: city.lat, lng: city.lng } : null;
 }
 
