@@ -305,15 +305,12 @@ export default function MosqueFinder() {
         lastFetchAccuracyRef.current = currentAccuracy;
         lastFetchWasGpsRef.current = !!gpsSource;
         if (data.data.length === 0) {
-          // U6 fix: distinct "no results" message
           setError(`Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`);
         }
       } else {
-        // U6 fix: distinct "API error" message
         setError(data.error || "Server gagal memuat data masjid. Coba tekan Refresh.");
       }
     } catch {
-      // U6 fix: distinct "network error" message
       setError("Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.");
     } finally {
       setLoading(false);
