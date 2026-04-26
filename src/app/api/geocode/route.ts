@@ -7,7 +7,7 @@ const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
 const USER_AGENT = "Si-Imsak/1.0 (jadwal-imsakiyah prayer times app)";
 
 export async function GET(request: NextRequest) {
-  const ip = extractClientIp(request.headers.get("x-forwarded-for"));
+  const ip = extractClientIp(request);
   if (isRateLimited(ip, 10)) {
     return NextResponse.json(
       { status: false, city: "" },
