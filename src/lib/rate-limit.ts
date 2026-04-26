@@ -30,14 +30,45 @@ setInterval(() => {
 }, 300_000);
 
 /**
- * Extract client IP from x-forwarded-for header.
- * Uses the leftmost IP (original client, set by trusted edge proxy like Vercel).
+ * Extract client IP from request.
+ * Uses the rightmost IP in x-forwarded-for, or falls back to x-real-ip or request.ip.
+ * This prevents spoofing via prepended IPs.
  */
-export function extractClientIp(header: string | null): string {
-  if (!header) return "unknown";
-  // First IP is the original client (set by the edge proxy like Vercel)
-  const first = header.split(",")[0]?.trim();
-  return first || "unknown";
+export function extractClientIp(request: { ip?: string, headers?: Headers | Record<string, string> | { get: (name: string) => string | null } } | string | null): string {
+  if (!request) return "unknown";
+
+  if (typeof request === "string") {
+    const parts = request.split(",");
+    const last = parts[parts.length - 1]?.trim();
+    return last || "unknown";
+  }
+
+  // NextRequest or Request object
+  if (request.ip) return request.ip;
+
+  const headers = request.headers;
+  if (!headers) return "unknown";
+
+  // Check headers.get or headers object access
+  const getHeader = (name: string): string | null => {
+    if ('get' in headers && typeof headers.get === "function") {
+      return headers.get(name) as string | null;
+    }
+    const record = headers as Record<string, string>;
+    return record[name] || record[name.toLowerCase()] || null;
+  };
+
+  const xRealIp = getHeader("x-real-ip");
+  if (xRealIp) return xRealIp.trim();
+
+  const xForwardedFor = getHeader("x-forwarded-for");
+  if (xForwardedFor) {
+    const parts = xForwardedFor.split(",");
+    const last = parts[parts.length - 1]?.trim();
+    if (last) return last;
+  }
+
+  return "unknown";
 }
 
 export function isRateLimited(ip: string, limit: number = maxRequests): boolean {

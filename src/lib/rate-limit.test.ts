@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe("extractClientIp", () => {
-  it("returns 'unknown' for null header", () => {
+  it("returns 'unknown' for null input", () => {
     expect(extractClientIp(null)).toBe("unknown");
   });
 
@@ -26,16 +26,36 @@ describe("extractClientIp", () => {
     expect(extractClientIp("")).toBe("unknown");
   });
 
-  it("returns first IP from comma-separated list", () => {
-    expect(extractClientIp("1.2.3.4, 5.6.7.8")).toBe("1.2.3.4");
+  it("returns last IP from comma-separated string", () => {
+    expect(extractClientIp("1.2.3.4, 5.6.7.8")).toBe("5.6.7.8");
   });
 
-  it("returns single IP", () => {
+  it("returns single IP string", () => {
     expect(extractClientIp("192.168.1.1")).toBe("192.168.1.1");
   });
 
-  it("trims whitespace", () => {
-    expect(extractClientIp("  10.0.0.1  , 10.0.0.2")).toBe("10.0.0.1");
+  it("trims whitespace in string", () => {
+    expect(extractClientIp("  10.0.0.1  , 10.0.0.2  ")).toBe("10.0.0.2");
+  });
+
+  it("extracts from request.ip", () => {
+    const req = { ip: "10.0.0.3" };
+    expect(extractClientIp(req)).toBe("10.0.0.3");
+  });
+
+  it("extracts from x-real-ip header", () => {
+    const req = { headers: { get: (name: string) => name === "x-real-ip" ? "10.0.0.4" : null } };
+    expect(extractClientIp(req)).toBe("10.0.0.4");
+  });
+
+  it("extracts rightmost from x-forwarded-for header", () => {
+    const req = { headers: { get: (name: string) => name === "x-forwarded-for" ? "10.0.0.5, 10.0.0.6" : null } };
+    expect(extractClientIp(req)).toBe("10.0.0.6");
+  });
+
+  it("falls back to 'unknown' if no valid IP found in request", () => {
+    const req = { headers: { get: () => null } };
+    expect(extractClientIp(req)).toBe("unknown");
   });
 });
 

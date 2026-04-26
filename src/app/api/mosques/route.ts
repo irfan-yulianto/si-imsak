@@ -31,7 +31,7 @@ async function fetchOverpass(query: string): Promise<Response> {
 }
 
 export async function GET(request: NextRequest) {
-  const ip = extractClientIp(request.headers.get("x-forwarded-for"));
+  const ip = extractClientIp(request);
   if (isRateLimited(ip, 10)) {
     return NextResponse.json(
       { status: false, error: "Too many requests" },

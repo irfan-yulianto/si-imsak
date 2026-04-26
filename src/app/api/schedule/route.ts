@@ -50,7 +50,7 @@ interface UpstreamDayResponse {
 }
 
 export async function GET(request: NextRequest) {
-  const ip = extractClientIp(request.headers.get("x-forwarded-for"));
+  const ip = extractClientIp(request);
   if (isRateLimited(ip)) {
     return NextResponse.json(
       { status: false, error: "Too many requests" },
