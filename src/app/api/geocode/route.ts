@@ -1,6 +1,6 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { extractCityFromNominatim, normalizeToMyquranName } from "@/lib/geocode";
-import { INDONESIA_BOUNDS } from "@/lib/constants";
+import { INDONESIA_BOUNDS, REQUEST_TIMEOUT } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
     const url = `${NOMINATIM_URL}?lat=${latNum}&lon=${lngNum}&format=json&zoom=10&addressdetails=1&accept-language=id`;

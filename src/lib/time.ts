@@ -1,3 +1,5 @@
+import { REQUEST_TIMEOUT } from "@/lib/constants";
+
 /**
  * Sync time with worldtimeapi.org to avoid relying on user's device clock.
  * Returns the offset in milliseconds (serverTime - clientTime).
@@ -35,7 +37,7 @@ export async function syncServerTime(): Promise<number> {
 
 async function fetchServerTimeOffset(): Promise<number> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
   try {
     const before = Date.now();
     const res = await fetch("https://worldtimeapi.org/api/timezone/Asia/Jakarta", {

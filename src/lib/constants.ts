@@ -69,3 +69,5 @@ export const TIMEZONE_OFFSETS: Record<string, number> = {
   WITA: 8,
   WIT: 9,
 };
+
+export const REQUEST_TIMEOUT = 15000; // 15 seconds

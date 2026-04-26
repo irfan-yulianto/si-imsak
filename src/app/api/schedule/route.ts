@@ -1,4 +1,4 @@
-import { MYQURAN_API_BASE } from "@/lib/constants";
+import { MYQURAN_API_BASE, REQUEST_TIMEOUT } from "@/lib/constants";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     async function fetchDay(date: string, retries = 2): Promise<UpstreamDayResponse | null> {
       for (let attempt = 0; attempt <= retries; attempt++) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
         try {
           const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${date}`, {
             next: { revalidate: 86400 },
