@@ -26,7 +26,8 @@ function getInitialLocationFromCache(): {
       province: loc.daerah || "",
       timezone: tz,
     };
-  } catch {
+  } catch (e) {
+    console.warn("Failed to get initial location from localStorage:", e);
     return null;
   }
 }
@@ -43,7 +44,8 @@ function getInitialScheduleFromCache(cityId: string): ScheduleDay[] {
     if (!parsed._ts || Date.now() - parsed._ts > SCHEDULE_CACHE_MAX_AGE) return [];
     if (!parsed.data?.jadwal) return [];
     return parsed.data.jadwal;
-  } catch {
+  } catch (e) {
+    console.warn("Failed to get initial schedule from localStorage:", e);
     return [];
   }
 }
@@ -159,10 +161,10 @@ export const useStore = create<AppState>((set, get) => ({
   setIsOffline: (offline) => set({ isOffline: offline }),
 
   // Theme — sync from localStorage to avoid dark→light flash
-  theme: (typeof window !== "undefined" ? (() => { try { return localStorage.getItem("theme") as "light" | "dark"; } catch { return null; } })() : null) ?? "dark",
+  theme: (typeof window !== "undefined" ? (() => { try { return localStorage.getItem("theme") as "light" | "dark"; } catch (e) { console.warn("Failed to get theme from localStorage:", e); return null; } })() : null) ?? "dark",
   setTheme: (theme) => {
     if (typeof window !== "undefined") {
-      try { localStorage.setItem("theme", theme); } catch {}
+      try { localStorage.setItem("theme", theme); } catch (e) { console.warn("Failed to set theme in localStorage:", e); }
       document.documentElement.classList.toggle("dark", theme === "dark");
     }
     set({ theme });
@@ -177,7 +179,8 @@ export const useStore = create<AppState>((set, get) => ({
       if (res.status && res.data?.jadwal) {
         set({ countdownSchedule: res.data.jadwal });
       }
-    } catch {
+    } catch (e) {
+      console.warn("Failed to refetch countdown schedule:", e);
       // silently fail — countdown will retry next second
     }
   },
