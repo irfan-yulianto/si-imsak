@@ -177,7 +177,7 @@ export default function MosqueFinder() {
     };
   }, []);
 
-  // B3 fix: settle uses ref flag + clears both timer and watch atomically
+  // Settle uses ref flag + clears both timer and watch atomically
   const cancelGps = useCallback(() => {
     settledRef.current = true;
     if (watchIdRef.current !== null) {
@@ -214,7 +214,7 @@ export default function MosqueFinder() {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        // B3 fix: ignore callbacks after settled
+        // Ignore callbacks after settled
         if (settledRef.current) return;
 
         const posAccuracy = pos.coords.accuracy;
@@ -233,7 +233,7 @@ export default function MosqueFinder() {
         }
       },
       (err) => {
-        // B3 fix: ignore error callbacks after settled (e.g. timer already fired)
+        // Ignore error callbacks after settled (e.g. timer already fired)
         if (settledRef.current) return;
         settle();
         if (err.code === err.PERMISSION_DENIED) {
@@ -257,7 +257,7 @@ export default function MosqueFinder() {
     setShowSearch(false);
   };
 
-  // B2 fix: fetchMosques takes all needed params explicitly, no dependency on changing state
+  // fetchMosques takes all needed params explicitly, no dependency on changing state
   const fetchMosques = useCallback(async (
     targetCoords: { lat: number; lng: number },
     currentAccuracy: number | null,
@@ -305,15 +305,15 @@ export default function MosqueFinder() {
         lastFetchAccuracyRef.current = currentAccuracy;
         lastFetchWasGpsRef.current = !!gpsSource;
         if (data.data.length === 0) {
-          // U6 fix: distinct "no results" message
+          // Distinct "no results" message
           setError(`Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`);
         }
       } else {
-        // U6 fix: distinct "API error" message
+        // Distinct "API error" message
         setError(data.error || "Server gagal memuat data masjid. Coba tekan Refresh.");
       }
     } catch {
-      // U6 fix: distinct "network error" message
+      // Distinct "network error" message
       setError("Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.");
     } finally {
       setLoading(false);
@@ -383,7 +383,7 @@ export default function MosqueFinder() {
           )}
         </div>
 
-        {/* GPS detect / cancel button — U1 fix */}
+        {/* GPS detect / cancel button */}
         {detecting ? (
           <div className="mb-3 flex gap-2">
             <div className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white">
