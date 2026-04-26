@@ -177,7 +177,7 @@ export default function MosqueFinder() {
     };
   }, []);
 
-  // B3 fix: settle uses ref flag + clears both timer and watch atomically
+  // Settle uses ref flag and clears both timer and watch atomically
   const cancelGps = useCallback(() => {
     settledRef.current = true;
     if (watchIdRef.current !== null) {
@@ -214,7 +214,7 @@ export default function MosqueFinder() {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        // B3 fix: ignore callbacks after settled
+        // Ignore callbacks after settled
         if (settledRef.current) return;
 
         const posAccuracy = pos.coords.accuracy;
@@ -233,7 +233,7 @@ export default function MosqueFinder() {
         }
       },
       (err) => {
-        // B3 fix: ignore error callbacks after settled (e.g. timer already fired)
+        // Ignore error callbacks after settled (e.g. timer already fired)
         if (settledRef.current) return;
         settle();
         if (err.code === err.PERMISSION_DENIED) {
