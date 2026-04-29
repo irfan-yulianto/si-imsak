@@ -278,6 +278,7 @@ export default function LocationSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setIsOpen(true)}
+          aria-label="Cari kota"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setIsOpen(false);
