@@ -276,6 +276,7 @@ export default function LocationSearch() {
         <input
           type="text"
           value={query}
+          aria-label="Cari kota"
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setIsOpen(true)}
           onKeyDown={(e) => {

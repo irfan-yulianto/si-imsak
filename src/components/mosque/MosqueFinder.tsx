@@ -419,6 +419,7 @@ export default function MosqueFinder() {
           <input
             type="text"
             value={searchQuery}
+            aria-label="Cari kota untuk lokasi masjid"
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setShowSearch(true);
