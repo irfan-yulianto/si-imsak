@@ -6,6 +6,7 @@ export interface NextPrayer {
   time: string;
   remainingMs: number;
   isTomorrow?: boolean;
+  targetMs?: number;
 }
 
 export function getLocalDate(now: Date, utcOffset: number): Date {
@@ -65,7 +66,7 @@ export function getNextPrayerCyclic(
       const prayerTotalSeconds = parseTimeToSeconds(timeStr);
       if (prayerTotalSeconds > currentTotalSeconds) {
         const remainingMs = (prayerTotalSeconds - currentTotalSeconds) * 1000;
-        return { name: PRAYER_NAMES[i], key, time: timeStr, remainingMs };
+        return { name: PRAYER_NAMES[i], key, time: timeStr, remainingMs, targetMs: now.getTime() + remainingMs };
       }
     }
   }
@@ -82,6 +83,7 @@ export function getNextPrayerCyclic(
       time: tomorrowSchedule.imsak,
       remainingMs,
       isTomorrow: true,
+      targetMs: now.getTime() + remainingMs,
     };
   }
 
