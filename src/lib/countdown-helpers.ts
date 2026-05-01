@@ -6,6 +6,7 @@ export interface NextPrayer {
   time: string;
   remainingMs: number;
   isTomorrow?: boolean;
+  targetTimeMs?: number;
 }
 
 export function getLocalDate(now: Date, utcOffset: number): Date {
