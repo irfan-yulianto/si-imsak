@@ -425,6 +425,7 @@ export default function MosqueFinder() {
             }}
             onFocus={() => searchResults.length > 0 && setShowSearch(true)}
             placeholder="Cari kota untuk lokasi masjid..."
+            aria-label="Cari kota untuk lokasi masjid"
             className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-4 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
           />
           {showSearch && searchResults.length > 0 && (
