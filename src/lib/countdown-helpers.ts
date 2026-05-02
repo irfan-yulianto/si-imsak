@@ -5,6 +5,7 @@ export interface NextPrayer {
   key: string;
   time: string;
   remainingMs: number;
+  targetTimeMs: number;
   isTomorrow?: boolean;
 }
 
@@ -65,7 +66,8 @@ export function getNextPrayerCyclic(
       const prayerTotalSeconds = parseTimeToSeconds(timeStr);
       if (prayerTotalSeconds > currentTotalSeconds) {
         const remainingMs = (prayerTotalSeconds - currentTotalSeconds) * 1000;
-        return { name: PRAYER_NAMES[i], key, time: timeStr, remainingMs };
+        const targetTimeMs = now.getTime() - now.getUTCMilliseconds() + remainingMs;
+        return { name: PRAYER_NAMES[i], key, time: timeStr, remainingMs, targetTimeMs };
       }
     }
   }
@@ -76,11 +78,13 @@ export function getNextPrayerCyclic(
     const tomorrowImsakSeconds = parseTimeToSeconds(tomorrowSchedule.imsak);
     const secondsLeftToday = 86400 - currentTotalSeconds;
     const remainingMs = (secondsLeftToday + tomorrowImsakSeconds) * 1000;
+    const targetTimeMs = now.getTime() - now.getUTCMilliseconds() + remainingMs;
     return {
       name: "Imsak",
       key: "imsak",
       time: tomorrowSchedule.imsak,
       remainingMs,
+      targetTimeMs,
       isTomorrow: true,
     };
   }
