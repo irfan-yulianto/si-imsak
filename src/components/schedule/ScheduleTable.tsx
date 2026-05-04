@@ -5,7 +5,7 @@ import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
 import { getAdjustedTime } from "@/lib/time";
 import { getUtcOffset } from "@/lib/timezone";
 import { ScheduleDay } from "@/types";
-import { useMemo, useRef, useCallback } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/Icons";
 
 const MONTH_NAMES = [
@@ -63,15 +63,19 @@ function MobileSkeletonCards() {
   );
 }
 
-function ScheduleDayCard({ day, index, isToday, todayRef }: {
-  day: ScheduleDay;
+export interface ProcessedScheduleDay extends ScheduleDay {
+  hijriDay: number;
+  hijriMonth: string;
+  dayName: string;
+  dateNum: string;
+}
+
+const ScheduleDayCard = React.memo(function ScheduleDayCard({ day, index, isToday, todayRef }: {
+  day: ProcessedScheduleDay;
   index: number;
   isToday: boolean;
   todayRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const { day: hijriDay, monthName: hijriMonth } = useMemo(() => getHijriParts(day.date), [day.date]);
-  const dayName = day.tanggal?.split(",")[0] || "";
-  const dateNum = day.date.split("-")[2];
 
   return (
     <div
@@ -90,14 +94,14 @@ function ScheduleDayCard({ day, index, isToday, todayRef }: {
           <span className={`font-mono text-lg font-bold ${
             isToday ? "text-emerald-700 dark:text-emerald-400" : "text-slate-700 dark:text-slate-200"
           }`}>
-            {dateNum}
+            {day.dateNum}
           </span>
           <div className="flex flex-col">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {dayName}
+              {day.dayName}
             </span>
             <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-              {hijriDay} {hijriMonth}
+              {day.hijriDay} {day.hijriMonth}
             </span>
           </div>
         </div>
@@ -138,7 +142,7 @@ function ScheduleDayCard({ day, index, isToday, todayRef }: {
       </div>
     </div>
   );
-}
+});
 
 function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, onPrev, onNext, onToday }: {
   viewMonth: number;
@@ -220,12 +224,17 @@ export default function ScheduleTable() {
     return localTime.toISOString().split("T")[0];
   }, [timeOffset, utcOffset]);
 
-  const hijriCache = useMemo(() => {
-    const cache: Record<string, ReturnType<typeof getHijriParts>> = {};
-    for (const day of schedule.data) {
-      cache[day.date] = getHijriParts(day.date);
-    }
-    return cache;
+  const processedSchedule = useMemo(() => {
+    return schedule.data.map(day => {
+      const { day: hijriDay, monthName: hijriMonth } = getHijriParts(day.date);
+      return {
+        ...day,
+        hijriDay,
+        hijriMonth,
+        dayName: day.tanggal?.split(",")[0] || "",
+        dateNum: day.date.split("-")[2],
+      } as ProcessedScheduleDay;
+    });
   }, [schedule.data]);
 
   const isCurrentMonth = useMemo(() => {
@@ -336,11 +345,8 @@ export default function ScheduleTable() {
               {schedule.loading ? (
                 <SkeletonRows />
               ) : (
-                schedule.data.map((day, idx) => {
+                processedSchedule.map((day, idx) => {
                   const isToday = day.date === todayDate;
-                  const { day: hijriDay } = hijriCache[day.date] ?? { day: "" };
-                  const dayName = day.tanggal?.split(",")[0] || "";
-                  const dateNum = day.date.split("-")[2];
 
                   return (
                     <tr
@@ -359,12 +365,12 @@ export default function ScheduleTable() {
                       <td className="whitespace-nowrap px-3 py-2">
                         <div className="flex items-center gap-1.5">
                           <span className={`text-xs font-medium ${isToday ? "text-green-800 dark:text-emerald-300" : "text-slate-700 dark:text-slate-300"}`}>
-                            {dayName.substring(0, 3)}, {dateNum}
+                            {day.dayName.substring(0, 3)}, {day.dateNum}
                           </span>
                           <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
                             isToday ? "bg-green-200 text-green-800 dark:bg-emerald-800/50 dark:text-emerald-300" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                           }`}>
-                            {hijriDay}
+                            {day.hijriDay}
                           </span>
                         </div>
                       </td>
@@ -401,7 +407,7 @@ export default function ScheduleTable() {
         {schedule.loading ? (
           <MobileSkeletonCards />
         ) : (
-          schedule.data.map((day, idx) => (
+          processedSchedule.map((day, idx) => (
             <ScheduleDayCard
               key={day.date}
               day={day}
