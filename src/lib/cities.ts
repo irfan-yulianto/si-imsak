@@ -593,17 +593,29 @@ const CITIES: CityCoord[] = [
 
 export function getCityGuess(lat: number, lng: number): string | null {
   let closest = CITIES[0];
-  let minDist = Infinity;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  for (const city of CITIES) {
-    const dLat = toRad(lat - city.lat);
-    const dLng = toRad(lng - city.lng);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat)) * Math.cos(toRad(city.lat)) * Math.sin(dLng / 2) ** 2;
-    const dist = Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    if (dist < minDist) {
-      minDist = dist;
+  let minDistSq = Infinity;
+
+  // Fast Pythagorean approximation (squared Euclidean distance).
+  // We compute the latitude scaling factor once outside the loop.
+  // This avoids expensive trigonometric functions inside the loop over 500+ cities.
+  const latRad = (lat * Math.PI) / 180;
+  const cosLat = Math.cos(latRad);
+  const cosLatSq = cosLat * cosLat;
+
+  for (let i = 0; i < CITIES.length; i++) {
+    const city = CITIES[i];
+    const dLat = lat - city.lat;
+    let dLng = lng - city.lng;
+
+    // Handle antimeridian wrap-around
+    if (dLng > 180) dLng -= 360;
+    else if (dLng < -180) dLng += 360;
+
+    // Squared distance scaled by latitude projection
+    const distSq = (dLat * dLat) + (dLng * dLng * cosLatSq);
+
+    if (distSq < minDistSq) {
+      minDistSq = distSq;
       closest = city;
     }
   }
