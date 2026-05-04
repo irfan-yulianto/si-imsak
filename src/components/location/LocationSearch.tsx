@@ -275,6 +275,7 @@ export default function LocationSearch() {
         <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" />
         <input
           type="text"
+          aria-label="Cari kota"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setIsOpen(true)}
