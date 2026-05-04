@@ -418,6 +418,7 @@ export default function MosqueFinder() {
           <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" />
           <input
             type="text"
+            aria-label="Cari kota untuk lokasi masjid"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
