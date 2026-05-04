@@ -10,9 +10,7 @@ import {
   type NextPrayer,
   getLocalDate,
   getDateStr,
-  getTodaySchedule,
   getTomorrowSchedule,
-  parseTimeToSeconds,
   getNextPrayerCyclic,
   formatCountdown,
 } from "@/lib/countdown-helpers";
@@ -107,22 +105,10 @@ export default function CountdownTimer() {
   useEffect(() => {
     const interval = setInterval(() => {
       const ref = nextPrayerRef.current;
-      if (!ref) return;
+      if (!ref || !ref.targetMs) return;
       const now = getAdjustedTime(timeOffset);
-      const localTime = getLocalDate(now, utcOffset);
-      const localHours = localTime.getUTCHours();
-      const localMinutes = localTime.getUTCMinutes();
-      const localSeconds = localTime.getUTCSeconds();
-      const currentTotalSeconds = localHours * 3600 + localMinutes * 60 + localSeconds;
-      const prayerTotalSeconds = parseTimeToSeconds(ref.time);
 
-      let remainingMs: number;
-      if (ref.isTomorrow) {
-        const secondsLeftToday = 86400 - currentTotalSeconds;
-        remainingMs = (secondsLeftToday + prayerTotalSeconds) * 1000;
-      } else {
-        remainingMs = (prayerTotalSeconds - currentTotalSeconds) * 1000;
-      }
+      const remainingMs = ref.targetMs - now.getTime();
 
       if (remainingMs <= 0) {
         // Prayer time reached — show 00:00:00 and clear ref to trigger recomputation
@@ -138,7 +124,7 @@ export default function CountdownTimer() {
       if (secondsRef.current) secondsRef.current.textContent = formatted.seconds;
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeOffset, utcOffset]);
+  }, [timeOffset]);
 
   const PrayerIcon = nextPrayer ? PRAYER_ICON_MAP[nextPrayer.key] : null;
 
