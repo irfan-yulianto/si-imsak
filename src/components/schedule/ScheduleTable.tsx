@@ -13,6 +13,13 @@ const MONTH_NAMES = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
+interface ProcessedScheduleDay extends ScheduleDay {
+  hijriDay: string;
+  hijriMonth: string;
+  dayName: string;
+  dateNum: string;
+}
+
 const TIME_COLUMNS = [
   { key: "imsak", label: "Imsak", isImsak: true },
   { key: "subuh", label: "Subuh", isImsak: false },
@@ -64,14 +71,12 @@ function MobileSkeletonCards() {
 }
 
 function ScheduleDayCard({ day, index, isToday, todayRef }: {
-  day: ScheduleDay;
+  day: ProcessedScheduleDay;
   index: number;
   isToday: boolean;
   todayRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const { day: hijriDay, monthName: hijriMonth } = useMemo(() => getHijriParts(day.date), [day.date]);
-  const dayName = day.tanggal?.split(",")[0] || "";
-  const dateNum = day.date.split("-")[2];
+  const { hijriDay, hijriMonth, dayName, dateNum } = day;
 
   return (
     <div
@@ -220,12 +225,17 @@ export default function ScheduleTable() {
     return localTime.toISOString().split("T")[0];
   }, [timeOffset, utcOffset]);
 
-  const hijriCache = useMemo(() => {
-    const cache: Record<string, ReturnType<typeof getHijriParts>> = {};
-    for (const day of schedule.data) {
-      cache[day.date] = getHijriParts(day.date);
-    }
-    return cache;
+  const processedSchedule = useMemo<ProcessedScheduleDay[]>(() => {
+    return schedule.data.map((day) => {
+      const { day: hijriDay, monthName: hijriMonth } = getHijriParts(day.date);
+      return {
+        ...day,
+        hijriDay,
+        hijriMonth,
+        dayName: day.tanggal?.split(",")[0] || "",
+        dateNum: day.date.split("-")[2],
+      };
+    });
   }, [schedule.data]);
 
   const isCurrentMonth = useMemo(() => {
@@ -336,11 +346,9 @@ export default function ScheduleTable() {
               {schedule.loading ? (
                 <SkeletonRows />
               ) : (
-                schedule.data.map((day, idx) => {
+                processedSchedule.map((day, idx) => {
                   const isToday = day.date === todayDate;
-                  const { day: hijriDay } = hijriCache[day.date] ?? { day: "" };
-                  const dayName = day.tanggal?.split(",")[0] || "";
-                  const dateNum = day.date.split("-")[2];
+                  const { hijriDay, dayName, dateNum } = day;
 
                   return (
                     <tr
@@ -401,7 +409,7 @@ export default function ScheduleTable() {
         {schedule.loading ? (
           <MobileSkeletonCards />
         ) : (
-          schedule.data.map((day, idx) => (
+          processedSchedule.map((day, idx) => (
             <ScheduleDayCard
               key={day.date}
               day={day}
