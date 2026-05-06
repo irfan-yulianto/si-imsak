@@ -9,3 +9,6 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+## 2026-05-06 - Pre-calculate static data to avoid computation in intervals
+**Learning:** Found a micro-optimization opportunity where `split(":")` and `map(Number)` were called inside a 60-second `setInterval`. Although string manipulation runs in microseconds, applying the principle of extracting unchanging computation from a loop into a `useMemo` is a good practice that prevents scaling issues when similar logic is applied on larger objects or tighter intervals.
+**Action:** When scheduling a tick using `setInterval`, examine if any calculations inside rely strictly on variables that do not change (like string parsing of a daily schedule) and memoize them beforehand.
