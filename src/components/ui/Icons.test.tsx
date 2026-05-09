@@ -17,6 +17,7 @@ import {
   CalendarIcon,
   SunIcon,
   MoonIcon,
+  XIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshIcon,
@@ -40,6 +41,7 @@ const ICONS = [
   { name: "CalendarIcon", Component: CalendarIcon },
   { name: "SunIcon", Component: SunIcon },
   { name: "MoonIcon", Component: MoonIcon },
+  { name: "XIcon", Component: XIcon },
   { name: "ChevronLeftIcon", Component: ChevronLeftIcon },
   { name: "ChevronRightIcon", Component: ChevronRightIcon },
   { name: "RefreshIcon", Component: RefreshIcon },
@@ -66,7 +68,9 @@ describe("Icons", () => {
   });
 
   it.each(ICONS)("$name passes extra props", ({ Component }) => {
-    const { container } = render(<Component className="text-red-500" data-testid="custom-icon" />);
+    const { container } = render(
+      <Component className="text-red-500" data-testid="custom-icon" />,
+    );
     const svg = container.querySelector("svg");
     expect(svg).toHaveClass("text-red-500");
     expect(svg).toHaveAttribute("data-testid", "custom-icon");

@@ -2,13 +2,32 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "@/store/useStore";
-import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
+import {
+  Mosque,
+  formatDistance,
+  getSearchRadius,
+  haversineDistance,
+} from "@/lib/mosques";
 import { CITIES, CITY_MAP } from "@/lib/cities";
-import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
+import {
+  MosqueIcon,
+  MapPinIcon,
+  SearchIcon,
+  XIcon,
+} from "@/components/ui/Icons";
 
 function NavigationIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polygon points="3 11 22 2 13 21 11 13 3 11" />
     </svg>
   );
@@ -16,7 +35,16 @@ function NavigationIcon({ size = 16 }: { size?: number }) {
 
 function ExternalLinkIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
@@ -26,7 +54,16 @@ function ExternalLinkIcon({ size = 14 }: { size?: number }) {
 
 function CrosshairIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="10" />
       <circle cx="12" cy="12" r="3" />
       <line x1="12" y1="2" x2="12" y2="6" />
@@ -37,7 +74,9 @@ function CrosshairIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-function getCoordsFromCityName(cityName: string): { lat: number; lng: number } | null {
+function getCoordsFromCityName(
+  cityName: string,
+): { lat: number; lng: number } | null {
   const norm = cityName.toUpperCase().trim();
   const city = CITY_MAP.get(norm);
   return city ? { lat: city.lat, lng: city.lng } : null;
@@ -80,17 +119,21 @@ function AccuracyBadge({ accuracy }: { accuracy: number }) {
   let color: string;
   let label: string;
   if (accuracy <= 50) {
-    color = "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/30";
+    color =
+      "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/30";
     label = `GPS akurat ±${Math.round(accuracy)}m`;
   } else if (accuracy <= 300) {
-    color = "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30";
+    color =
+      "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30";
     label = `WiFi ±${Math.round(accuracy)}m`;
   } else {
     color = "text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-900/30";
     label = `Akurasi rendah ±${Math.round(accuracy)}m`;
   }
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${color}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${color}`}
+    >
       {label}
     </span>
   );
@@ -105,7 +148,9 @@ export default function MosqueFinder() {
   const [mosques, setMosques] = useState<Mosque[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
   const [isGps, setIsGps] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -218,7 +263,10 @@ export default function MosqueFinder() {
         if (settledRef.current) return;
 
         const posAccuracy = pos.coords.accuracy;
-        const newCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const newCoords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
 
         // Update UI progressively (but don't trigger fetch yet — detecting is true)
         setUserCoords(newCoords);
@@ -237,14 +285,16 @@ export default function MosqueFinder() {
         if (settledRef.current) return;
         settle();
         if (err.code === err.PERMISSION_DENIED) {
-          setGpsError("Izin lokasi ditolak. Buka pengaturan browser atau gunakan pencarian kota di bawah.");
+          setGpsError(
+            "Izin lokasi ditolak. Buka pengaturan browser atau gunakan pencarian kota di bawah.",
+          );
         } else if (err.code === err.POSITION_UNAVAILABLE) {
           setGpsError("Lokasi tidak tersedia. Pastikan GPS aktif.");
         } else {
           setGpsError("Gagal mendeteksi lokasi. Coba lagi.");
         }
       },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
     );
   }, [setUserCoords, cancelGps]);
 
@@ -258,67 +308,84 @@ export default function MosqueFinder() {
   };
 
   // fetchMosques takes all needed params explicitly, no dependency on changing state
-  const fetchMosques = useCallback(async (
-    targetCoords: { lat: number; lng: number },
-    currentAccuracy: number | null,
-    forceRefresh?: boolean,
-    gpsSource?: boolean,
-    radiusOverride?: number,
-  ) => {
-    if (isOffline) {
-      setError("Anda sedang offline. Periksa koneksi internet Anda.");
-      return;
-    }
-
-    const radius = radiusOverride || getSearchRadius(currentAccuracy);
-    const cacheKey = getCacheKey(targetCoords.lat, targetCoords.lng, radius);
-    const radiusLabel = radius >= 1000 ? `${radius / 1000} km` : `${radius} m`;
-
-    // Check cache first (unless force refresh)
-    if (!forceRefresh) {
-      const cached = getCached(cacheKey);
-      if (cached) {
-        setMosques(cached);
-        setError(cached.length === 0 ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.` : null);
-        lastFetchCoordsRef.current = targetCoords;
-        lastFetchAccuracyRef.current = currentAccuracy;
-        lastFetchWasGpsRef.current = !!gpsSource;
+  const fetchMosques = useCallback(
+    async (
+      targetCoords: { lat: number; lng: number },
+      currentAccuracy: number | null,
+      forceRefresh?: boolean,
+      gpsSource?: boolean,
+      radiusOverride?: number,
+    ) => {
+      if (isOffline) {
+        setError("Anda sedang offline. Periksa koneksi internet Anda.");
         return;
       }
-    }
 
-    setLoading(true);
-    setError(null);
+      const radius = radiusOverride || getSearchRadius(currentAccuracy);
+      const cacheKey = getCacheKey(targetCoords.lat, targetCoords.lng, radius);
+      const radiusLabel =
+        radius >= 1000 ? `${radius / 1000} km` : `${radius} m`;
 
-    try {
-      const res = await fetch(`/api/mosques?lat=${targetCoords.lat}&lng=${targetCoords.lng}&radius=${radius}`);
-      if (!res.ok) {
-        setError(`Server error (${res.status}). Coba lagi nanti.`);
-        return;
-      }
-      const data = await res.json();
-
-      if (data.status && data.data) {
-        setMosques(data.data);
-        setCache(cacheKey, data.data);
-        lastFetchCoordsRef.current = targetCoords;
-        lastFetchAccuracyRef.current = currentAccuracy;
-        lastFetchWasGpsRef.current = !!gpsSource;
-        if (data.data.length === 0) {
-          // Distinct "no results" message
-          setError(`Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`);
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cached = getCached(cacheKey);
+        if (cached) {
+          setMosques(cached);
+          setError(
+            cached.length === 0
+              ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`
+              : null,
+          );
+          lastFetchCoordsRef.current = targetCoords;
+          lastFetchAccuracyRef.current = currentAccuracy;
+          lastFetchWasGpsRef.current = !!gpsSource;
+          return;
         }
-      } else {
-        // Distinct "API error" message
-        setError(data.error || "Server gagal memuat data masjid. Coba tekan Refresh.");
       }
-    } catch {
-      // Distinct "network error" message
-      setError("Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.");
-    } finally {
-      setLoading(false);
-    }
-  }, [isOffline]);
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(
+          `/api/mosques?lat=${targetCoords.lat}&lng=${targetCoords.lng}&radius=${radius}`,
+        );
+        if (!res.ok) {
+          setError(`Server error (${res.status}). Coba lagi nanti.`);
+          return;
+        }
+        const data = await res.json();
+
+        if (data.status && data.data) {
+          setMosques(data.data);
+          setCache(cacheKey, data.data);
+          lastFetchCoordsRef.current = targetCoords;
+          lastFetchAccuracyRef.current = currentAccuracy;
+          lastFetchWasGpsRef.current = !!gpsSource;
+          if (data.data.length === 0) {
+            // Distinct "no results" message
+            setError(
+              `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`,
+            );
+          }
+        } else {
+          // Distinct "API error" message
+          setError(
+            data.error ||
+              "Server gagal memuat data masjid. Coba tekan Refresh.",
+          );
+        }
+      } catch {
+        // Distinct "network error" message
+        setError(
+          "Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isOffline],
+  );
 
   // Auto-fetch when coords change, but defer during GPS detection to avoid fetching with inaccurate coords.
   // Refetch if: position moved >200m OR accuracy improved significantly OR switching from city→GPS.
@@ -329,16 +396,25 @@ export default function MosqueFinder() {
     if (detecting) return;
 
     // Force refetch when transitioning from city fallback to GPS (bypass distance/cache checks)
-    const switchingToGps = isGps && !lastFetchWasGpsRef.current && lastFetchCoordsRef.current !== null;
+    const switchingToGps =
+      isGps &&
+      !lastFetchWasGpsRef.current &&
+      lastFetchCoordsRef.current !== null;
 
     if (lastFetchCoordsRef.current && !switchingToGps) {
       const dist = haversineDistance(
-        lastFetchCoordsRef.current.lat, lastFetchCoordsRef.current.lng,
-        coords.lat, coords.lng
+        lastFetchCoordsRef.current.lat,
+        lastFetchCoordsRef.current.lng,
+        coords.lat,
+        coords.lng,
       );
       const prevAccuracy = lastFetchAccuracyRef.current;
-      const accuracyImproved = prevAccuracy !== null && accuracy !== null && accuracy < prevAccuracy * 0.5;
-      const radiusChanged = getSearchRadius(accuracy) !== getSearchRadius(prevAccuracy);
+      const accuracyImproved =
+        prevAccuracy !== null &&
+        accuracy !== null &&
+        accuracy < prevAccuracy * 0.5;
+      const radiusChanged =
+        getSearchRadius(accuracy) !== getSearchRadius(prevAccuracy);
 
       // Skip fetch if position didn't move much AND accuracy didn't improve significantly
       if (dist < 200 && !accuracyImproved && !radiusChanged) return;
@@ -367,7 +443,10 @@ export default function MosqueFinder() {
       <div className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MosqueIcon size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <MosqueIcon
+              size={18}
+              className="text-emerald-600 dark:text-emerald-400"
+            />
             <h2 className="text-sm font-bold text-slate-800 dark:text-white">
               Masjid Terdekat
             </h2>
@@ -410,12 +489,17 @@ export default function MosqueFinder() {
         )}
 
         {gpsError && (
-          <p className="mb-3 text-[11px] text-red-500 dark:text-red-400">{gpsError}</p>
+          <p className="mb-3 text-[11px] text-red-500 dark:text-red-400">
+            {gpsError}
+          </p>
         )}
 
         {/* Search input */}
         <div ref={searchRef} className="relative mb-3">
-          <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" />
+          <SearchIcon
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500"
+          />
           <input
             type="text"
             aria-label="Cari kota untuk lokasi masjid"
@@ -428,6 +512,23 @@ export default function MosqueFinder() {
             placeholder="Cari kota untuk lokasi masjid..."
             className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-4 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
           />
+          {searchQuery.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setShowSearch(false);
+                const input = document.querySelector(
+                  'input[aria-label="Cari kota untuk lokasi masjid"]',
+                ) as HTMLInputElement;
+                if (input) input.focus();
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+              aria-label="Hapus pencarian"
+            >
+              <XIcon size={14} />
+            </button>
+          )}
           {showSearch && searchResults.length > 0 && (
             <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
               {searchResults.map((city) => (
@@ -437,7 +538,10 @@ export default function MosqueFinder() {
                     onClick={() => handleSelectCity(city)}
                     className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
                   >
-                    <MapPinIcon size={12} className="shrink-0 text-slate-300 dark:text-slate-500" />
+                    <MapPinIcon
+                      size={12}
+                      className="shrink-0 text-slate-300 dark:text-slate-500"
+                    />
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                       {city.name}
                     </span>
@@ -453,7 +557,9 @@ export default function MosqueFinder() {
           <MapPinIcon size={12} />
           <span>
             {isGps ? (
-              <>Lokasi GPS ({coords?.lat.toFixed(4)}, {coords?.lng.toFixed(4)})</>
+              <>
+                Lokasi GPS ({coords?.lat.toFixed(4)}, {coords?.lng.toFixed(4)})
+              </>
             ) : (
               <>Perkiraan lokasi: {location.cityName}</>
             )}
@@ -493,7 +599,10 @@ export default function MosqueFinder() {
       {/* Error state */}
       {!loading && error && mosques.length === 0 && (
         <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
-          <MosqueIcon size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+          <MosqueIcon
+            size={32}
+            className="mx-auto mb-2 text-slate-300 dark:text-slate-600"
+          />
           <p className="text-xs text-slate-500 dark:text-slate-400">{error}</p>
           {coords && (
             <button
@@ -555,7 +664,12 @@ export default function MosqueFinder() {
           className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 py-3 text-xs font-semibold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
         >
           <SearchIcon size={14} />
-          Perluas Pencarian ({radius >= 1000 ? `${radius / 1000} km` : `${radius} m`} → {Math.min(radius * 2, MAX_RADIUS) >= 1000 ? `${Math.min(radius * 2, MAX_RADIUS) / 1000} km` : `${Math.min(radius * 2, MAX_RADIUS)} m`})
+          Perluas Pencarian (
+          {radius >= 1000 ? `${radius / 1000} km` : `${radius} m`} →{" "}
+          {Math.min(radius * 2, MAX_RADIUS) >= 1000
+            ? `${Math.min(radius * 2, MAX_RADIUS) / 1000} km`
+            : `${Math.min(radius * 2, MAX_RADIUS)} m`}
+          )
         </button>
       )}
 
