@@ -18,6 +18,7 @@ import {
   SunIcon,
   MoonIcon,
   ChevronLeftIcon,
+  XIcon,
   ChevronRightIcon,
   RefreshIcon,
   PRAYER_ICON_MAP,
@@ -66,7 +67,9 @@ describe("Icons", () => {
   });
 
   it.each(ICONS)("$name passes extra props", ({ Component }) => {
-    const { container } = render(<Component className="text-red-500" data-testid="custom-icon" />);
+    const { container } = render(
+      <Component className="text-red-500" data-testid="custom-icon" />,
+    );
     const svg = container.querySelector("svg");
     expect(svg).toHaveClass("text-red-500");
     expect(svg).toHaveAttribute("data-testid", "custom-icon");
@@ -96,5 +99,21 @@ describe("Icons", () => {
       expect(PRAYER_ICON_MAP.maghrib).toBe(MaghribIcon);
       expect(PRAYER_ICON_MAP.isya).toBe(IsyaIcon);
     });
+  });
+});
+
+describe("XIcon", () => {
+  it("renders with default props", () => {
+    const { container } = render(<XIcon />);
+    const svg = container.querySelector("svg");
+    expect(svg).toBeInTheDocument();
+    expect(svg).toHaveAttribute("width", "24");
+  });
+
+  it("applies custom size", () => {
+    const { container } = render(<XIcon size={16} />);
+    const svg = container.querySelector("svg");
+    expect(svg).toHaveAttribute("width", "16");
+    expect(svg).toHaveAttribute("height", "16");
   });
 });
