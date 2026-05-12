@@ -1,0 +1,3 @@
+## 2024-05-12 - Explicit Clear Buttons on Debounced Inputs
+**Learning:** For inputs with debounced searches or auto-fetching behaviors, users often need a quick, explicit way to clear their query and reset the state. Relying solely on backspacing can be tedious on mobile and may trigger unnecessary intermediate debounced requests.
+**Action:** Always add an absolute positioned explicit clear button (like `XIcon`) inside search inputs that conditionally renders when the query length is > 0. Ensure adequate right padding (e.g., `pr-8`) on the input to prevent text from overlapping the icon touch target.
