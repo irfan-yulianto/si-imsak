@@ -39,7 +39,10 @@ export function getTomorrowSchedule(
 }
 
 export function parseTimeToSeconds(timeStr: string): number {
-  const [h, m] = timeStr.split(":").map(Number);
+  const colonIdx = timeStr.indexOf(":");
+  if (colonIdx === -1) return 0;
+  const h = parseInt(timeStr.substring(0, colonIdx), 10);
+  const m = parseInt(timeStr.substring(colonIdx + 1), 10);
   return h * 3600 + m * 60;
 }
 
@@ -91,12 +94,18 @@ export function getNextPrayerCyclic(
   return null;
 }
 
+// Pre-allocate padded strings to avoid string allocations in hot loops (1 tick/sec)
+const PAD_ZEROS = Array.from({ length: 100 }, (_, i) => String(i).padStart(2, "0"));
+
 export function formatCountdown(ms: number): { hours: string; minutes: string; seconds: string } {
   if (ms <= 0) return { hours: "00", minutes: "00", seconds: "00" };
   const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
   return {
-    hours: String(Math.floor(totalSeconds / 3600)).padStart(2, "0"),
-    minutes: String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0"),
-    seconds: String(totalSeconds % 60).padStart(2, "0"),
+    hours: h < 100 ? PAD_ZEROS[h] : String(h).padStart(2, "0"),
+    minutes: PAD_ZEROS[m],
+    seconds: PAD_ZEROS[s],
   };
 }
