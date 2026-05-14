@@ -1,0 +1,4 @@
+
+## 2024-05-14 - Add Clear Button to Search Inputs
+**Learning:** For text search inputs, adding an inline clear button (e.g., an `XIcon`) when there's an active query provides a simple but effective micro-UX improvement, preventing users from manually deleting text character by character. To prevent content overlap, proper padding (e.g., `pr-9`) must be added to the input field. Also, `aria-label` attributes and ensuring focus remains on the input after clearing ensures keyboard and screen reader accessibility.
+**Action:** When creating or modifying text inputs used for searching or filtering, include a clear button that becomes visible when `value.length > 0`. Remember to apply `pr-9` padding to the input, implement `aria-label="Clear search"`, and call `inputRef.current?.focus()` in the click handler.

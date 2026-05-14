@@ -178,6 +178,17 @@ export function SearchIcon({ size = 24, ...props }: IconProps) {
 }
 
 // Calendar icon
+
+// X / Close icon
+export function XIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg {...defaultProps(size)} {...props}>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ size = 24, ...props }: IconProps) {
   return (
     <svg {...defaultProps(size)} {...props}>
