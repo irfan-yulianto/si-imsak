@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
 import { CITIES, CITY_MAP } from "@/lib/cities";
-import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
+import { MosqueIcon, MapPinIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
 
 function NavigationIcon({ size = 16 }: { size?: number }) {
   return (
@@ -125,6 +125,7 @@ export default function MosqueFinder() {
   const [searchResults, setSearchResults] = useState<typeof CITIES>([]);
   const [showSearch, setShowSearch] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize coords from store or city lookup
   useEffect(() => {
@@ -417,6 +418,7 @@ export default function MosqueFinder() {
         <div ref={searchRef} className="relative mb-3">
           <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" />
           <input
+            ref={searchInputRef}
             type="text"
             aria-label="Cari kota untuk lokasi masjid"
             value={searchQuery}
@@ -426,8 +428,22 @@ export default function MosqueFinder() {
             }}
             onFocus={() => searchResults.length > 0 && setShowSearch(true)}
             placeholder="Cari kota untuk lokasi masjid..."
-            className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-4 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
+            className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-9 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
           />
+          {searchQuery.length > 0 && (
+            <button
+              type="button"
+              aria-label="Hapus pencarian"
+              onClick={() => {
+                setSearchQuery("");
+                setSearchResults([]);
+                searchInputRef.current?.focus();
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+            >
+              <XIcon size={14} />
+            </button>
+          )}
           {showSearch && searchResults.length > 0 && (
             <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
               {searchResults.map((city) => (
