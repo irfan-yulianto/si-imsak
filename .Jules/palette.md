@@ -1,0 +1,3 @@
+## 2024-05-16 - Add Clear Button to Location Search
+**Learning:** For debounced search inputs with dynamic content, providing an accessible clear button is crucial for efficient navigation and keyboard-friendly interaction. It allows users to quickly reset their search state.
+**Action:** When implementing an absolute positioned clear button inside a search input, always ensure conditional rendering to avoid colliding with loading indicators. Ensure the input padding (`pr-9`) is updated to prevent text overlap. Attach an `aria-label` to the clear button, reset the underlying states (query and results), and importantly, restore focus to the input (`inputRef.current?.focus()`) so keyboard navigation is seamless.

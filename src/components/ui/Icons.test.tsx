@@ -20,6 +20,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshIcon,
+  XIcon,
   PRAYER_ICON_MAP,
 } from "./Icons";
 
@@ -43,6 +44,7 @@ const ICONS = [
   { name: "ChevronLeftIcon", Component: ChevronLeftIcon },
   { name: "ChevronRightIcon", Component: ChevronRightIcon },
   { name: "RefreshIcon", Component: RefreshIcon },
+  { name: "XIcon", Component: XIcon },
 ];
 
 describe("Icons", () => {
