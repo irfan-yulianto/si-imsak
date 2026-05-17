@@ -91,12 +91,20 @@ export function getNextPrayerCyclic(
   return null;
 }
 
+// Pre-allocated padding array to eliminate string allocations in the hot loop
+const PAD_ZEROS = Array.from({ length: 60 }, (_, i) => i < 10 ? `0${i}` : `${i}`);
+
 export function formatCountdown(ms: number): { hours: string; minutes: string; seconds: string } {
   if (ms <= 0) return { hours: "00", minutes: "00", seconds: "00" };
   const totalSeconds = Math.floor(ms / 1000);
+
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
   return {
-    hours: String(Math.floor(totalSeconds / 3600)).padStart(2, "0"),
-    minutes: String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0"),
-    seconds: String(totalSeconds % 60).padStart(2, "0"),
+    hours: h < 60 ? PAD_ZEROS[h] : String(h).padStart(2, "0"), // Fallback for > 60 hours
+    minutes: PAD_ZEROS[m],
+    seconds: PAD_ZEROS[s],
   };
 }
