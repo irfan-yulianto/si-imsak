@@ -1,0 +1,3 @@
+## 2024-05-30 - Added accessible clear buttons to search inputs
+**Learning:** For conditional UI elements inside search inputs like a clear button that shows up when typing, it is necessary to not only add an `aria-label` but also explicitly return focus back to the input after it's cleared. This ensures that keyboard users do not lose their place or focus context during data entry, creating a smooth and robust micro-interaction. Also, careful usage of `pr-9` prevents text from bleeding into the absolutely positioned elements.
+**Action:** Always verify keyboard focus states and add `ref.current?.focus()` on clear actions within search inputs.
