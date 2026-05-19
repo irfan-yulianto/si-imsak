@@ -20,7 +20,7 @@ export function getDateStr(localTime: Date): string {
 export function getTodaySchedule(
   schedules: ScheduleDay[],
   now: Date,
-  utcOffset: number
+  utcOffset: number,
 ): ScheduleDay | null {
   const dateStr = getDateStr(getLocalDate(now, utcOffset));
   return schedules.find((s) => s.date === dateStr) || null;
@@ -29,7 +29,7 @@ export function getTodaySchedule(
 export function getTomorrowSchedule(
   schedules: ScheduleDay[],
   now: Date,
-  utcOffset: number
+  utcOffset: number,
 ): ScheduleDay | null {
   const localTime = getLocalDate(now, utcOffset);
   const tomorrow = new Date(localTime);
@@ -46,13 +46,14 @@ export function parseTimeToSeconds(timeStr: string): number {
 export function getNextPrayerCyclic(
   schedules: ScheduleDay[],
   now: Date,
-  utcOffset: number
+  utcOffset: number,
 ): NextPrayer | null {
   const localTime = getLocalDate(now, utcOffset);
   const localHours = localTime.getUTCHours();
   const localMinutes = localTime.getUTCMinutes();
   const localSeconds = localTime.getUTCSeconds();
-  const currentTotalSeconds = localHours * 3600 + localMinutes * 60 + localSeconds;
+  const currentTotalSeconds =
+    localHours * 3600 + localMinutes * 60 + localSeconds;
 
   const todaySchedule = getTodaySchedule(schedules, now, utcOffset);
 
@@ -66,7 +67,13 @@ export function getNextPrayerCyclic(
       const prayerTotalSeconds = parseTimeToSeconds(timeStr);
       if (prayerTotalSeconds > currentTotalSeconds) {
         const remainingMs = (prayerTotalSeconds - currentTotalSeconds) * 1000;
-        return { name: PRAYER_NAMES[i], key, time: timeStr, remainingMs, targetMs: now.getTime() + remainingMs };
+        return {
+          name: PRAYER_NAMES[i],
+          key,
+          time: timeStr,
+          remainingMs,
+          targetMs: now.getTime() + remainingMs,
+        };
       }
     }
   }
@@ -91,12 +98,23 @@ export function getNextPrayerCyclic(
   return null;
 }
 
-export function formatCountdown(ms: number): { hours: string; minutes: string; seconds: string } {
+const PAD_ZEROS = Array.from({ length: 100 }, (_, i) =>
+  String(i).padStart(2, "0"),
+);
+
+export function formatCountdown(ms: number): {
+  hours: string;
+  minutes: string;
+  seconds: string;
+} {
   if (ms <= 0) return { hours: "00", minutes: "00", seconds: "00" };
   const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
   return {
-    hours: String(Math.floor(totalSeconds / 3600)).padStart(2, "0"),
-    minutes: String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0"),
-    seconds: String(totalSeconds % 60).padStart(2, "0"),
+    hours: h < 100 ? PAD_ZEROS[h] : String(h),
+    minutes: PAD_ZEROS[m],
+    seconds: PAD_ZEROS[s],
   };
 }
