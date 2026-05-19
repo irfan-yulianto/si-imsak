@@ -1,0 +1,57 @@
+
+> jadwal-imsakiyah@0.1.0 dev /app
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+
+✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+✓ Ready in 1086ms
+ GET / 200 in 3.6s (compile: 3.2s, render: 413ms)
+ GET / 200 in 290ms (compile: 22ms, render: 268ms)
+ GET /manifest.webmanifest 200 in 698ms (compile: 674ms, render: 24ms)
+ GET /api/cities?q=Jakarta 502 in 993ms (compile: 666ms, render: 327ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 1803ms (compile: 786ms, render: 1017ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 5.0s (compile: 1234ms, render: 3.8s)
+ GET / 200 in 113ms (compile: 6ms, render: 107ms)
+ GET /manifest.webmanifest 200 in 42ms (compile: 37ms, render: 6ms)
+ GET / 200 in 187ms (compile: 7ms, render: 179ms)
+ GET /api/cities?q=Jakarta 502 in 256ms (compile: 3ms, render: 252ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 945ms (compile: 150ms, render: 795ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 1563ms (compile: 3ms, render: 1559ms)
+ GET / 200 in 131ms (compile: 7ms, render: 124ms)
+ GET /manifest.webmanifest 200 in 86ms (compile: 81ms, render: 5ms)
+ GET / 200 in 129ms (compile: 5ms, render: 124ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 385ms (compile: 3ms, render: 382ms)
+ GET /api/cities?q=Jakarta 200 in 273ms (compile: 3ms, render: 270ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 750ms (compile: 5ms, render: 744ms)
+ GET /api/cities?q=Bandung 200 in 282ms (compile: 4ms, render: 278ms)
+ GET / 200 in 84ms (compile: 3ms, render: 81ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 31ms (compile: 4ms, render: 27ms)
+ GET /manifest.webmanifest 200 in 10ms (compile: 7ms, render: 4ms)
+ GET / 200 in 104ms (compile: 4ms, render: 100ms)
+ GET /api/cities?q=Jakarta 200 in 7ms (compile: 2ms, render: 5ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 789ms (compile: 2ms, render: 787ms)
+ GET /api/cities?q=Bandung 200 in 7ms (compile: 2ms, render: 5ms)
+ GET / 200 in 113ms (compile: 4ms, render: 109ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 29ms (compile: 4ms, render: 26ms)
+ GET /manifest.webmanifest 200 in 85ms (compile: 78ms, render: 8ms)
+ GET / 200 in 173ms (compile: 5ms, render: 168ms)
+ GET / 200 in 90ms (compile: 3ms, render: 87ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 32ms (compile: 5ms, render: 27ms)
+ GET /manifest.webmanifest 200 in 77ms (compile: 67ms, render: 10ms)
+ GET / 200 in 99ms (compile: 4ms, render: 96ms)
+ GET /api/cities?q=Jakarta 200 in 8ms (compile: 3ms, render: 5ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 752ms (compile: 3ms, render: 749ms)
+ GET / 200 in 83ms (compile: 3ms, render: 80ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=5 200 in 29ms (compile: 6ms, render: 24ms)
+ GET /manifest.webmanifest 200 in 33ms (compile: 29ms, render: 4ms)
+ GET / 200 in 94ms (compile: 4ms, render: 90ms)
+ GET /api/cities?q=Jakarta 200 in 7ms (compile: 2ms, render: 4ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 785ms (compile: 3ms, render: 782ms)

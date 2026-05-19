@@ -1,0 +1,3 @@
+## 2024-05-19 - Added Clear Button to Search Inputs
+**Learning:** Adding a clear button (`XIcon`) inside search inputs that conditionally renders when there's text greatly improves user efficiency. A key detail is ensuring the input regains focus after clearing so the user can immediately resume typing, and ensuring appropriate padding (`pr-9`) so text doesn't overlap the icon. Also, hiding it during `isSearching` prevents overlap with the loading spinner.
+**Action:** Always include an accessible clear button with `aria-label` inside search inputs. Ensure it manages focus correctly using `useRef` and adjust input padding to accommodate the absolute positioned button.
