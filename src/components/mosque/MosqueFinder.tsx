@@ -141,14 +141,20 @@ export default function MosqueFinder() {
   }, [userCoords, location.cityName]);
 
   // Search cities
+  // Optimization: Added 300ms debounce to prevent synchronous filtering of the CITIES array
+  // and subsequent React re-renders on every single keystroke. This significantly improves
+  // input responsiveness during rapid typing.
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+    const timerId = setTimeout(() => {
+      const q = searchQuery.toUpperCase();
+      const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+      setSearchResults(results);
+    }, 300);
+    return () => clearTimeout(timerId);
   }, [searchQuery]);
 
   // Close search dropdown on outside click
