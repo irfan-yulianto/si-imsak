@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
 import { CITIES, CITY_MAP } from "@/lib/cities";
-import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
+import { MosqueIcon, MapPinIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
 
 function NavigationIcon({ size = 16 }: { size?: number }) {
   return (
@@ -426,8 +426,22 @@ export default function MosqueFinder() {
             }}
             onFocus={() => searchResults.length > 0 && setShowSearch(true)}
             placeholder="Cari kota untuk lokasi masjid..."
-            className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-4 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
+            className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-9 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
           />
+          {searchQuery.length > 0 && (
+            <button
+              type="button"
+              aria-label="Bersihkan pencarian"
+              onClick={() => {
+                setSearchQuery("");
+                setShowSearch(false);
+                setSearchResults([]);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 transition-colors hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+            >
+              <XIcon size={14} />
+            </button>
+          )}
           {showSearch && searchResults.length > 0 && (
             <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
               {searchResults.map((city) => (
