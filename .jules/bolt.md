@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-05-22 - Debouncing Array Filter on Large Datasets
+**Learning:** React components that run `Array.prototype.filter` on a large dataset (like the 600+ items in `CITIES.filter`) synchronously on every keystroke in a `useEffect` will severely block the main thread and drop frames during rapid typing, hurting user experience.
+**Action:** When filtering static arrays or triggering API searches based on user input, wrap the filtering logic and state updates inside a `setTimeout` within the `useEffect` hook, and return a `clearTimeout` cleanup function to naturally debounce the operation (e.g., by 300ms).
