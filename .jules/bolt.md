@@ -9,3 +9,6 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+## 2024-05-23 - Debounce City Search Filtering
+**Learning:** Found a performance bottleneck in `MosqueFinder.tsx` where synchronous string-matching filtering of a large array (`CITIES`, 514 items) occurred on every keystroke in the search input `useEffect`, causing main thread blocking during rapid typing.
+**Action:** Always wrap expensive synchronous array filtering operations tied to rapid user inputs (like keystrokes) with a standard debounce mechanism (e.g., `setTimeout` with a 300ms delay and proper cleanup via `clearTimeout`) to prevent cascading re-renders and UI stuttering on slower devices.
