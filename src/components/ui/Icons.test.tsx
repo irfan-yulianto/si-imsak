@@ -20,6 +20,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshIcon,
+  XIcon,
   PRAYER_ICON_MAP,
 } from "./Icons";
 
@@ -43,6 +44,7 @@ const ICONS = [
   { name: "ChevronLeftIcon", Component: ChevronLeftIcon },
   { name: "ChevronRightIcon", Component: ChevronRightIcon },
   { name: "RefreshIcon", Component: RefreshIcon },
+  { name: "XIcon", Component: XIcon },
 ];
 
 describe("Icons", () => {
@@ -66,7 +68,9 @@ describe("Icons", () => {
   });
 
   it.each(ICONS)("$name passes extra props", ({ Component }) => {
-    const { container } = render(<Component className="text-red-500" data-testid="custom-icon" />);
+    const { container } = render(
+      <Component className="text-red-500" data-testid="custom-icon" />,
+    );
     const svg = container.querySelector("svg");
     expect(svg).toHaveClass("text-red-500");
     expect(svg).toHaveAttribute("data-testid", "custom-icon");
