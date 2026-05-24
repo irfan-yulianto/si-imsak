@@ -1,0 +1,3 @@
+## 2024-05-24 - Add Clear Button to Search Input
+**Learning:** Adding a clear button (`XIcon`) inside a search input is a great micro-UX enhancement that improves accessibility and usability, particularly when returning focus to the input after clearing the query. However, care must be taken to update the input's padding (`pr-9`) to prevent text from overlapping the absolute positioned button.
+**Action:** When implementing similar clear buttons inside inputs, ensure adequate right padding is applied to the input field, the button has proper `aria-label`, and the `onClick` handler calls `.focus()` on the input's `ref`.
