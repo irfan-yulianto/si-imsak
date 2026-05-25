@@ -1,4 +1,11 @@
-import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+  cleanup,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import LocationSearch from "./LocationSearch";
 import { useStore } from "@/store/useStore";
@@ -45,7 +52,7 @@ describe("LocationSearch Component", () => {
     const store = useStore.getState();
     store.setLocation(
       { id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE" },
-      "WIB"
+      "WIB",
     );
     store.setSchedule([]);
     store.setCountdownSchedule([]);
@@ -53,7 +60,7 @@ describe("LocationSearch Component", () => {
     store.setScheduleError(null);
 
     vi.useFakeTimers({
-      shouldAdvanceTime: true
+      shouldAdvanceTime: true,
     });
   });
 
@@ -72,15 +79,23 @@ describe("LocationSearch Component", () => {
     });
 
     expect(
-      screen.getByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
+      screen.getByText(
+        "Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?",
+      ),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: "Gunakan Lokasi" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gunakan Lokasi" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nanti" })).toBeInTheDocument();
   });
 
   it("fetches schedule on mount if location is saved in localStorage", async () => {
-    const mockLocation = { id: "test-id", lokasi: "TEST CITY", daerah: "TEST PROV" };
+    const mockLocation = {
+      id: "test-id",
+      lokasi: "TEST CITY",
+      daerah: "TEST PROV",
+    };
     localStorage.setItem("selectedLocation", JSON.stringify(mockLocation));
 
     vi.mocked(getSchedule).mockResolvedValue({
@@ -104,13 +119,15 @@ describe("LocationSearch Component", () => {
       expect(getSchedule).toHaveBeenCalledWith(
         "test-id",
         expect.any(Number),
-        expect.any(Number)
+        expect.any(Number),
       );
     });
 
     // Prompt should not be shown
     expect(
-      screen.queryByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
+      screen.queryByText(
+        "Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?",
+      ),
     ).not.toBeInTheDocument();
   });
 
@@ -129,7 +146,9 @@ describe("LocationSearch Component", () => {
     });
 
     expect(
-      screen.queryByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
+      screen.queryByText(
+        "Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?",
+      ),
     ).not.toBeInTheDocument();
 
     expect(localStorage.getItem("locationPermissionDismissed")).toBeTruthy();
@@ -153,7 +172,9 @@ describe("LocationSearch Component", () => {
 
     expect(detectAndUpdateLocation).toHaveBeenCalled();
     expect(
-      screen.queryByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
+      screen.queryByText(
+        "Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?",
+      ),
     ).not.toBeInTheDocument();
   });
 
@@ -163,7 +184,10 @@ describe("LocationSearch Component", () => {
       { id: "2", lokasi: "JAKARTA PUSAT", daerah: "DKI JAKARTA" },
     ];
 
-    vi.mocked(searchCities).mockResolvedValue({ status: true, data: mockResults });
+    vi.mocked(searchCities).mockResolvedValue({
+      status: true,
+      data: mockResults,
+    });
 
     render(<LocationSearch />);
 
@@ -219,11 +243,12 @@ describe("LocationSearch Component", () => {
   });
 
   it("selects a location and fetches its schedule", async () => {
-    const mockResults = [
-      { id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT" },
-    ];
+    const mockResults = [{ id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT" }];
 
-    vi.mocked(searchCities).mockResolvedValue({ status: true, data: mockResults });
+    vi.mocked(searchCities).mockResolvedValue({
+      status: true,
+      data: mockResults,
+    });
     vi.mocked(getSchedule).mockResolvedValue({
       status: true,
       data: {
@@ -275,13 +300,20 @@ describe("LocationSearch Component", () => {
 
     // Schedule should be fetched
     await waitFor(() => {
-      expect(getSchedule).toHaveBeenCalledWith("1", expect.any(Number), expect.any(Number));
+      expect(getSchedule).toHaveBeenCalledWith(
+        "1",
+        expect.any(Number),
+        expect.any(Number),
+      );
     });
   });
 
   it("closes dropdown on Escape key", async () => {
     const mockResults = [{ id: "1", lokasi: "TEST", daerah: "TEST" }];
-    vi.mocked(searchCities).mockResolvedValue({ status: true, data: mockResults });
+    vi.mocked(searchCities).mockResolvedValue({
+      status: true,
+      data: mockResults,
+    });
 
     render(<LocationSearch />);
 
