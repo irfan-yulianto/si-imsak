@@ -1,0 +1,3 @@
+## 2024-05-26 - Added clear button to LocationSearch
+**Learning:** Adding an absolute positioned clear button (e.g., an `XIcon`) inside search inputs that conditionally renders when the query length is > 0 is a standard micro-UX pattern. Ensure to add adequate right padding (e.g., `pr-9`) to the input to prevent text overlap, conditionally hide the button during loading states (e.g., `isSearching`) to avoid layout collisions, and use `aria-label` with keyboard-friendly interactions (returning focus to the input upon clearing).
+**Action:** Implemented a reusable XIcon in `Icons.tsx` and integrated it into `LocationSearch.tsx` and `MosqueFinder.tsx` to clear search inputs.
