@@ -1,0 +1,3 @@
+## 2024-05-26 - Accessible Clear Buttons in Search Inputs
+**Learning:** Absolute positioned clear buttons inside search inputs must handle conditionally rendering with loading states to avoid layout collisions, need adequate right padding on the input (`pr-9`) to prevent text overlap, and require keyboard-friendly interactions (returning focus to the input via `useRef`) combined with an `aria-label` for screen reader accessibility.
+**Action:** Reused the newly added `XIcon` component and applied this pattern to the LocationSearch input. Ensure this micro-UX pattern is replicated for other search inputs across the interface.
