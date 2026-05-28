@@ -1,0 +1,3 @@
+## 2024-05-28 - [Clear Button for Search Inputs]
+**Learning:** Adding a clear (`X`) button to search inputs is a common micro-UX pattern, but implementing it accessibly requires more than just a button. The input needs padding so text doesn't overlap the button, and the button needs an `aria-label`. Furthermore, for keyboard navigation, the input should regain focus after the button is clicked.
+**Action:** Always include an `aria-label` when adding icon-only clear buttons, adjust the input's padding to accommodate the icon, and use a `useRef` to return focus to the input element upon clearing.
