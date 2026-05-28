@@ -146,9 +146,14 @@ export default function MosqueFinder() {
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+    // ⚡ Bolt: Added 200ms debounce to prevent running synchronous CITIES.filter (628 items)
+    // on every keystroke, reducing main thread blocking and unnecessary re-renders during rapid typing.
+    const timeoutId = setTimeout(() => {
+      const q = searchQuery.toUpperCase();
+      const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+      setSearchResults(results);
+    }, 200);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   // Close search dropdown on outside click
