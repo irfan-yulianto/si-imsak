@@ -129,6 +129,7 @@ export default function MosqueFinder() {
   // Initialize coords from store or city lookup
   useEffect(() => {
     if (userCoords) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoords(userCoords);
       setIsGps(true);
     } else {
@@ -141,14 +142,21 @@ export default function MosqueFinder() {
   }, [userCoords, location.cityName]);
 
   // Search cities
+  // ⚡ Bolt: Debounce city search to prevent blocking the main thread.
+  // Performance impact: Reduces main thread blocking by skipping O(N) filtering
+  // on a 600+ item array during rapid user typing.
   useEffect(() => {
     if (searchQuery.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+    const timeoutId = setTimeout(() => {
+      const q = searchQuery.toUpperCase();
+      const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+      setSearchResults(results);
+    }, 300);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   // Close search dropdown on outside click
