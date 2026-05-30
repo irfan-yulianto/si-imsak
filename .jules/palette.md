@@ -1,0 +1,3 @@
+## 2024-05-30 - Added Clear Button to Location Search
+**Learning:** Adding an absolute positioned clear button (e.g., an `XIcon`) inside search inputs that conditionally renders when the query length is > 0 is a standard micro-UX pattern, but it requires careful coordination with padding.
+**Action:** When doing this, ensure to add adequate right padding (e.g., `pr-9`) to the input to prevent text overlap, conditionally hide the button during loading states (e.g., `!isSearching`) to avoid layout collisions with spinners, use localized `aria-label`s (e.g., "Hapus pencarian"), and return focus to the input (`inputRef.current?.focus()`) upon clearing to support keyboard navigation.
