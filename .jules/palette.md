@@ -1,0 +1,4 @@
+
+## 2024-06-01 - Add Clear Button to Search Inputs
+**Learning:** Adding absolute-positioned clear buttons (like an `XIcon`) inside search inputs that conditionally render when `query.length > 0` is a highly effective micro-UX pattern for mobile and desktop web apps. We must handle interaction states explicitly by adding adequate right padding (e.g., `pr-9`) to avoid overlapping the typed text, hiding the clear button when a loading spinner is active, and providing localized `aria-label` attributes for accessibility (e.g., "Hapus pencarian"). Returning focus to the input via `useRef` upon clearing is also crucial for keyboard accessibility.
+**Action:** When implementing clearable inputs, verify that spacing accommodates all inner absolute elements, loading states don't conflict, and ARIA labels are properly localized to the application's primary language. Always attach a `ref` and refocus the element on clear.
