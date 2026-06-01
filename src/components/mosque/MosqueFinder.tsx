@@ -129,12 +129,13 @@ export default function MosqueFinder() {
   // Initialize coords from store or city lookup
   useEffect(() => {
     if (userCoords) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoords(userCoords);
       setIsGps(true);
     } else {
       const cityCoords = getCoordsFromCityName(location.cityName);
       if (cityCoords) {
-        setCoords(cityCoords);
+          setCoords(cityCoords);
         setIsGps(false);
       }
     }
@@ -143,12 +144,16 @@ export default function MosqueFinder() {
   // Search cities
   useEffect(() => {
     if (searchQuery.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+    const timeoutId = setTimeout(() => {
+      const q = searchQuery.toUpperCase();
+      const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+      setSearchResults(results);
+    }, 300);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   // Close search dropdown on outside click
