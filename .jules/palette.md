@@ -1,0 +1,3 @@
+## 2024-05-18 - Search Input Clear Buttons
+**Learning:** Adding a clear button (using an icon) directly inside search inputs is a helpful micro-UX pattern for quick query clearing, but requires careful positioning to avoid overlapping text and keyboard navigation disruptions.
+**Action:** When adding absolute positioned clear buttons inside inputs, always ensure the input has sufficient right padding (e.g., `pr-9`), conditionally hide the clear button when there's no query or during loading states to prevent layout shifts, and add `aria-label` with an `onClick` handler that returns `.focus()` to the input to maintain keyboard accessibility.
