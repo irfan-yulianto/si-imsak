@@ -1,0 +1,3 @@
+## 2024-06-02 - Accessible Clear Buttons in Search Inputs
+**Learning:** Icon-only clear buttons within input fields are critical for accessibility and rapid UX but require careful implementation to ensure screen reader support (via ARIA labels), correct keyboard order, focus management (returning focus to input on clear), and avoiding layout overlapping (via sufficient right padding).
+**Action:** Added a reusable `XIcon` component and applied this pattern to both `LocationSearch` and `MosqueFinder` inputs, adhering to the standard ARIA labels, conditional rendering logic, and input ref tracking.
