@@ -70,6 +70,7 @@ export default function InstallBanner() {
     if (!detected) return;
 
     if (detected === "ios") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("ios");
       return;
     }

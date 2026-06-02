@@ -117,6 +117,7 @@ export default function LocationSearch() {
       // No saved location — show permission prompt (re-prompt after 7 days)
       const dismissed = localStorage.getItem("locationPermissionDismissed");
       if (!dismissed) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShowLocationPrompt(true);
       } else {
         try {
@@ -174,6 +175,7 @@ export default function LocationSearch() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
     if (query.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setIsOpen(false);
       setIsSearching(false);
