@@ -1,0 +1,3 @@
+## 2024-05-18 - Search Input Clear Buttons
+**Learning:** Search inputs in `LocationSearch` and `MosqueFinder` can become tedious to clear manually if the user wants to type a new query. Adding an absolute positioned clear button (`XIcon`) inside the search input that conditionally renders when the query length is > 0 is a standard micro-UX pattern.
+**Action:** When adding clear buttons inside inputs, ensure adequate right padding (e.g., `pr-9`) on the input to prevent text overlap, conditionally hide the button during loading states to avoid layout collisions, and use `aria-label` with keyboard-friendly interactions.
