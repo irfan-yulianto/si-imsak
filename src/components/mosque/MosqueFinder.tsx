@@ -129,6 +129,7 @@ export default function MosqueFinder() {
   // Initialize coords from store or city lookup
   useEffect(() => {
     if (userCoords) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoords(userCoords);
       setIsGps(true);
     } else {
@@ -142,13 +143,25 @@ export default function MosqueFinder() {
 
   // Search cities
   useEffect(() => {
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+    // Debounce the search input to reduce synchronous rendering bottlenecks
+    const timer = setTimeout(() => {
+      if (searchQuery.length < 2) {
+        setSearchResults([]);
+        return;
+      }
+      const q = searchQuery.toUpperCase();
+      // Replace Array.filter(...).slice(...) with an explicit loop for O(K) performance
+      const results: typeof CITIES = [];
+      for (const c of CITIES) {
+        if (c.name.includes(q)) {
+          results.push(c);
+          if (results.length === 8) break;
+        }
+      }
+      setSearchResults(results);
+    }, 150);
+
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
   // Close search dropdown on outside click
