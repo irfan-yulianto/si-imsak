@@ -146,9 +146,20 @@ export default function MosqueFinder() {
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+
+    const timeoutId = setTimeout(() => {
+      const q = searchQuery.toUpperCase();
+      const results: typeof CITIES = [];
+      for (let i = 0; i < CITIES.length; i++) {
+        if (CITIES[i].name.includes(q)) {
+          results.push(CITIES[i]);
+          if (results.length === 8) break;
+        }
+      }
+      setSearchResults(results);
+    }, 150); // Debounce to prevent blocking main thread on rapid typing
+
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   // Close search dropdown on outside click
