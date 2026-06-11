@@ -1,0 +1,3 @@
+## 2024-06-11 - Add clear button to search inputs
+**Learning:** Adding a clear button to search inputs with long padding values (`pr-9`) is a standard micro-UX pattern to prevent text overlap, especially when the button conditionally renders based on query length. It is also important to return focus to the input (`inputRef.current?.focus()`) and assign proper localized `aria-label`s for keyboard and screen reader accessibility.
+**Action:** When adding absolute positioned internal buttons to text inputs, always ensure adequate padding and restore focus programmatically when the action clears the input value.
