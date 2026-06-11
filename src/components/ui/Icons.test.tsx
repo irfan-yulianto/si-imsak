@@ -19,6 +19,7 @@ import {
   MoonIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  XIcon,
   RefreshIcon,
   PRAYER_ICON_MAP,
 } from "./Icons";
@@ -98,3 +99,13 @@ describe("Icons", () => {
     });
   });
 });
+
+  describe("XIcon", () => {
+    it("renders correctly with default props", () => {
+      const { container } = render(<XIcon />);
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+      expect(svg).toHaveAttribute("width", "24");
+      expect(svg).toHaveAttribute("height", "24");
+    });
+  });

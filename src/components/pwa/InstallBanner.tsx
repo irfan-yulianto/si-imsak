@@ -70,7 +70,9 @@ export default function InstallBanner() {
     if (!detected) return;
 
     if (detected === "ios") {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setMode("ios");
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
 
