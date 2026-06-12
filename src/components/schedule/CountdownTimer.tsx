@@ -106,9 +106,10 @@ export default function CountdownTimer() {
     const interval = setInterval(() => {
       const ref = nextPrayerRef.current;
       if (!ref || !ref.targetMs) return;
-      const now = getAdjustedTime(timeOffset);
+      // Optimize hot path by calculating adjusted absolute ms directly without instantiating a Date object
+      const nowMs = Date.now() + timeOffset;
 
-      const remainingMs = ref.targetMs - now.getTime();
+      const remainingMs = ref.targetMs - nowMs;
 
       if (remainingMs <= 0) {
         // Prayer time reached — show 00:00:00 and clear ref to trigger recomputation
