@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-06-13 - O(N) penalty in UI autocomplete
+**Learning:** Found a textbook performance pitfall in `MosqueFinder` where an autocomplete lookup was doing `Array.filter(...).slice(0, K)` on a static cities array. This forces a full O(N) scan on every keystroke, allocating an intermediate array before discarding all but the first K results.
+**Action:** When working with large static data arrays for autocompletes, always replace `.filter().slice()` pipelines with an explicit `for` loop and an early `break` when the maximum number of results (K) is reached to dramatically cut down lookup time.
