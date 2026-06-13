@@ -1,0 +1,3 @@
+## 2024-05-24 - Input Clear Buttons & Focus Accessibility
+**Learning:** Adding a small absolute-positioned clear (`X`) button inside search inputs improves micro-UX by allowing quick resets without manual text deletion. However, it's critical to conditionally render the button (only showing when there is text and not during loading) and ensure keyboard accessibility by restoring focus to the input element when the button is clicked. Failing to manage focus forces keyboard/screen-reader users to manually navigate back.
+**Action:** Always implement conditional rendering, adequate input padding (e.g., `pr-9`), localized ARIA labels, and explicit focus restoration (`input.focus()`) when building inline clear actions.
