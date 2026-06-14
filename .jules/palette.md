@@ -1,0 +1,3 @@
+## 2024-05-19 - Accessible Clear Buttons in Search Inputs
+**Learning:** Adding a clear button (X) inside search inputs that conditionally renders when there is input is a standard micro-UX pattern, but it often lacks keyboard accessibility and clear labeling. Without returning focus to the input upon clearing, screen reader and keyboard users lose context.
+**Action:** Always add an `aria-label` (localized to Indonesian like "Hapus pencarian") to the clear button, ensure adequate right padding (`pr-9`) on the input to avoid text overlap, and use a `ref` to restore focus to the input field after the clear action is triggered.
