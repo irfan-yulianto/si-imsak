@@ -1,0 +1,3 @@
+## 2024-05-18 - Search Input Clear Button
+**Learning:** Adding an absolute positioned clear button (XIcon) inside search inputs that conditionally renders when query length > 0 is a standard micro-UX pattern. It is critical to add sufficient right padding (e.g. pr-9) to the input to prevent text from overlapping the clear button. Also important to manage focus after clicking the clear button so keyboard navigation isn't interrupted. In React, using an `aria-label` like "Hapus pencarian" ensures screen readers communicate the button's action clearly.
+**Action:** Always check input fields for this clear button pattern and make sure padding and focus management are correctly implemented.

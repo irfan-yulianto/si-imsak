@@ -45,3 +45,5 @@ next-env.d.ts
 
 # internal documents
 /documents/
+verification/
+test_ui.py
