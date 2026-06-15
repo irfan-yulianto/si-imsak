@@ -1,0 +1,3 @@
+## 2024-06-15 - Micro-UX Clear Buttons for Inputs
+**Learning:** Search inputs typically lack a clear way to quickly remove text without selecting all or backspacing. By injecting an absolute positioned `XIcon` when text is present, users get a one-click way to reset the field. Proper accessibility requires adding an `aria-label="Hapus pencarian"` to this icon-only button and returning focus back to the input upon click (`previousElementSibling.focus()`) to preserve tab order.
+**Action:** When creating new search or filtering inputs, always include a conditionally rendered clear button if the input value > 0, ensure it has localized ARIA labels, and manage focus intelligently after interaction to maintain accessibility flow.
