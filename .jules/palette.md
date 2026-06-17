@@ -1,0 +1,3 @@
+## 2024-06-17 - Add clear button to search inputs
+**Learning:** Adding a clear button to search inputs is a common micro-UX pattern, but it requires careful attention to accessibility (ARIA labels, keyboard navigation, restoring focus) and layout (adding sufficient right padding to the input to prevent text from overlapping the absolute positioned button).
+**Action:** When adding clear buttons, always ensure proper ARIA labels (e.g. `aria-label="Hapus pencarian"`), proper right padding on the input (e.g. `pr-9`), conditionally render the button (e.g. `query.length > 0`), and return focus to the input after clicking using a ref or `previousElementSibling`.
