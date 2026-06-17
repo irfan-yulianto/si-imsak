@@ -147,7 +147,13 @@ export default function MosqueFinder() {
       return;
     }
     const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+    const results = [];
+    for (const city of CITIES) {
+      if (city.name.includes(q)) {
+        results.push(city);
+        if (results.length >= 8) break;
+      }
+    }
     setSearchResults(results);
   }, [searchQuery]);
 
