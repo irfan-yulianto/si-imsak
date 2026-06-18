@@ -1,0 +1,3 @@
+## 2024-05-24 - Input Clear Button
+**Learning:** Adding an absolute positioned clear button (e.g., an XIcon) inside search inputs that conditionally renders when the query length is > 0 is a standard micro-UX pattern that greatly improves usability. It is important to add adequate right padding to the input to prevent text overlap, conditionally hide the button during loading states to avoid layout collisions, and use aria-label with keyboard-friendly interactions (returning focus to the input upon clearing).
+**Action:** Always consider adding a clear button to search inputs to make it easy for users to clear their query.
