@@ -1,0 +1,3 @@
+## 2024-06-20 - Adding clear button to inputs
+**Learning:** Adding clear buttons using absolute positioning can introduce tricky pointer-events bugs in automated testing depending on how the parent `div` overlaps the elements. Also, automated text replacement scripts must be written to be fully idempotent; otherwise, re-running them will insert duplicate interactive elements which causes severe accessibility and DOM bloat issues.
+**Action:** Always verify patches with `git diff` after running scripted modifications to ensure code isn't duplicated, and consider `pointer-events: none` on wrapper elements or using JS evaluation in tests to overcome overlapping elements.
