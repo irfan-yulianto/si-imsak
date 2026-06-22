@@ -147,7 +147,17 @@ export default function MosqueFinder() {
       return;
     }
     const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+
+    // Performance optimization: Avoid full O(N) array scan.
+    // Use an explicit for-loop with an early break to achieve O(K) lookup.
+    const results = [];
+    for (let i = 0; i < CITIES.length; i++) {
+      if (CITIES[i].name.includes(q)) {
+        results.push(CITIES[i]);
+        if (results.length === 8) break;
+      }
+    }
+
     setSearchResults(results);
   }, [searchQuery]);
 
