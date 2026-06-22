@@ -1,0 +1,4 @@
+💡 **What**: Menambahkan tombol "X" (clear) pada input pencarian kota di halaman utama dan pencarian masjid.
+🎯 **Why**: Memudahkan pengguna untuk menghapus teks pencarian dengan satu klik tanpa harus menggunakan backspace berulang kali.
+📸 **Before/After**: Visual: Tombol X akan muncul di sisi kanan input saat ada teks yang diketik.
+♿ **Accessibility**: Tombol menggunakan `aria-label="Hapus pencarian"` dan mengembalikan fokus ke input setelah diklik.

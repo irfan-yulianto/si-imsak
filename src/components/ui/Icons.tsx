@@ -252,3 +252,12 @@ export const PRAYER_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
   maghrib: MaghribIcon,
   isya: IsyaIcon,
 };
+
+export function XIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg {...defaultProps(size)} {...props}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}

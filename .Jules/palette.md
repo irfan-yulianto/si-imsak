@@ -1,0 +1,3 @@
+## 2024-05-24 - Clear Search Input Focus Management
+**Learning:** When adding a conditional clear ("X") button inside a search input field, clicking it naturally removes focus from the input field. For keyboard users and general UX flow, this is disruptive.
+**Action:** Always return focus to the input element programmatically after clearing the text. While `previousElementSibling` or DOM traversal can work, using a React `useRef` attached to the input is the most idiomatic and robust way to achieve this. Also, always ensure the input has sufficient right padding (e.g. `pr-9`) to prevent text from overlapping the clear button.
