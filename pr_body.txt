@@ -1,0 +1,4 @@
+💡 What: Added a clear button (`XIcon`) inside the search input fields in `LocationSearch` and `MosqueFinder`.
+🎯 Why: To allow users to easily clear their search query without manually backspacing, improving overall usability.
+📸 Before/After: Visual change introduces an "X" button on the right side of the input field when there is text.
+♿ Accessibility: Added `aria-label="Hapus pencarian"` to the clear button and ensured focus returns to the input field after clearing, maintaining keyboard navigation flow.
