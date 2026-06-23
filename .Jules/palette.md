@@ -1,0 +1,3 @@
+## 2024-06-23 - Add Clear Button to Search Inputs
+**Learning:** Returning keyboard focus to an input after clearing its contents using a clear button is crucial for accessibility and seamless keyboard navigation. Without it, screen reader users and keyboard-only users lose their place in the document flow.
+**Action:** Always use a `useRef` to maintain a reference to the input element and call `ref.current?.focus()` inside the clear button's `onClick` handler. Additionally, ensure the input has adequate right padding (e.g., `pr-9`) to prevent text from overlapping the conditionally rendered clear button.
