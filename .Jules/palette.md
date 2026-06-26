@@ -1,0 +1,3 @@
+## 2024-06-26 - Add Clear Input Buttons
+**Learning:** Adding a clear button (X) to search inputs improves keyboard accessibility and user efficiency. Relying solely on 'Escape' or backspacing can be cumbersome. To restore focus to the input after clearing using a mouse click, utilizing `e.currentTarget.parentElement?.querySelector('input')?.focus()` works reliably without needing React refs for every input field.
+**Action:** Always include an accessible clear button inside search input containers, positioned with appropriate padding (`pr-9`), and make sure it automatically returns focus to the input field upon click to maintain keyboard navigation flow.
