@@ -1,0 +1,3 @@
+## 2024-05-18 - Clear Button for Search Inputs
+**Learning:** When conditionally rendering a clear button inside a search input wrapper, the button can collide with loading indicators and cause text overlap if padding isn't adjusted. Additionally, keyboard users lose focus when the button is clicked and unmounted if focus isn't manually restored to the input.
+**Action:** Always ensure the input has adequate right padding (e.g., `pr-9`), hide the clear button during loading states, and use a React ref (`ref.current?.focus()`) to explicitly return focus to the input after clearing to maintain keyboard accessibility.
