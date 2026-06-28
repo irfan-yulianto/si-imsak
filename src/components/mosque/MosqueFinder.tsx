@@ -147,7 +147,16 @@ export default function MosqueFinder() {
       return;
     }
     const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+
+    // ⚡ Bolt: Fast autocomplete lookup with early exit
+    // Avoids O(N) full array scan of CITIES by breaking after 8 results
+    const results = [];
+    for (let i = 0; i < CITIES.length; i++) {
+      if (CITIES[i].name.includes(q)) {
+        results.push(CITIES[i]);
+        if (results.length >= 8) break;
+      }
+    }
     setSearchResults(results);
   }, [searchQuery]);
 
