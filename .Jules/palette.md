@@ -1,0 +1,3 @@
+## 2025-02-12 - Added Clear Button for Input Fields
+**Learning:** React state-driven inputs (like search inputs) often lack an easy way to clear the text, which is a common frustration point for users, especially on mobile where keyboard precision is poor. A clear button that conditionally renders only when there is text significantly improves input accessibility and usability.
+**Action:** When adding clear buttons, always ensure the input has adequate right padding (e.g., `pr-9`) to prevent text overlap, hide the button during loading states to prevent layout collisions, and use a ref (`ref.current?.focus()`) to return focus to the input after clearing to maintain keyboard accessibility.
