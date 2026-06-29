@@ -1,0 +1,23 @@
+
+> jadwal-imsakiyah@0.1.0 dev /app
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+
+✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+✓ Ready in 1108ms
+ GET / 200 in 3.5s (compile: 3.0s, render: 417ms)
+ GET / 200 in 192ms (compile: 9ms, render: 183ms)
+ GET /manifest.webmanifest 200 in 598ms (compile: 575ms, render: 23ms)
+ GET /api/mosques?lat=-6.17&lng=106.85&radius=2000 500 in 1781ms (compile: 841ms, render: 940ms)
+ GET /api/cities?q=Jakarta 502 in 531ms (compile: 268ms, render: 264ms)
+ GET /api/schedule?city_id=58a2fc6ed39fd083f55d4182bf88826d&year=2026&month=6 200 in 4.9s (compile: 1076ms, render: 3.9s)
+ ELIFECYCLE  Command failed.
+[?25h
