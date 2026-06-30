@@ -1,0 +1,3 @@
+## 2026-06-30 - Clear Button Focus and Padding Collision Pattern
+**Learning:** When adding conditional UI elements inside an input (like a clear button), the input's padding (`pr`) must be increased enough so typed text does not go under the button. Additionally, clicking a clear button can shift focus away, which makes keyboard navigation jarring.
+**Action:** Always verify input padding when adding absolute positioned icons. Always add a React `useRef` to inputs with clear buttons and call `inputRef.current?.focus()` after clearing to maintain keyboard accessibility, rather than relying on brittle relative DOM queries.
