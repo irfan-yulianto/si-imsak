@@ -147,7 +147,16 @@ export default function MosqueFinder() {
       return;
     }
     const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
+    // ⚡ Bolt: Optimize autocomplete static array lookup to O(K).
+    // Replaced Array.filter(...).slice(0, 8) with an explicit for loop and early break.
+    // This avoids unnecessary O(N) traversal and intermediate array allocation.
+    const results = [];
+    for (let i = 0; i < CITIES.length; i++) {
+      if (CITIES[i].name.includes(q)) {
+        results.push(CITIES[i]);
+        if (results.length === 8) break;
+      }
+    }
     setSearchResults(results);
   }, [searchQuery]);
 
