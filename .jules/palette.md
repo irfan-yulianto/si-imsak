@@ -1,0 +1,3 @@
+## 2024-05-30 - Added Search Input Clear Button
+**Learning:** For dynamic search inputs, users often need a quick way to clear the current search query, especially if the results are not what they expected or if they want to quickly search for another item. By adding a clear button that appears conditionally (only when the query is non-empty and the input is not in a loading state), we significantly improve accessibility and navigation.
+**Action:** When working on future autocomplete or search components, ensure a clear "X" icon button is added inside the input boundary, ensuring proper accessibility via `aria-label`, conditional rendering based on state, and returning focus back to the input upon clearing (`ref.current?.focus()`).
