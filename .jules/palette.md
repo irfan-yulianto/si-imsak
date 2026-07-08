@@ -1,0 +1,3 @@
+## 2024-05-18 - Clear Button UX and Accessibility
+**Learning:** When adding conditional clear buttons to search inputs, if they appear only after typing, we must ensure right padding prevents text overlap, hide the button during loading states to prevent layout collisions, explicitly set `type="button"` to prevent form submission, and return focus using a ref to maintain keyboard accessibility.
+**Action:** Always verify right padding (e.g., `pr-9`), use `inputRef.current?.focus()` instead of relative DOM queries when returning focus, and hide the clear button while loading spinners are active.
