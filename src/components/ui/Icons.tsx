@@ -167,6 +167,16 @@ export function MapPinIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
+// X icon (close/clear)
+export function XIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg {...defaultProps(size)} {...props}>
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
 // Search icon
 export function SearchIcon({ size = 24, ...props }: IconProps) {
   return (
