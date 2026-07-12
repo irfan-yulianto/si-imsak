@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-05-21 - Primitive Timestamp Arithmetic in Hot Paths
+**Learning:** Found that using `new Date()` wrappers (like `getAdjustedTime`) inside a 1-second `setInterval` loop creates unnecessary memory allocations and garbage collection overhead in the "hot path".
+**Action:** When working with continuous countdown timers and simple absolute timestamps, use primitive arithmetic like `Date.now() + offset` instead of wrapping the math inside new object instantiations.
