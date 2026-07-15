@@ -1,0 +1,3 @@
+## 2024-05-18 - Clear Buttons on Search Inputs
+**Learning:** Users often need a quick way to clear a search input without relying on the backspace key, especially on mobile devices. If a search input lacks a clear button, it can cause friction during quick corrections.
+**Action:** Always add a conditionally rendered clear button inside search inputs when they contain text. Ensure it has an `aria-label`, correct `type="button"`, and returns focus to the input (`inputRef.current?.focus()`) after clicking. Make sure to increase the input's right padding (e.g., `pr-9`) to prevent text from overlapping the button, and hide the clear button while loading indicators are active.
