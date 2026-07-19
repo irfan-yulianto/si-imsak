@@ -232,6 +232,16 @@ export function ChevronRightIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
+// Close / clear icon
+export function XIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg {...defaultProps(size)} {...props}>
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
 // Refresh / reload icon
 export function RefreshIcon({ size = 24, ...props }: IconProps) {
   return (
