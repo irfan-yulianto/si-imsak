@@ -1,0 +1,3 @@
+## 2025-05-18 - Clear Button Accessibility
+**Learning:** Adding a clear button to search inputs with a lot of text significantly improves usability, but it's crucial to ensure keyboard accessibility. When conditionally rendering it based on input state, we need to carefully manage focus so the user doesn't lose context when clicking it.
+**Action:** Always include a `ref` on inputs and call `focus()` on it when a clear button is clicked. Use `type="button"` to avoid form submission, and add clear `aria-label`s for screen readers. Hide the button when `isSearching` is true to avoid layout shifts.
