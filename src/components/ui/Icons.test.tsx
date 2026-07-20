@@ -20,10 +20,12 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshIcon,
+  CloseIcon,
   PRAYER_ICON_MAP,
 } from "./Icons";
 
 const ICONS = [
+  { name: "CloseIcon", Component: CloseIcon },
   { name: "ImsakIcon", Component: ImsakIcon },
   { name: "SubuhIcon", Component: SubuhIcon },
   { name: "TerbitIcon", Component: TerbitIcon },
