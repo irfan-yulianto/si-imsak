@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-05-28 - Optimizing Fast Path Object Allocations
+**Learning:** In high-frequency React hooks (like a `setInterval` ticking every 1 second), invoking functions that allocate new primitive wrapper objects (like `new Date()`) causes continuous memory pressure, triggering frequent minor garbage collections that can lead to UI micro-stutters.
+**Action:** When working in hot paths (frequent intervals or render loops), replace object-allocating methods (like `new Date()`) with primitive equivalents (like `Date.now()`) combined with simple arithmetic to compute timestamps without memory overhead.
