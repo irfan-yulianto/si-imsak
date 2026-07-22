@@ -1,0 +1,3 @@
+## 2024-07-22 - Search Input Clear Button Accessibility
+**Learning:** When conditionally rendering clear buttons in search inputs with loading states, swapping the button with the loading spinner prevents layout collisions. Furthermore, visibility must not be coupled to the active state of search dropdowns, as this hides the clear button exactly when users are actively typing.
+**Action:** Use a dedicated `useRef` for reliable focus restoration after clearing, ensure adequate right padding (`pr-9`), and base clear button visibility strictly on input value (`query.length > 0`) rather than dropdown states.
