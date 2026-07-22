@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2026-07-22 - Avoid Object Allocation in High-Frequency Loops
+**Learning:** Found a performance bottleneck in the fast tick of `CountdownTimer.tsx` where `getAdjustedTime(timeOffset)` was allocating a `new Date()` object every second, contributing to garbage collection overhead in a continuous loop.
+**Action:** When working with continuous countdown timers, replace utility functions that return objects with direct primitive arithmetic (e.g., `Date.now() + offset`) inside the hot path to eliminate unnecessary memory allocation and GC micro-stutters.
