@@ -1,0 +1,3 @@
+## 2024-07-25 - Search Input UX Improvement
+**Learning:** Adding a clear button (X) to search inputs greatly improves usability by providing a one-click way to dismiss search queries, especially on mobile where selecting text to delete is cumbersome. It's a small change with outsized impact. Focus management is critical: returning focus to the input after clearing keeps the keyboard user engaged.
+**Action:** When adding clear buttons, always ensure appropriate padding on the input to avoid text overlap, manage focus correctly with refs, and hide the button during loading states if it conflicts visually. Add `type="button"` and `aria-label` to ensure accessibility.
