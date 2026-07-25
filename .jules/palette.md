@@ -1,0 +1,3 @@
+## 2024-07-25 - Clear Button Accessibility and UX in Search Inputs
+**Learning:** When adding clear buttons to search inputs, it is critical to ensure proper spacing (e.g., `pr-9`) so text doesn't overlap the button, and to restore focus to the input (`ref.current?.focus()`) after clearing so keyboard users don't lose their place in the document flow. Coupling clear button visibility to search dropdown states can cause it to hide when the user actually needs it.
+**Action:** Always add an `aria-label` to clear buttons, set `type="button"`, manage focus explicitly via refs, and conditionally render based only on query length and loading state.
