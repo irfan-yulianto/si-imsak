@@ -1,0 +1,3 @@
+## 2024-07-26 - Add clear button to search input
+**Learning:** When adding clear buttons to search inputs, it's crucial to ensure keyboard accessibility by restoring focus to the input (`inputRef.current?.focus()`) and setting `type="button"` to avoid accidental form submissions. Coupling visibility to loading state prevents layout collisions, and padding adjustments prevent text overlap.
+**Action:** Always use a React `useRef` to programmatically return focus when an interactive element modifies the input state, rather than brittle DOM queries, and hide the clear button during async operations to avoid overlap.
