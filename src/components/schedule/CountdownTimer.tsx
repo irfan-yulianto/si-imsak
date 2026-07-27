@@ -106,9 +106,11 @@ export default function CountdownTimer() {
     const interval = setInterval(() => {
       const ref = nextPrayerRef.current;
       if (!ref || !ref.targetMs) return;
-      const now = getAdjustedTime(timeOffset);
 
-      const remainingMs = ref.targetMs - now.getTime();
+      // Optimization: avoid allocating new Date objects every second
+      const adjustedNowMs = Date.now() + timeOffset;
+
+      const remainingMs = ref.targetMs - adjustedNowMs;
 
       if (remainingMs <= 0) {
         // Prayer time reached — show 00:00:00 and clear ref to trigger recomputation
