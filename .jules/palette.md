@@ -1,0 +1,3 @@
+## 2024-07-30 - Add Clear Button to Search Inputs
+**Learning:** In applications heavily dependent on search inputs (like finding cities/mosques), users often need to quickly clear their query, especially on mobile devices where deleting text character-by-character is tedious. A clear "X" button provides a small but significant UX improvement.
+**Action:** Add an accessible, conditionally rendered clear button inside the search inputs for both `LocationSearch` and `MosqueFinder` components when there is active text. Ensure focus is properly restored to the input after clearing to maintain keyboard accessibility, and ensure the button is hidden during loading states to prevent layout collisions.
