@@ -106,9 +106,10 @@ export default function CountdownTimer() {
     const interval = setInterval(() => {
       const ref = nextPrayerRef.current;
       if (!ref || !ref.targetMs) return;
-      const now = getAdjustedTime(timeOffset);
 
-      const remainingMs = ref.targetMs - now.getTime();
+      // ⚡ Bolt: Optimize hot path by using primitive arithmetic instead of Date object allocation
+      const nowMs = Date.now() + timeOffset;
+      const remainingMs = ref.targetMs - nowMs;
 
       if (remainingMs <= 0) {
         // Prayer time reached — show 00:00:00 and clear ref to trigger recomputation
