@@ -1,0 +1,3 @@
+## 2024-03-24 - Add clear button to search input
+**Learning:** Conditional clear buttons in search inputs need adequate right padding (`pr-9`) to prevent text overlap, should be hidden during loading states to prevent layout collisions, must explicitly set `type="button"` to prevent accidental form submissions, and should use a ref (`ref.current?.focus()`) to return focus to the input after clearing to maintain keyboard accessibility. Also, avoid coupling the button's visibility to the active state of search dropdowns (e.g., `!showSearch`), as this will cause the clear button to disappear exactly when the user is actively typing.
+**Action:** When adding clear buttons, always consider keyboard focus, loading states, padding, and form submission prevention.
