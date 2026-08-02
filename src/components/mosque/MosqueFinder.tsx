@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useStore } from "@/store/useStore";
 import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
 import { CITIES, CITY_MAP } from "@/lib/cities";
@@ -122,7 +122,6 @@ export default function MosqueFinder() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<typeof CITIES>([]);
   const [showSearch, setShowSearch] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -141,14 +140,10 @@ export default function MosqueFinder() {
   }, [userCoords, location.cityName]);
 
   // Search cities
-  useEffect(() => {
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
+  const searchResults = useMemo(() => {
+    if (searchQuery.length < 2) return [];
     const q = searchQuery.toUpperCase();
-    const results = CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
-    setSearchResults(results);
+    return CITIES.filter((c) => c.name.includes(q)).slice(0, 8);
   }, [searchQuery]);
 
   // Close search dropdown on outside click

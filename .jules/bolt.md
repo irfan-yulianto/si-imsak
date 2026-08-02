@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-08-02 - Remove Derived State Anti-Pattern
+**Learning:** Storing derived state (like filtered search results) in a `useState` and updating it via `useEffect` causes unnecessary double-renders (one for the input change, a second for the effect setting the derived state).
+**Action:** Replace `useEffect` setters with `useMemo` for derived data, recalculating it synchronously during the initial render pass to keep the UI snappy and avoid render cascading.
