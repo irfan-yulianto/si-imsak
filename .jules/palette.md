@@ -1,0 +1,3 @@
+## 2024-08-02 - Add clear button to location search input
+**Learning:** Adding a clear button to search inputs significantly improves UX by allowing users to quickly reset the query without repeatedly pressing backspace. It's important to restore focus to the input after clearing, and to hide the clear button when the input is empty or loading to avoid layout shifts or overlapping states.
+**Action:** Always consider adding a conditional clear button (`XIcon`) to search inputs. Ensure it is accessible (has `aria-label`, receives `type="button"` to avoid form submission), conditionally renders (e.g., `query.length > 0 && !isSearching`), and manages focus back to the input upon click.
