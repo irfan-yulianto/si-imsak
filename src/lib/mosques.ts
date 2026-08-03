@@ -29,15 +29,17 @@ export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
+  cosLat1?: number
 ): number {
   const R = 6371000; // Earth's radius in meters
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
+  const cLat1 = cosLat1 !== undefined ? cosLat1 : Math.cos(toRad(lat1));
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    cLat1 * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -109,6 +111,8 @@ export function parseOverpassResponse(
 
   const seen = new Set<string>();
   const mosques: Mosque[] = [];
+  // ⚡ Bolt: Pre-calculate user's latitude cosine to avoid redundant trig in loop
+  const userCosLat = Math.cos((userLat * Math.PI) / 180);
 
   for (const el of data.elements) {
     const key = `${el.type}/${el.id}`;
@@ -126,7 +130,7 @@ export function parseOverpassResponse(
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance: haversineDistance(userLat, userLng, center.lat, center.lng, userCosLat),
       address,
     });
   }
