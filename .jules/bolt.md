@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-08-04 - Pre-calculating constant latitude cosine in Haversine loops
+**Learning:** When computing Haversine distances in a loop against a constant coordinate (e.g., calculating distance from a user to multiple locations), redundant trigonometric computations of the constant latitude's cosine inside the loop can be a performance bottleneck.
+**Action:** Pre-calculate the cosine of the constant latitude outside the loop and pass it as an optional parameter to the distance function to avoid redundant trigonometric computations.
