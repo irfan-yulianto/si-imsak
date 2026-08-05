@@ -1,0 +1,3 @@
+## 2024-03-24 - Add clear buttons to search inputs
+**Learning:** Mobile users benefit from a single tap to clear search inputs. We added conditional clear buttons to `LocationSearch` and `MosqueFinder` inputs, ensuring they are keyboard accessible and return focus to the input. We used exact matches for accessible labels to prevent strict mode violations.
+**Action:** Always add conditionally rendered clear buttons (`<XIcon />`) to search inputs with `type="button"`, proper padding (`pr-9`), and focus management (`ref.current?.focus()`). Hide clear buttons during loading states to prevent overlaps.
