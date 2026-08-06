@@ -21,6 +21,9 @@ interface OverpassResponse {
   remark?: string;
 }
 
+const R = 6371000; // Earth's radius in meters
+const TO_RAD = Math.PI / 180;
+
 /**
  * Calculate distance between two coordinates using Haversine formula.
  * Returns distance in meters.
@@ -29,15 +32,14 @@ export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
+  cosLat1?: number
 ): number {
-  const R = 6371000; // Earth's radius in meters
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
+  const dLat = (lat2 - lat1) * TO_RAD;
+  const dLng = (lng2 - lng1) * TO_RAD;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    (cosLat1 ?? Math.cos(lat1 * TO_RAD)) * Math.cos(lat2 * TO_RAD) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -110,6 +112,10 @@ export function parseOverpassResponse(
   const seen = new Set<string>();
   const mosques: Mosque[] = [];
 
+  // Pre-calculate the cosine of user latitude to avoid redundant trigonometric
+  // calculations inside the distance loop.
+  const cosUserLat = Math.cos(userLat * TO_RAD);
+
   for (const el of data.elements) {
     const key = `${el.type}/${el.id}`;
     if (seen.has(key)) continue;
@@ -126,7 +132,7 @@ export function parseOverpassResponse(
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance: haversineDistance(userLat, userLng, center.lat, center.lng, cosUserLat),
       address,
     });
   }
