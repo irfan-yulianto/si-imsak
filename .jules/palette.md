@@ -1,0 +1,3 @@
+## 2024-06-25 - Added clear button to search inputs
+**Learning:** In the `LocationSearch` and `MosqueFinder` components, the search input fields lacked a way to easily clear typed queries. This resulted in poor UX and accessibility, especially since users often need to quickly clear out locations when selecting a new city or mosque. Also the input didn't have adequate right padding which would cause text to overlap with the icon.
+**Action:** Next time, when adding a new search field with a clear button to an input, add enough padding on the right to prevent text overlap, include an accessible `aria-label`, ensure type is set to `button`, and return focus to the input via a ref after clearing.
