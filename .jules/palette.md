@@ -1,0 +1,3 @@
+## 2024-08-07 - Conditional Clear Button for Search Inputs
+**Learning:** Adding a clear button to search inputs significantly improves UX, especially when users frequently refine searches. Care must be taken to maintain input layout (adding adequate right padding `pr-9`), avoiding layout shift by conditionally hiding it during loading states, handling accidental form submits with `type="button"`, and maintaining keyboard accessibility by refocusing the input on clear.
+**Action:** When adding clear buttons, verify `type="button"`, `aria-label`, correct padding, logic to conditionally hide during loading states, and use a ref to restore focus after clear.
