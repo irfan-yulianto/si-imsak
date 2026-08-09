@@ -1,0 +1,3 @@
+## 2024-05-18 - Clear Button Layout Collisions
+**Learning:** When conditionally rendering clear buttons in search inputs, ensure the input has adequate right padding (e.g., `pr-9`) to prevent text overlap, hide the button during loading states to prevent layout collisions, explicitly set `type="button"` to prevent accidental form submissions, and use a ref (`ref.current?.focus()`) to return focus to the input after clearing to maintain keyboard accessibility.
+**Action:** Apply this specific `pr-9`, explicit `type="button"`, state-managed visibility, and focus-return pattern whenever adding clear buttons to search inputs in this app's design system.
