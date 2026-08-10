@@ -9,3 +9,6 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+## 2024-08-10 - Extracted scalar constants in math utilities
+**Learning:** Avoid using inline closures or redefining scalar constants like `Math.PI / 180` in functions that are called heavily in loops (like Haversine distance processing large coordinate arrays).
+**Action:** Extract constants (e.g., `const TO_RAD = Math.PI / 180`) to the module scope and apply them as direct scalar multipliers to avoid redundant memory allocations and drastically reduce execution time in modern JavaScript engines.
