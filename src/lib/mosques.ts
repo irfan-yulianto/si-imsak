@@ -21,24 +21,29 @@ interface OverpassResponse {
   remark?: string;
 }
 
+const TO_RAD = Math.PI / 180;
+const EARTH_RADIUS = 6371000; // Earth's radius in meters
+
 /**
  * Calculate distance between two coordinates using Haversine formula.
  * Returns distance in meters.
+ * @param cosLat1 Pre-calculated cosine of lat1 to avoid redundant math in loops
  */
 export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
+  cosLat1?: number
 ): number {
-  const R = 6371000; // Earth's radius in meters
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
+  const dLat = (lat2 - lat1) * TO_RAD;
+  const dLng = (lng2 - lng1) * TO_RAD;
+  // Use pre-calculated cosLat1 if provided, otherwise calculate it
+  const cLat1 = cosLat1 !== undefined ? cosLat1 : Math.cos(lat1 * TO_RAD);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    cLat1 * Math.cos(lat2 * TO_RAD) * Math.sin(dLng / 2) ** 2;
+  return EARTH_RADIUS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /**
@@ -110,6 +115,10 @@ export function parseOverpassResponse(
   const seen = new Set<string>();
   const mosques: Mosque[] = [];
 
+  // Pre-calculate user latitude cosine once to avoid redundant trigonometric
+  // computations in the Haversine loop for each mosque
+  const cosUserLat = Math.cos(userLat * TO_RAD);
+
   for (const el of data.elements) {
     const key = `${el.type}/${el.id}`;
     if (seen.has(key)) continue;
@@ -126,7 +135,7 @@ export function parseOverpassResponse(
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance: haversineDistance(userLat, userLng, center.lat, center.lng, cosUserLat),
       address,
     });
   }
