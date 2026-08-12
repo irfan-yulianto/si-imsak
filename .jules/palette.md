@@ -1,0 +1,3 @@
+## 2025-02-24 - Add clear buttons to search inputs
+**Learning:** When users mistype or want to change context in search fields (like LocationSearch and MosqueFinder), they often have to hold backspace. Adding an absolute-positioned 'X' clear button improves text manipulation efficiency. Importantly, the button must be explicitly `type="button"` to avoid accidental form submissions, and it should immediately return focus to the input via a ref after clearing, so keyboard users aren't left stranded on a disappearing element.
+**Action:** When adding clear buttons to search inputs, ensure: right padding (`pr-9`) is increased to prevent text overlap, button is `type="button"`, ARIA label is set ("Hapus pencarian"), and focus is returned to the input after clearing.
