@@ -1,0 +1,3 @@
+## 2025-05-16 - Add Clear Button to Search Input
+**Learning:** Search inputs without a clear button force users to manually delete queries character by character, which is frustrating and inefficient. A conditionally rendered clear button improves usability. It must not overlap with the loading spinner, must have a descriptive aria-label, must use type="button", and must refocus the input when clicked.
+**Action:** When adding search inputs or other text inputs that can hold long queries, always ensure a clear button is conditionally rendered with proper right padding (pr-9), aria-labels for accessibility, and logic to refocus the input upon clearing.
