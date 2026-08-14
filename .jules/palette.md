@@ -1,0 +1,3 @@
+## 2024-06-25 - Clearable Search Inputs
+**Learning:** In applications like this with location search heavily relying on user typing, a search input without a clear button forces users to backspace the entire query. This is a poor UX for long queries (like city names) and can be improved by adding a clear button inside the input field that is only visible when text is present.
+**Action:** When adding a clear button, ensure the input has adequate right padding (e.g. `pr-9`) so the clear button does not overlap with text. Explicitly set `type="button"` and ensure that clearing the input also sets focus back to the input to maintain keyboard accessibility, rather than forcing the user to tab back.
