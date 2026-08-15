@@ -1,0 +1,3 @@
+## 2024-08-15 - Added Clear Buttons to Search Inputs
+**Learning:** Users often need to clear search inputs. Implementing a clear button must be done carefully to maintain accessibility: it must be a `type="button"` to prevent form submission, have an `aria-label`, and most importantly, return focus to the input (`inputRef.current?.focus()`) so keyboard users aren't left stranded after clicking it. The input also needs right padding to prevent text overlapping the button.
+**Action:** Always include a `ref.focus()` call when implementing "clear" buttons inside inputs to ensure continuous keyboard navigation, and check input padding.
