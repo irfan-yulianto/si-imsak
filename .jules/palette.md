@@ -1,0 +1,3 @@
+## 2025-03-01 - Add clear button to location search
+**Learning:** For conditional search inputs that display dropdowns or loading states, the clear button should have explicit ARIA labels and its visibility should be independent of the loading state (or hidden during loading) to avoid layout collisions in tight spaces. Also, when clearing, returning focus to the input via `inputRef.current?.focus()` improves keyboard navigation efficiency.
+**Action:** When adding clear buttons inside input groups, ensure appropriate right padding (`pr-9` or similar), conditionally render to prevent UI overlaps, and always return focus to the input on clear.
