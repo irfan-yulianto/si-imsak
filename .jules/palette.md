@@ -1,0 +1,3 @@
+## 2025-02-18 - Search Input Clear Button
+**Learning:** Adding a clear button requires conditionally hiding the button during loading states, ensuring the button type is "button" to avoid form submission, having a descriptive ARIA label for screen readers, ensuring the input has adequate right padding to avoid overlap, and maintaining keyboard accessibility by returning focus to the input element once cleared.
+**Action:** When implementing input clear buttons, always ensure proper right padding on the input, explicitly set `type="button"`, check for loading states, add ARIA labels, and return focus to the input via refs after clearing.
