@@ -1,0 +1,3 @@
+## 2024-08-18 - Added clear button to search inputs
+**Learning:** Users searching for locations (especially long city names) find it frustrating to repeatedly backspace to correct or change their query. An explicit clear button in the input greatly reduces interaction cost and friction. Also, it must not overlap with loading spinners, should prevent form submission, and return focus to the input for accessibility.
+**Action:** Always include an accessible clear button with a clear state (e.g. `XIcon`) for text inputs that handle searching or filtering, ensure sufficient padding-right to avoid text collision, and manage focus correctly.
