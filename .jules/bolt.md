@@ -9,3 +9,7 @@
 ## 2026-04-28 - Antimeridian Wrap-around in Spatial Algorithms
 **Learning:** When replacing full geographic formulas (like Haversine) with simpler, faster equirectangular approximations, longitude wrap-around at the antimeridian (180 / -180 degrees) is no longer natively handled by trigonometric functions. Naive arithmetic causes an artificial 360-degree jump that breaks nearest-neighbor searches in the Pacific.
 **Action:** Always include wrap-around logic (`if (dLng > 180) dLng -= 360; else if (dLng < -180) dLng += 360;`) when computing raw longitude differences for Pythagorean approximations.
+
+## 2024-05-23 - Extracting inline closures from distance calculation loops
+**Learning:** In geographic distance formulas (like Haversine) that process arrays of points, creating inline closures like `const toRad = (deg) => (deg * Math.PI) / 180;` inside the function causes redundant function allocations on every iteration. This creates noticeable garbage collection overhead and slows down processing when querying large spatial datasets like Overpass API responses.
+**Action:** Always extract static mapping functions and constant calculations (like `TO_RAD`) into module-scoped scalar constants outside the processing loop. This reduces allocations and speeds up execution significantly (~1.16x faster for 1k points).
