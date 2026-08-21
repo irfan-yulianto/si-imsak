@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
         : [],
     };
     return NextResponse.json(safeData);
-  } catch {
+  } catch (err) {
+    console.error("[cities] Failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(
       { status: false, data: [] },
       { status: 500 }

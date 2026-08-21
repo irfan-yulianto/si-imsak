@@ -175,7 +175,8 @@ export async function GET(request: NextRequest) {
         jadwal,
       },
     });
-  } catch {
+  } catch (err) {
+    console.error("[schedule] Failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(
       { status: false, error: "Failed to fetch schedule" },
       { status: 500 }

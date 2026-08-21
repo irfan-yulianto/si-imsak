@@ -291,9 +291,18 @@ export default function MosqueFinder() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/mosques?lat=${targetCoords.lat}&lng=${targetCoords.lng}&radius=${radius}`);
-      if (!res.ok) {
-        setError(`Server error (${res.status}). Coba lagi nanti.`);
+      const url = `/api/mosques?lat=${targetCoords.lat}&lng=${targetCoords.lng}&radius=${radius}`;
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        res = await fetch(url);
+        if (res.ok || res.status < 500) break;
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      }
+      if (!res || !res.ok) {
+        const status = res?.status ?? 0;
+        setError(status === 502
+          ? "Layanan pencarian masjid sedang sibuk. Coba lagi beberapa saat."
+          : `Server error (${status}). Coba lagi nanti.`);
         return;
       }
       const data = await res.json();

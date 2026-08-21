@@ -9,6 +9,7 @@ const OVERPASS_ENDPOINTS = [
 ];
 
 async function fetchOverpass(query: string): Promise<Response> {
+  const errors: string[] = [];
   for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -21,13 +22,14 @@ async function fetchOverpass(query: string): Promise<Response> {
       });
       clearTimeout(timeout);
       if (res.ok) return res;
-      // Non-ok response: try next endpoint
-    } catch {
+      errors.push(`${OVERPASS_ENDPOINTS[i]}: HTTP ${res.status}`);
+    } catch (err) {
       clearTimeout(timeout);
-      // Timeout or network error: try next endpoint
+      const msg = err instanceof Error ? err.message : "unknown error";
+      errors.push(`${OVERPASS_ENDPOINTS[i]}: ${msg}`);
     }
   }
-  throw new Error("All Overpass endpoints failed");
+  throw new Error(`All Overpass endpoints failed: ${errors.join("; ")}`);
 }
 
 export async function GET(request: NextRequest) {
@@ -87,10 +89,14 @@ export async function GET(request: NextRequest) {
         },
       }
     );
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[mosques] Failed:", message);
+
+    const isUpstream = message.includes("Overpass endpoints failed");
     return NextResponse.json(
-      { status: false, error: "Failed to fetch mosques" },
-      { status: 500 }
+      { status: false, error: isUpstream ? "Upstream mosque service unavailable" : "Failed to fetch mosques", retryable: isUpstream },
+      { status: isUpstream ? 502 : 500 }
     );
   }
 }
