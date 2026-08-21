@@ -22,8 +22,9 @@ interface OverpassResponse {
 }
 
 /**
- * Calculate distance between two coordinates using Haversine formula.
+ * Calculate distance between two coordinates using a fast equirectangular approximation.
  * Returns distance in meters.
+ * Optimized for speed over short distances compared to full Haversine.
  */
 export function haversineDistance(
   lat1: number,
@@ -33,12 +34,18 @@ export function haversineDistance(
 ): number {
   const R = 6371000; // Earth's radius in meters
   const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const lat1Rad = toRad(lat1);
+  const lat2Rad = toRad(lat2);
+  const dLat = lat2Rad - lat1Rad;
+
+  let dLngDeg = lng2 - lng1;
+  if (dLngDeg > 180) dLngDeg -= 360;
+  else if (dLngDeg < -180) dLngDeg += 360;
+  const dLng = toRad(dLngDeg);
+
+  const x = dLng * Math.cos((lat1Rad + lat2Rad) / 2);
+  const y = dLat;
+  return Math.sqrt(x * x + y * y) * R;
 }
 
 /**
