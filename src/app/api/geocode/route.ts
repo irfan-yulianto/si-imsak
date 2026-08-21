@@ -66,8 +66,9 @@ export async function GET(request: NextRequest) {
 
     const city = normalizeToMyquranName(rawCity);
     return NextResponse.json({ status: true, city });
-  } catch {
+  } catch (err) {
     clearTimeout(timeout);
+    console.error("[geocode] Failed:", err instanceof Error ? err.message : err);
     return NextResponse.json({ status: false, city: "" });
   }
 }

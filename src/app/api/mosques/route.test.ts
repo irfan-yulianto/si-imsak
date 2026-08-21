@@ -111,11 +111,13 @@ describe("GET /api/mosques", () => {
     expect(json.data).toBeDefined();
   });
 
-  it("returns 500 when all Overpass endpoints fail", async () => {
+  it("returns 502 when all Overpass endpoints fail", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
 
     const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(502);
+    const json = await res.json();
+    expect(json.retryable).toBe(true);
   });
 
   it("sets Cache-Control header on success", async () => {
