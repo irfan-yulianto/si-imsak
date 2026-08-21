@@ -24,6 +24,16 @@ export function ImsakIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
+// X / close icon
+export function XIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg {...defaultProps(size)} {...props}>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 // Dawn horizon with rays
 export function SubuhIcon({ size = 24, ...props }: IconProps) {
   return (
