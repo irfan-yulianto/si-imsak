@@ -42,6 +42,13 @@ describe("haversineDistance", () => {
     expect(dist).toBeGreaterThan(600000);
     expect(dist).toBeLessThan(800000);
   });
+
+  it("handles antimeridian wrap-around correctly", () => {
+    // E.g., 179 to -179 is 2 degrees apart
+    const dist = haversineDistance(0, 179, 0, -179);
+    expect(dist).toBeGreaterThan(200000);
+    expect(dist).toBeLessThan(250000);
+  });
 });
 
 describe("formatDistance", () => {

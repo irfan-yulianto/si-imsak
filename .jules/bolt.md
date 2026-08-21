@@ -13,3 +13,10 @@
 ## 2024-05-25 - Pre-computing unchanging data dependencies for intervals
 **Learning:** Found a performance bottleneck in `TodayCard.tsx` where the 1-minute `setInterval` loop was doing redundant string parsing (`split(":")`) and math conversion on the same static schedule strings every single tick.
 **Action:** When working with `setInterval` loops inside React components, always pull out and pre-calculate any unchanging data dependencies (e.g. using `useMemo`) outside the interval, leaving only the bare minimum fast comparison logic inside the tick.
+## 2024-06-08 - Optimize static array filtering in React components
+**Learning:** Using `Array.filter(...).slice(0, max)` on static datasets forces a full O(N) array scan, which can block the main thread during rapid user input, even with small datasets.
+**Action:** Replace it with an explicit `for` loop with an early `break` when the maximum elements are found (O(K) lookups), and wrap the logic in an idiomatic debounce (`setTimeout` inside `useEffect`) to further protect the main thread during rapid typing.
+
+## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
+**Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
+**Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
