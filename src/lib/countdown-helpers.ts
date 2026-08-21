@@ -94,9 +94,13 @@ export function getNextPrayerCyclic(
 export function formatCountdown(ms: number): { hours: string; minutes: string; seconds: string } {
   if (ms <= 0) return { hours: "00", minutes: "00", seconds: "00" };
   const totalSeconds = Math.floor(ms / 1000);
+  // Optimization: use primitive math to avoid unnecessary String().padStart allocations during 1000ms loop
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
   return {
-    hours: String(Math.floor(totalSeconds / 3600)).padStart(2, "0"),
-    minutes: String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0"),
-    seconds: String(totalSeconds % 60).padStart(2, "0"),
+    hours: h < 10 ? "0" + h : "" + h,
+    minutes: m < 10 ? "0" + m : "" + m,
+    seconds: s < 10 ? "0" + s : "" + s,
   };
 }
