@@ -120,6 +120,25 @@ describe("GET /api/mosques", () => {
     expect(json.retryable).toBe(true);
   });
 
+  it("returns 200 when one endpoint succeeds and others fail", async () => {
+    let callCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ elements: [] }),
+        });
+      }
+      return Promise.reject(new Error("timeout"));
+    }));
+
+    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.status).toBe(true);
+  });
+
   it("sets Cache-Control header on success", async () => {
     vi.stubGlobal(
       "fetch",

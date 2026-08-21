@@ -67,13 +67,13 @@ export function getSearchRadius(accuracy: number | null): number {
 
 /**
  * Build Overpass QL query for mosques within a radius.
- * Uses union of three tag patterns for comprehensive coverage:
+ * Uses union of three tag patterns (node+way only, relations skipped):
  * 1. amenity=place_of_worship + religion=muslim
  * 2. building=mosque
  * 3. place_of_worship=musalla (prayer rooms)
  */
 export function buildOverpassQuery(lat: number, lng: number, radius: number): string {
-  return `[out:json][timeout:15];(nwr["amenity"="place_of_worship"]["religion"="muslim"](around:${radius},${lat},${lng});nwr["building"="mosque"](around:${radius},${lat},${lng});nwr["place_of_worship"="musalla"](around:${radius},${lat},${lng}););out center body qt;`;
+  return `[out:json][timeout:8];(nw["amenity"="place_of_worship"]["religion"="muslim"](around:${radius},${lat},${lng});nw["building"="mosque"](around:${radius},${lat},${lng});nw["place_of_worship"="musalla"](around:${radius},${lat},${lng}););out center body qt;`;
 }
 
 function getCenter(element: OverpassElement): { lat: number; lng: number } | null {
