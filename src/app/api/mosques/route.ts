@@ -3,33 +3,48 @@ import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
 import { INDONESIA_BOUNDS } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 25;
+
 const OVERPASS_ENDPOINTS = [
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
+  "https://overpass.openstreetmap.ru/api/interpreter",
 ];
 
-async function fetchOverpass(query: string): Promise<Response> {
-  const errors: string[] = [];
-  for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    try {
-      const res = await fetch(OVERPASS_ENDPOINTS[i], {
-        method: "POST",
-        body: `data=${encodeURIComponent(query)}`,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (res.ok) return res;
-      errors.push(`${OVERPASS_ENDPOINTS[i]}: HTTP ${res.status}`);
-    } catch (err) {
-      clearTimeout(timeout);
-      const msg = err instanceof Error ? err.message : "unknown error";
-      errors.push(`${OVERPASS_ENDPOINTS[i]}: ${msg}`);
-    }
+const FETCH_TIMEOUT = 10000;
+
+async function fetchSingleEndpoint(endpoint: string, query: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      body: `data=${encodeURIComponent(query)}`,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (res.ok) return res;
+    throw new Error(`HTTP ${res.status}`);
+  } catch (err) {
+    clearTimeout(timeout);
+    const msg = err instanceof Error ? err.message : "unknown error";
+    throw new Error(`${endpoint}: ${msg}`);
   }
-  throw new Error(`All Overpass endpoints failed: ${errors.join("; ")}`);
+}
+
+async function fetchOverpass(query: string): Promise<Response> {
+  try {
+    return await Promise.any(
+      OVERPASS_ENDPOINTS.map((ep) => fetchSingleEndpoint(ep, query))
+    );
+  } catch (err) {
+    if (err instanceof AggregateError) {
+      const details = err.errors.map((e: Error) => e.message).join("; ");
+      throw new Error(`All Overpass endpoints failed: ${details}`);
+    }
+    throw err;
+  }
 }
 
 export async function GET(request: NextRequest) {

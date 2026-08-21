@@ -106,7 +106,7 @@ describe("getSearchRadius", () => {
 describe("buildOverpassQuery", () => {
   it("contains json output and timeout", () => {
     const query = buildOverpassQuery(-6.17, 106.85, 2000);
-    expect(query).toContain("[out:json][timeout:15]");
+    expect(query).toContain("[out:json][timeout:8]");
   });
 
   it("contains all 3 tag patterns", () => {
