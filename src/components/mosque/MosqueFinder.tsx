@@ -396,6 +396,7 @@ export default function MosqueFinder() {
           {coords && !loading && (
             <button
               type="button"
+              aria-label="Segarkan masjid terdekat"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
@@ -534,6 +535,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
+              aria-label="Coba memuat ulang masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
@@ -572,6 +574,7 @@ export default function MosqueFinder() {
                   href={`https://www.google.com/maps/dir/?api=1&destination=${mosque.lat},${mosque.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`Buka navigasi Google Maps menuju ${mosque.name}`}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
                 >
                   <NavigationIcon size={12} />
