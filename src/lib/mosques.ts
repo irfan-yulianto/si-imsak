@@ -21,6 +21,8 @@ interface OverpassResponse {
   remark?: string;
 }
 
+const TO_RAD = Math.PI / 180;
+
 /**
  * Calculate distance between two coordinates using a fast equirectangular approximation.
  * Returns distance in meters.
@@ -30,20 +32,21 @@ export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
+  precomputedCosLat?: number
 ): number {
   const R = 6371000; // Earth's radius in meters
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const lat1Rad = toRad(lat1);
-  const lat2Rad = toRad(lat2);
+  const lat1Rad = lat1 * TO_RAD;
+  const lat2Rad = lat2 * TO_RAD;
   const dLat = lat2Rad - lat1Rad;
 
   let dLngDeg = lng2 - lng1;
   if (dLngDeg > 180) dLngDeg -= 360;
   else if (dLngDeg < -180) dLngDeg += 360;
-  const dLng = toRad(dLngDeg);
+  const dLng = dLngDeg * TO_RAD;
 
-  const x = dLng * Math.cos((lat1Rad + lat2Rad) / 2);
+  const cosLat = precomputedCosLat ?? Math.cos((lat1Rad + lat2Rad) / 2);
+  const x = dLng * cosLat;
   const y = dLat;
   return Math.sqrt(x * x + y * y) * R;
 }
@@ -117,6 +120,9 @@ export function parseOverpassResponse(
   const seen = new Set<string>();
   const mosques: Mosque[] = [];
 
+  // Precompute user latitude cosine for distance calculations
+  const cosUserLat = Math.cos(userLat * TO_RAD);
+
   for (const el of data.elements) {
     const key = `${el.type}/${el.id}`;
     if (seen.has(key)) continue;
@@ -133,7 +139,7 @@ export function parseOverpassResponse(
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance: haversineDistance(userLat, userLng, center.lat, center.lng, cosUserLat),
       address,
     });
   }
