@@ -76,7 +76,7 @@ describe("LocationSearch Component", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Gunakan Lokasi" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nanti" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nanti minta izin lokasi" })).toBeInTheDocument();
   });
 
   it("fetches schedule on mount if location is saved in localStorage", async () => {
@@ -122,7 +122,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const dismissBtn = screen.getByRole("button", { name: "Nanti" });
+    const dismissBtn = screen.getByRole("button", { name: "Nanti minta izin lokasi" });
 
     await act(async () => {
       fireEvent.click(dismissBtn);
