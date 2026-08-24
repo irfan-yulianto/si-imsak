@@ -396,6 +396,7 @@ export default function MosqueFinder() {
           {coords && !loading && (
             <button
               type="button"
+              aria-label="Refresh mencari masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
@@ -422,6 +423,7 @@ export default function MosqueFinder() {
         ) : (
           <button
             type="button"
+            aria-label={isGps ? "Perbarui Lokasi GPS" : "Gunakan Lokasi GPS"}
             onClick={detectGps}
             className="mb-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
           >
@@ -534,6 +536,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
+              aria-label="Coba Lagi mencari masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
