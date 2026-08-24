@@ -1,3 +1,3 @@
-## 2024-07-29 - Add clear buttons to search inputs
-**Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
-**Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-08-24 - Missing aria-label for non-icon buttons
+**Learning:** Some buttons with visible text like "Coba Lagi" or "Hari Ini" can benefit from more descriptive `aria-label` attributes to provide better context to screen reader users (e.g., "Coba lagi memuat jadwal" instead of just "Coba Lagi").
+**Action:** When inspecting buttons, verify if the visible text is sufficient for screen readers out of context. Add descriptive `aria-label` where needed.

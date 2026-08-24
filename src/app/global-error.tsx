@@ -26,6 +26,7 @@ export default function GlobalError({
             </p>
             <button
               type="button"
+              aria-label="Coba lagi memuat aplikasi"
               onClick={reset}
               className="cursor-pointer rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
             >

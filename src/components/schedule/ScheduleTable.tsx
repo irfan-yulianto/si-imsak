@@ -183,6 +183,7 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
           {!isCurrentMonth && (
             <button
               type="button"
+              aria-label="Kembali ke jadwal hari ini"
               onClick={onToday}
               className="cursor-pointer rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60"
             >
@@ -282,6 +283,7 @@ export default function ScheduleTable() {
           <p className="text-sm text-red-600 dark:text-red-400">{schedule.error}</p>
           <button
             type="button"
+            aria-label="Coba lagi memuat jadwal"
             onClick={() => fetchScheduleForMonth(viewYear, viewMonth)}
             className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
           >
