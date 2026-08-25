@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-25 - Precomputing trigonometric values for geographic calculations
+**Learning:** Computing geographic distances in a loop against a static user coordinate redundantly recalculates trigonometric functions and primitive math conversions (like degrees to radians) within each loop iteration. Memory allocation for closure functions inside these frequently called math routines further degrades V8 performance.
+**Action:** When computing distances for many points against a single origin point (like nearest-neighbor searches), extract constant multipliers (like `TO_RAD`) to the module scope and precalculate origin-specific trigonometric values (e.g. `Math.cos(originLat)`) outside the processing loop. Passing these precalculated scalars significantly accelerates approximate equirectangular distance calculations.
