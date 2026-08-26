@@ -5,6 +5,7 @@ export interface Mosque {
   lng: number;
   distance: number;
   address?: string;
+  type?: "masjid" | "musholla";
 }
 
 interface OverpassElement {
@@ -128,6 +129,9 @@ export function parseOverpassResponse(
     const name = getMosqueName(el.tags);
     const address = el.tags?.["addr:street"] || el.tags?.["addr:full"] || undefined;
 
+    const type: "masjid" | "musholla" =
+      el.tags?.place_of_worship === "musalla" ? "musholla" : "masjid";
+
     mosques.push({
       id: key,
       name,
@@ -135,6 +139,7 @@ export function parseOverpassResponse(
       lng: center.lng,
       distance: haversineDistance(userLat, userLng, center.lat, center.lng),
       address,
+      type,
     });
   }
 

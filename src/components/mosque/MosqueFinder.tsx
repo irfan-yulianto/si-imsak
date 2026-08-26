@@ -54,11 +54,11 @@ function getCacheKey(lat: number, lng: number, radius: number): string {
 
 function getCached(key: string): Mosque[] | null {
   try {
-    const raw = sessionStorage.getItem(key);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
     if (Date.now() - ts > CACHE_TTL) {
-      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
       return null;
     }
     return data;
@@ -69,9 +69,9 @@ function getCached(key: string): Mosque[] | null {
 
 function setCache(key: string, data: Mosque[]) {
   try {
-    sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+    localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
   } catch {
-    // sessionStorage full or unavailable
+    // localStorage full or unavailable
   }
 }
 
@@ -526,6 +526,24 @@ export default function MosqueFinder() {
         </div>
       )}
 
+      {/* Stale data warning — shown when refresh failed but old results still available */}
+      {!loading && error && mosques.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Gagal memperbarui data. Menampilkan hasil sebelumnya.
+          </p>
+          {coords && (
+            <button
+              type="button"
+              onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
+            >
+              Coba Lagi
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Error state */}
       {!loading && error && mosques.length === 0 && (
         <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
@@ -554,9 +572,18 @@ export default function MosqueFinder() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-xs font-bold text-slate-800 dark:text-white">
-                    {mosque.name}
-                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="truncate text-xs font-bold text-slate-800 dark:text-white">
+                      {mosque.name}
+                    </h3>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                      mosque.type === "musholla"
+                        ? "bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400"
+                        : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    }`}>
+                      {mosque.type === "musholla" ? "Musholla" : "Masjid"}
+                    </span>
+                  </div>
                   {mosque.address && (
                     <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-slate-500">
                       {mosque.address}
