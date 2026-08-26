@@ -60,13 +60,13 @@ describe("TodayCard", () => {
     vi.clearAllMocks();
   });
 
-  it("renders loading state when schedule is loading and no todaySchedule", () => {
+  it("renders skeleton loading state when schedule is loading and no todaySchedule", () => {
     mockUseStore.mockReturnValue({
       ...defaultStoreState,
       schedule: { loading: true, data: [] },
     });
-    render(<TodayCard />);
-    expect(screen.getByText("Memuat jadwal...")).toBeInTheDocument();
+    const { container } = render(<TodayCard />);
+    expect(container.querySelector(".animate-shimmer")).toBeInTheDocument();
   });
 
   it("renders empty state when schedule is not loading and no todaySchedule", () => {

@@ -51,8 +51,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Mosque Finder — mobile only */}
-        <div className={`md:hidden ${activeTab === "masjid" ? "block" : "hidden"}`}>
+        {/* Mosque Finder — tab on mobile, section on desktop */}
+        <div className={`${activeTab === "masjid" ? "block" : "hidden"} md:block md:mt-6`}>
           <MosqueFinder />
         </div>
       </main>

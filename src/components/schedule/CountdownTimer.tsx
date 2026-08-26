@@ -23,6 +23,8 @@ export default function CountdownTimer() {
   const refetchSchedule = useStore((s) => s.refetchSchedule);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [prayerArrived, setPrayerArrived] = useState<{ name: string; key: string } | null>(null);
+  const arrivedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // DOM refs for countdown digits — bypass React re-render on every tick
   const hoursRef = useRef<HTMLSpanElement>(null);
   const minutesRef = useRef<HTMLSpanElement>(null);
@@ -96,8 +98,7 @@ export default function CountdownTimer() {
     }
 
     checkAndRefetch();
-    // Re-check every 10s for prayer transitions and date changes
-    const interval = setInterval(checkAndRefetch, 10000);
+    const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
   }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule]);
 
@@ -112,11 +113,14 @@ export default function CountdownTimer() {
       const remainingMs = ref.targetMs - nowMs;
 
       if (remainingMs <= 0) {
-        // Prayer time reached — show 00:00:00 and clear ref to trigger recomputation
         if (hoursRef.current) hoursRef.current.textContent = "00";
         if (minutesRef.current) minutesRef.current.textContent = "00";
         if (secondsRef.current) secondsRef.current.textContent = "00";
+        const arrived = ref;
         nextPrayerRef.current = null;
+        setPrayerArrived({ name: arrived.name, key: arrived.key });
+        if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
+        arrivedTimerRef.current = setTimeout(() => setPrayerArrived(null), 30000);
         return;
       }
       const formatted = formatCountdown(remainingMs);
@@ -128,6 +132,7 @@ export default function CountdownTimer() {
   }, [timeOffset]);
 
   const PrayerIcon = nextPrayer ? PRAYER_ICON_MAP[nextPrayer.key] : null;
+  const ArrivedIcon = prayerArrived ? PRAYER_ICON_MAP[prayerArrived.key] : null;
 
   return (
     <div role="timer" aria-label="Countdown waktu sholat" className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-green-800 to-teal-800 p-4 text-white shadow-xl shadow-green-900/20 md:min-h-[252px] md:p-6">
@@ -175,7 +180,19 @@ export default function CountdownTimer() {
           </p>
         )}
 
-        {nextPrayer ? (
+        {prayerArrived ? (
+          <div className="text-center py-2">
+            <div className="mb-3 flex items-center justify-center gap-2">
+              {ArrivedIcon && <ArrivedIcon size={24} className="animate-pulse-glow text-amber-300" />}
+            </div>
+            <p aria-live="assertive" className="text-lg font-extrabold text-amber-300 md:text-xl">
+              Waktunya {prayerArrived.name}!
+            </p>
+            <p className="mt-1 text-[11px] font-medium text-green-300/80">
+              Segera tunaikan shalat
+            </p>
+          </div>
+        ) : nextPrayer ? (
           <div className="text-center">
             <div className="mb-2 flex items-center justify-center gap-2">
               {PrayerIcon && <PrayerIcon size={18} className="text-amber-300" />}

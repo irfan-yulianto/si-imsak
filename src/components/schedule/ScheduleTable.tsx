@@ -5,8 +5,8 @@ import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
 import { getAdjustedTime } from "@/lib/time";
 import { getUtcOffset } from "@/lib/timezone";
 import { ScheduleDay } from "@/types";
-import React, { useMemo, useRef, useCallback } from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/Icons";
+import React, { useMemo, useRef, useCallback, useState, useEffect } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "@/components/ui/Icons";
 
 const MONTH_NAMES = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -217,6 +217,11 @@ export default function ScheduleTable() {
   const fetchScheduleForMonth = useStore((s) => s.fetchScheduleForMonth);
   const utcOffset = getUtcOffset(location.timezone);
   const todayRef = useRef<HTMLDivElement>(null);
+  const [todayVisible, setTodayVisible] = useState(true);
+
+  const scrollToToday = useCallback(() => {
+    todayRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
 
   const todayDate = useMemo(() => {
     const now = getAdjustedTime(timeOffset);
@@ -242,6 +247,20 @@ export default function ScheduleTable() {
     return viewMonth === now.getMonth() + 1 && viewYear === now.getFullYear();
   }, [viewMonth, viewYear]);
 
+  useEffect(() => {
+    const el = todayRef.current;
+    if (!el || !isCurrentMonth) {
+      setTodayVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setTodayVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isCurrentMonth, schedule.data.length]);
+
   const canGoPrev = viewYear > 2020 || (viewYear === 2020 && viewMonth > 1);
   const canGoNext = viewYear < 2030 || (viewYear === 2030 && viewMonth < 12);
 
@@ -261,9 +280,6 @@ export default function ScheduleTable() {
     const n = new Date();
     fetchScheduleForMonth(n.getFullYear(), n.getMonth() + 1);
   }, [fetchScheduleForMonth]);
-
-  // Today row is highlighted via todayRef but no auto-scroll,
-  // so users land on the countdown section first.
 
   if (schedule.error) {
     return (
@@ -403,7 +419,7 @@ export default function ScheduleTable() {
       </div>
 
       {/* MOBILE: Card-per-day view */}
-      <div className="md:hidden space-y-2">
+      <div className="relative md:hidden space-y-2">
         {schedule.loading ? (
           <MobileSkeletonCards />
         ) : (
@@ -416,6 +432,18 @@ export default function ScheduleTable() {
               todayRef={todayRef}
             />
           ))
+        )}
+
+        {/* Floating scroll-to-today button */}
+        {isCurrentMonth && !todayVisible && !schedule.loading && (
+          <button
+            type="button"
+            onClick={scrollToToday}
+            className="fixed bottom-20 right-4 z-40 flex cursor-pointer items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-700 active:scale-95"
+          >
+            <CalendarIcon size={14} />
+            Hari Ini
+          </button>
         )}
       </div>
     </div>
