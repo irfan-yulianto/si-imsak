@@ -183,7 +183,7 @@ describe("ScheduleTable Component", () => {
 
     render(<ScheduleTable />);
 
-    const todayButton = screen.getByRole("button", { name: "Hari Ini" });
+    const todayButton = screen.getByRole("button", { name: "Kembali ke hari ini" });
     fireEvent.click(todayButton);
 
     // 2024, month 3 (March is month 2 in zero-index Date, but viewMonth uses 1-12)
