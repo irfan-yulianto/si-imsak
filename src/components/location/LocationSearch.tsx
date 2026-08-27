@@ -250,7 +250,7 @@ export default function LocationSearch() {
               type="button"
               onClick={detectLocation}
               disabled={isDetecting}
-              className="flex-1 cursor-pointer rounded-md bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              className="flex-1 cursor-pointer rounded-md bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               {isDetecting ? (
                 <span className="flex items-center justify-center gap-1.5">
