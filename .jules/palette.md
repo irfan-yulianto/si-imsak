@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-07-29 - Add descriptive aria-label to ambiguous action buttons
+**Learning:** In components with multiple error states like `MosqueFinder` or `ScheduleTable`, simple buttons labeled "Coba Lagi" lack sufficient context for screen reader users when read out of order or when multiple such buttons exist on the page. Adding descriptive `aria-label`s (e.g. `aria-label="Coba Lagi mencari masjid"`) improves accessibility by clearly stating the action's purpose.
+**Action:** When adding retry or confirmation buttons with ambiguous text (like "Coba Lagi" or "Refresh"), proactively provide an `aria-label` that includes the exact visible text along with the specific context of the action.

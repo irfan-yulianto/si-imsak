@@ -66,7 +66,7 @@ describe("ScheduleTable Component", () => {
     render(<ScheduleTable />);
     expect(screen.getByText("Gagal memuat jadwal")).toBeInTheDocument();
 
-    const retryButton = screen.getByRole("button", { name: /coba lagi/i });
+    const retryButton = screen.getByRole("button", { name: /coba lagi mencari jadwal/i });
     expect(retryButton).toBeInTheDocument();
 
     fireEvent.click(retryButton);
