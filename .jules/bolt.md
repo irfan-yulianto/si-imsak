@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-25 - Extracted scalar constants and pre-calculating values for spatial algorithms
+**Learning:** Found a performance bottleneck in `parseOverpassResponse` where the loop computing `haversineDistance` for multiple coordinates would redundantly allocate an inline conversion function and redundantly calculate the cosine of the user's constant latitude.
+**Action:** When working with spatial formulas like equirectangular distance in loops, always extract inline closure mappings (like degrees-to-radians) into module-scoped scalar constants, and pre-calculate the cosine of any static coordinates outside the loop to significantly reduce computation overhead.
