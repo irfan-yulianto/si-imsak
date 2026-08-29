@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-08-29 - Pre-calculating Module-Scoped Constants
+**Learning:** Optimizing utility functions like `haversineDistance` called inside heavy processing loops (like mapping over a large array of items) showed that inline closure mappings (e.g., `(deg) => deg * Math.PI / 180`) and static values created per-call memory allocations and overhead that drastically slowed down execution.
+**Action:** Extract inline closure mappings and static values into module-scoped scalar constants (e.g., `const TO_RAD = Math.PI / 180;`) to avoid redundant memory allocations and significantly reduce execution time overhead in modern JavaScript engines.
