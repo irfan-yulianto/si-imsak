@@ -396,6 +396,7 @@ export default function MosqueFinder() {
           {coords && !loading && (
             <button
               type="button"
+              aria-label="Refresh pencarian masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
@@ -413,6 +414,7 @@ export default function MosqueFinder() {
             </div>
             <button
               type="button"
+              aria-label="Batalkan deteksi lokasi"
               onClick={cancelGps}
               className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             >
@@ -535,6 +537,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
+              aria-label="Coba Lagi mencari masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
             >
@@ -552,6 +555,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
+              aria-label="Coba Lagi mencari masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
               className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
