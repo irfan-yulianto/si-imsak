@@ -300,6 +300,7 @@ export default function ScheduleTable() {
             type="button"
             onClick={() => fetchScheduleForMonth(viewYear, viewMonth)}
             className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
+            aria-label="Coba Lagi memuat jadwal sholat"
           >
             Coba Lagi
           </button>
