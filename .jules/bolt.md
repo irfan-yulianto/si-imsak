@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-22 - Fast Distance Calculation Optimization
+**Learning:** Found that geographic calculations (`haversineDistance`) using closure mappings and computing trigonometry per-item in a list inside `parseOverpassResponse` cause significant redundant computation when evaluated sequentially across many coordinates.
+**Action:** When computing Haversine distances in a loop against a constant coordinate, pre-calculate the cosine of the constant latitude outside the loop and pass it to the distance function to avoid redundant trigonometric computations, and extract inline closure mappings to module-scoped scalar constants.
