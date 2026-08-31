@@ -397,7 +397,8 @@ export default function MosqueFinder() {
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+              aria-label="Refresh data masjid"
+              className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
               Refresh
             </button>
@@ -536,7 +537,8 @@ export default function MosqueFinder() {
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
+              aria-label="Coba Lagi memuat data masjid"
+              className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-400 dark:hover:bg-amber-900/40"
             >
               Coba Lagi
             </button>
@@ -553,7 +555,8 @@ export default function MosqueFinder() {
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+              aria-label="Coba Lagi memuat data masjid"
+              className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
               Coba Lagi
             </button>

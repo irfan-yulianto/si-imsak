@@ -27,7 +27,8 @@ export default function GlobalError({
             <button
               type="button"
               onClick={reset}
-              className="cursor-pointer rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+              aria-label="Coba Lagi memuat halaman"
+              className="cursor-pointer rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               Coba Lagi
             </button>
