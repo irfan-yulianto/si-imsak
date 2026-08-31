@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-05-26 - Pre-calculate mathematical scalars in spatial algorithms
+**Learning:** Mathematical constant calculations inside hot-path spatial algorithms like `haversineDistance` (e.g. `const toRad = (deg) => deg * Math.PI / 180;`) allocate memory and repeat multiplication for every call.
+**Action:** Extract the mathematical constants and transformations outside of the function so that they are not re-allocated/re-computed on every call, by extracting into module-scoped scalar constants (`const TO_RAD = Math.PI / 180;`) to avoid redundant memory allocations and drastically reduce execution time.
