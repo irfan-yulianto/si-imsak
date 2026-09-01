@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-05-21 - Pre-computing trigonometric functions for Haversine inside loops
+**Learning:** Computing Math.cos() inside a loop for thousands of locations in parseOverpassResponse() takes unnecessary processing time. Since the user's latitude is constant, Math.cos(userLat) is effectively constant for the equirectangular approximation of Haversine.
+**Action:** When computing distances from a single origin to many points, pre-calculate trigonometric values (like cos(lat)) for the origin outside the loop and pass it down to avoid redundant math computations.
