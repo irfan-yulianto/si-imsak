@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-09-01 - Add explicit focus-visible states to buttons
+**Learning:** Keyboard accessibility relies heavily on focus indicators, but browsers sometimes fail to apply their default focus rings consistently to custom-styled buttons, or the default styles clash with the site's dark/light modes. Users navigating via keyboard can lose track of where they are if elements don't clearly indicate focus.
+**Action:** When adding interactive elements like buttons, always include explicit `focus-visible` utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500`) to guarantee a clear, accessible focus state across all devices and themes.
