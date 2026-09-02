@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-07-20 - Extracting constants from high-frequency mathematical functions
+**Learning:** Functions that perform mathematical calculations and are called in high-frequency loops (like distance calculations over API elements) can suffer from overhead if they constantly allocate inner closure functions and perform redundant operations like `Math.PI / 180`.
+**Action:** Extract inline closure mappings and scalar values (e.g. `const TO_RAD = Math.PI / 180;`) into module-scoped constants to drastically reduce execution time overhead.
