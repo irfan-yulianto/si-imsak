@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2025-05-18 - Fast Trigonometry Optimization in Loop
+**Learning:** Found a performance bottleneck in `haversineDistance` inside `mosques.ts` where the `toRad` closure was being re-created and re-executed, and mathematical constants (`R = 6371000` and `Math.PI / 180`) were being re-evaluated for every location parsed in the `parseOverpassResponse` loop.
+**Action:** When working with math-heavy functions called within a data-processing loop, always extract static variables (`R`) and closures/calculations (`Math.PI / 180`) to module-level constants to avoid redundant allocations and calculations.
