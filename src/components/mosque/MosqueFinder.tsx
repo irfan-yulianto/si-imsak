@@ -536,6 +536,7 @@ export default function MosqueFinder() {
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              aria-label="Coba Lagi mencari masjid"
               className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
             >
               Coba Lagi
@@ -553,6 +554,7 @@ export default function MosqueFinder() {
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              aria-label="Coba Lagi mencari masjid"
               className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
               Coba Lagi
