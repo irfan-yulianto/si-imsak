@@ -118,6 +118,12 @@ export function parseOverpassResponse(
   const seen = new Set<string>();
   const mosques: Mosque[] = [];
 
+  // Optimization: Pre-calculate constants to avoid re-allocation and redundant math inside loop
+  const TO_RAD = Math.PI / 180;
+  const R = 6371000;
+  const userLatRad = userLat * TO_RAD;
+  const userCosLat = Math.cos(userLatRad);
+
   for (const el of data.elements) {
     const key = `${el.type}/${el.id}`;
     if (seen.has(key)) continue;
@@ -132,12 +138,25 @@ export function parseOverpassResponse(
     const type: "masjid" | "musholla" =
       el.tags?.place_of_worship === "musalla" ? "musholla" : "masjid";
 
+    // Fast inline distance calculation
+    const lat2Rad = center.lat * TO_RAD;
+    const dLat = lat2Rad - userLatRad;
+
+    let dLngDeg = center.lng - userLng;
+    if (dLngDeg > 180) dLngDeg -= 360;
+    else if (dLngDeg < -180) dLngDeg += 360;
+    const dLng = dLngDeg * TO_RAD;
+
+    const x = dLng * userCosLat;
+    const y = dLat;
+    const distance = Math.sqrt(x * x + y * y) * R;
+
     mosques.push({
       id: key,
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance,
       address,
       type,
     });
