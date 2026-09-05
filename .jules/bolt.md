@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-05-25 - Pre-computing complex list rendering data
+**Learning:** Found a performance bottleneck in `haversineDistance` loop processing where inline closures (`toRad`) and constant arithmetic (`Earth's radius in meters`, `Math.PI / 180`) were being unnecessarily re-allocated and re-calculated multiple times during array iterations, slowing down performance.
+**Action:** When working with math/utility functions inside loops, extract any constants and closures out of the function block and pre-calculate them at the module level.
