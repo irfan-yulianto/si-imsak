@@ -298,8 +298,9 @@ export default function ScheduleTable() {
           <p className="text-sm text-red-600 dark:text-red-400">{schedule.error}</p>
           <button
             type="button"
+            aria-label="Coba Lagi memuat jadwal sholat"
             onClick={() => fetchScheduleForMonth(viewYear, viewMonth)}
-            className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
+            className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
           >
             Coba Lagi
           </button>
