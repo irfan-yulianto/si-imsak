@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-07-29 - Add aria-labels to generic text buttons
+**Learning:** Users with screen readers may struggle with generic button texts like "Coba Lagi" or "Refresh" because it's unclear *what* action will be retried without visual context. Adding descriptive `aria-label` attributes to these generic text buttons significantly improves clarity and accessibility, ensuring screen reader users understand the button's exact purpose.
+**Action:** Proactively add descriptive `aria-label` attributes to generic text buttons (e.g., "Coba Lagi", "Batal") to provide explicit context to screen reader users. Always check corresponding `.test.tsx` files to update queries (e.g., `getByRole`) to match the new accessible name.
