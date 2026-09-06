@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-09-06 - Add explicit aria-labels to generic fallback buttons
+**Learning:** Generic button text like "Coba Lagi" (Try Again) or "Hari Ini" (Today) lacks context when read out of sequence by screen readers, particularly in error states or dense UI like calendars. Replacing their accessible names with contextual action descriptions via `aria-label` (e.g. "Coba Lagi memuat jadwal", "Kembali ke bulan ini") significantly improves non-visual navigation.
+**Action:** Always provide descriptive `aria-label`s for generic fallback/navigation buttons to give full context of what the button does in its current state. Ensure any `.test.tsx` files are updated to query by the new accessible names.
