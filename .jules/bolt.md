@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-05-30 - Optimize closure allocations in math-heavy loops
+**Learning:** Defining inline closures (like `toRad = (deg) => deg * Math.PI / 180`) inside a utility function that is called thousands of times in a loop (like `haversineDistance` when parsing Overpass results) creates massive garbage collection overhead and slows down V8 engine optimization.
+**Action:** Extract constants (like `Math.PI / 180`) outside the function scope and inline the arithmetic directly in the hot path rather than using a closure.
