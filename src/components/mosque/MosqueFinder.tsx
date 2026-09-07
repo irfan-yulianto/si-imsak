@@ -396,8 +396,9 @@ export default function MosqueFinder() {
           {coords && !loading && (
             <button
               type="button"
+              aria-label="Refresh daftar masjid"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+              className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               Refresh
             </button>
