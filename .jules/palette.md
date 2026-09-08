@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-07-30 - Add aria-labels to generic buttons
+**Learning:** Generic text buttons like "Refresh" or "Coba Lagi" lack sufficient context for screen reader users when read out of order or without visual surrounding context. Modifying them to have an accessible name using `aria-label` that includes the visible text plus the specific action (e.g., "Coba lagi memuat jadwal") drastically improves accessibility while remaining WCAG 2.5.3 compliant.
+**Action:** When adding common buttons like "Refresh", "Retry", or "Cancel", ensure they have a descriptive `aria-label` that explicitly details the action being performed or the domain of the action (e.g., "Refresh lokasi masjid").
