@@ -27,22 +27,24 @@ interface OverpassResponse {
  * Returns distance in meters.
  * Optimized for speed over short distances compared to full Haversine.
  */
+const R = 6371000; // Earth's radius in meters
+const TO_RAD = Math.PI / 180;
+
 export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,
   lng2: number
 ): number {
-  const R = 6371000; // Earth's radius in meters
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const lat1Rad = toRad(lat1);
-  const lat2Rad = toRad(lat2);
+  // Optimization: Pre-calculate constants to avoid re-allocation in this hot path loop
+  const lat1Rad = lat1 * TO_RAD;
+  const lat2Rad = lat2 * TO_RAD;
   const dLat = lat2Rad - lat1Rad;
 
   let dLngDeg = lng2 - lng1;
   if (dLngDeg > 180) dLngDeg -= 360;
   else if (dLngDeg < -180) dLngDeg += 360;
-  const dLng = toRad(dLngDeg);
+  const dLng = dLngDeg * TO_RAD;
 
   const x = dLng * Math.cos((lat1Rad + lat2Rad) / 2);
   const y = dLat;
