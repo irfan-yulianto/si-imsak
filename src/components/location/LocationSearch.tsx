@@ -263,6 +263,7 @@ export default function LocationSearch() {
             </button>
             <button
               type="button"
+              aria-label="Nanti, tunda izin lokasi"
               onClick={handleDismissPrompt}
               className="cursor-pointer rounded-md px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-800/50"
             >
