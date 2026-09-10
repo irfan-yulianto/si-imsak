@@ -264,6 +264,7 @@ export default function LocationSearch() {
             <button
               type="button"
               onClick={handleDismissPrompt}
+              aria-label="Nanti, tunda izin lokasi"
               className="cursor-pointer rounded-md px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-800/50"
             >
               Nanti
