@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-09-11 - Add accessible labels to retry and refresh buttons
+**Learning:** Generic button texts like "Coba Lagi" or "Refresh" lack context for screen reader users, especially when multiple identical buttons exist for different actions (e.g. refreshing location vs reloading schedule data). Providing a descriptive `aria-label` that includes the visible text while appending context resolves this accessibility gap.
+**Action:** Always add descriptive `aria-label` attributes to retry or refresh buttons, making sure to include the exact visible text of the button to comply with WCAG 2.5.3 (Label in Name). Ensure React Testing Library queries in tests are also updated from `getByText` to `getByRole` using the new accessible name.
