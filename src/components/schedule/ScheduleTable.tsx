@@ -184,7 +184,7 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
             <button
               type="button"
               onClick={onToday}
-              className="cursor-pointer rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60"
+              className="cursor-pointer rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60"
             >
               Hari Ini
             </button>
@@ -299,7 +299,7 @@ export default function ScheduleTable() {
           <button
             type="button"
             onClick={() => fetchScheduleForMonth(viewYear, viewMonth)}
-            className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
+            className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
           >
             Coba Lagi
           </button>
@@ -439,7 +439,7 @@ export default function ScheduleTable() {
           <button
             type="button"
             onClick={scrollToToday}
-            className="fixed bottom-20 right-4 z-40 flex cursor-pointer items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-700 active:scale-95"
+            className="fixed bottom-20 right-4 z-40 flex cursor-pointer items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-700 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
           >
             <CalendarIcon size={14} />
             Hari Ini
