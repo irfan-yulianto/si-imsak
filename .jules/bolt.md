@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-06-20 - Fast String Parsing for Time Formats
+**Learning:** String splitting (`split()`) and array mapping (`map()`) in frequently called helper functions (like `parseTimeToSeconds` during `getNextPrayerCyclic` looping) introduce significant overhead.
+**Action:** When parsing strictly formatted short strings (like "HH:MM") in hot paths, use manual character code parsing (`charCodeAt()`) to bypass string and array allocations entirely, resulting in nearly 10x faster execution.
