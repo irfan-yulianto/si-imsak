@@ -20,3 +20,11 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-07-15 - Array Pre-allocation over Primitive Math in Hot Paths
+**Learning:** Found that even primitive string concatenation (`num < 10 ? "0" + num : "" + num`) has measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop compared to an array lookup.
+**Action:** When formatting basic numbers in a high-frequency loop, use bitwise operators (like `| 0`) for fast truncation and pre-allocate strings in an array (`PADDED[m]`) to drastically reduce execution time overhead.
+
+## 2024-07-15 - Array Pre-allocation over Primitive Math in Hot Paths
+**Learning:** Found that even primitive string concatenation (`num < 10 ? "0" + num : "" + num`) has measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop compared to an array lookup.
+**Action:** When formatting basic numbers in a high-frequency loop, use bitwise operators (like `| 0`) for fast truncation and pre-allocate strings in an array (`PADDED[m]`) to drastically reduce execution time overhead.

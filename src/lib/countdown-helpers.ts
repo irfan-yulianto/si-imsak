@@ -91,16 +91,19 @@ export function getNextPrayerCyclic(
   return null;
 }
 
+// Optimization: Pre-calculate constants to avoid re-allocation in high-frequency loops.
+const PADDED_TIME = Array.from({ length: 60 }, (_, i) => (i < 10 ? "0" + i : "" + i));
+
 export function formatCountdown(ms: number): { hours: string; minutes: string; seconds: string } {
   if (ms <= 0) return { hours: "00", minutes: "00", seconds: "00" };
-  const totalSeconds = Math.floor(ms / 1000);
+  const totalSeconds = (ms / 1000) | 0;
   // Optimization: use primitive math to avoid unnecessary String().padStart allocations during 1000ms loop
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
+  const h = (totalSeconds / 3600) | 0;
+  const m = ((totalSeconds % 3600) / 60) | 0;
   const s = totalSeconds % 60;
   return {
-    hours: h < 10 ? "0" + h : "" + h,
-    minutes: m < 10 ? "0" + m : "" + m,
-    seconds: s < 10 ? "0" + s : "" + s,
+    hours: h < 60 ? PADDED_TIME[h] : (h < 10 ? "0" + h : "" + h),
+    minutes: PADDED_TIME[m],
+    seconds: PADDED_TIME[s],
   };
 }
