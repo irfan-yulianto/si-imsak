@@ -250,7 +250,7 @@ export default function LocationSearch() {
               type="button"
               onClick={detectLocation}
               disabled={isDetecting}
-              className="flex-1 cursor-pointer rounded-md bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              className="flex-1 cursor-pointer rounded-md bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               {isDetecting ? (
                 <span className="flex items-center justify-center gap-1.5">
@@ -264,7 +264,7 @@ export default function LocationSearch() {
             <button
               type="button"
               onClick={handleDismissPrompt}
-              className="cursor-pointer rounded-md px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-800/50"
+              className="cursor-pointer rounded-md px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               Nanti
             </button>
@@ -320,7 +320,7 @@ export default function LocationSearch() {
                 <button
                   type="button"
                   onClick={() => handleSelect(city)}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <MapPinIcon size={14} className="shrink-0 text-slate-300 dark:text-slate-500" />
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
