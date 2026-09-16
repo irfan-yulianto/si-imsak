@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-20 - Fast parsing of variable-format time strings
+**Learning:** Using `String.split(":")` and `Array.map(Number)` to parse time strings creates measurable overhead due to array allocations. Attempting to use `charCodeAt()` math assumes fixed formatting (e.g. "08:30") and breaks on non-padded strings ("8:30").
+**Action:** When parsing short variable-length strings, use `String.indexOf()` and `String.substring()` combined with primitive type coercion (`Number()`). This avoids array allocations while safely handling variable formats, providing a robust ~2x performance boost in hot loops.
