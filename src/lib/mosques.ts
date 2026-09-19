@@ -27,26 +27,27 @@ interface OverpassResponse {
  * Returns distance in meters.
  * Optimized for speed over short distances compared to full Haversine.
  */
+const TO_RAD = Math.PI / 180;
+const R_EARTH = 6371000; // Earth's radius in meters
+
 export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,
   lng2: number
 ): number {
-  const R = 6371000; // Earth's radius in meters
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const lat1Rad = toRad(lat1);
-  const lat2Rad = toRad(lat2);
+  const lat1Rad = lat1 * TO_RAD;
+  const lat2Rad = lat2 * TO_RAD;
   const dLat = lat2Rad - lat1Rad;
 
   let dLngDeg = lng2 - lng1;
   if (dLngDeg > 180) dLngDeg -= 360;
   else if (dLngDeg < -180) dLngDeg += 360;
-  const dLng = toRad(dLngDeg);
+  const dLng = dLngDeg * TO_RAD;
 
   const x = dLng * Math.cos((lat1Rad + lat2Rad) / 2);
   const y = dLat;
-  return Math.sqrt(x * x + y * y) * R;
+  return Math.sqrt(x * x + y * y) * R_EARTH;
 }
 
 /**
@@ -118,6 +119,10 @@ export function parseOverpassResponse(
   const seen = new Set<string>();
   const mosques: Mosque[] = [];
 
+  // Optimization: Pre-calculate constants to avoid re-allocation and re-computation
+  // inside the loop over potentially hundreds/thousands of Overpass elements.
+  const userLatRad = userLat * TO_RAD;
+
   for (const el of data.elements) {
     const key = `${el.type}/${el.id}`;
     if (seen.has(key)) continue;
@@ -132,12 +137,24 @@ export function parseOverpassResponse(
     const type: "masjid" | "musholla" =
       el.tags?.place_of_worship === "musalla" ? "musholla" : "masjid";
 
+    const lat2Rad = center.lat * TO_RAD;
+    const dLat = lat2Rad - userLatRad;
+
+    let dLngDeg = center.lng - userLng;
+    if (dLngDeg > 180) dLngDeg -= 360;
+    else if (dLngDeg < -180) dLngDeg += 360;
+    const dLng = dLngDeg * TO_RAD;
+
+    const x = dLng * Math.cos((userLatRad + lat2Rad) / 2);
+    const y = dLat;
+    const distance = Math.sqrt(x * x + y * y) * R_EARTH;
+
     mosques.push({
       id: key,
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance,
       address,
       type,
     });

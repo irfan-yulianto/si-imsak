@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-05-26 - Hoisting loop invariants in hot paths
+**Learning:** Re-computing constant factors like `lat1Rad` or re-allocating a simple arrow function `const toRad = ...` inside an array iteration over hundreds of items creates measurable overhead and slows down array processing.
+**Action:** In spatial processing functions like `parseOverpassResponse`, identify loop-invariant values like the user's latitude in radians and hoist their calculation outside the loop to improve performance dramatically. Inline the simplified logic to avoid function call overhead.
