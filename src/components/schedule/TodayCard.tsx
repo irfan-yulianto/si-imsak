@@ -92,7 +92,7 @@ export default function TodayCard() {
       );
     }
     return (
-      <div className="min-h-[160px] rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
+      <div role="alert" aria-live="polite" className="min-h-[160px] rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
         <p className="text-center text-sm text-slate-400 dark:text-slate-500">
           Jadwal hari ini belum tersedia
         </p>

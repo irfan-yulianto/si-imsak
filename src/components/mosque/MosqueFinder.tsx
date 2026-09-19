@@ -546,7 +546,7 @@ export default function MosqueFinder() {
 
       {/* Error state */}
       {!loading && error && mosques.length === 0 && (
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
+        <div role="alert" aria-live="polite" className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
           <MosqueIcon size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
           <p className="text-xs text-slate-500 dark:text-slate-400">{error}</p>
           {coords && (
