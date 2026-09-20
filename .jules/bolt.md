@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-05-18 - Math optimization in loop hot paths
+**Learning:** Found that assigning Math constants like `Math.PI` inside loop hot paths like `haversineDistance` results in unnecessary memory allocations per call, which compounds during large map array mappings.
+**Action:** Extract simple constants outside the function scope into module-level bindings when optimizing formulas invoked in loops, avoiding repeated allocations without losing legibility.
