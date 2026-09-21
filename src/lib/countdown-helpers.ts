@@ -39,8 +39,25 @@ export function getTomorrowSchedule(
 }
 
 export function parseTimeToSeconds(timeStr: string): number {
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 3600 + m * 60;
+  // Optimization: avoid array allocations from .split() and .map() in hot paths
+  // by parsing character codes directly for standard "HH:MM" and "H:MM" formats.
+  const len = timeStr.length;
+  if (len === 5 && timeStr.charCodeAt(2) === 58) {
+    return (
+      (timeStr.charCodeAt(0) - 48) * 36000 +
+      (timeStr.charCodeAt(1) - 48) * 3600 +
+      (timeStr.charCodeAt(3) - 48) * 600 +
+      (timeStr.charCodeAt(4) - 48) * 60
+    );
+  } else if (len === 4 && timeStr.charCodeAt(1) === 58) {
+    return (
+      (timeStr.charCodeAt(0) - 48) * 3600 +
+      (timeStr.charCodeAt(2) - 48) * 600 +
+      (timeStr.charCodeAt(3) - 48) * 60
+    );
+  }
+  const parts = timeStr.split(":");
+  return Number(parts[0]) * 3600 + Number(parts[1]) * 60;
 }
 
 export function getNextPrayerCyclic(
