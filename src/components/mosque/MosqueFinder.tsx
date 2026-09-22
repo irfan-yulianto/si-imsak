@@ -464,6 +464,13 @@ export default function MosqueFinder() {
               <XIcon size={14} />
             </button>
           )}
+          {showSearch && searchResults.length === 0 && searchQuery.length >= 2 && (
+            <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+              <li className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-slate-500" role="alert" aria-live="polite">
+                Kota tidak ditemukan
+              </li>
+            </ul>
+          )}
           {showSearch && searchResults.length > 0 && (
             <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
               {searchResults.map((city) => (
