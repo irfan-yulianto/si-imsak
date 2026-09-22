@@ -14,7 +14,11 @@ export function getLocalDate(now: Date, utcOffset: number): Date {
 }
 
 export function getDateStr(localTime: Date): string {
-  return localTime.toISOString().split("T")[0];
+  // Optimization: Avoid toISOString() and split() which create intermediate strings/arrays
+  const y = localTime.getUTCFullYear();
+  const m = localTime.getUTCMonth() + 1;
+  const d = localTime.getUTCDate();
+  return `${y}-${m < 10 ? "0" + m : "" + m}-${d < 10 ? "0" + d : "" + d}`;
 }
 
 export function getTodaySchedule(
@@ -39,7 +43,11 @@ export function getTomorrowSchedule(
 }
 
 export function parseTimeToSeconds(timeStr: string): number {
-  const [h, m] = timeStr.split(":").map(Number);
+  // Optimization: Avoid array allocation from split() and map()
+  const sep = timeStr.indexOf(":");
+  if (sep === -1) return 0;
+  const h = Number(timeStr.substring(0, sep));
+  const m = Number(timeStr.substring(sep + 1));
   return h * 3600 + m * 60;
 }
 

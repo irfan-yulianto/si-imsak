@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-22 - Avoid string/array allocation in high-frequency intervals
+**Learning:** Functions like `toISOString().split("T")` or `split(":").map(Number)` create intermediate arrays and strings. When executed inside high-frequency polling functions (e.g. a 3-second `setInterval`), these allocations accumulate and trigger unnecessary garbage collection overhead.
+**Action:** Use primitive string extraction (`substring`, `indexOf`) and direct date accessors (`getUTCFullYear`, `getUTCMonth`) to bypass intermediate array allocations inside frequent intervals.
