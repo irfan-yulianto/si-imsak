@@ -61,6 +61,11 @@ export default function CountdownTimer() {
     if (countdownSchedule.length === 0) return;
 
     function checkAndRefetch() {
+      // Optimization: Skip heavy re-calculations if we already have a valid next prayer that hasn't arrived
+      if (nextPrayerRef.current && nextPrayerRef.current.targetMs && nextPrayerRef.current.targetMs > Date.now() + timeOffset) {
+        return;
+      }
+
       const now = getAdjustedTime(timeOffset);
       const localTime = getLocalDate(now, utcOffset);
       const currentDateStr = getDateStr(localTime);

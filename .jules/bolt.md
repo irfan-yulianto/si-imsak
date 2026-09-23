@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-25 - Skip heavy re-calculations for unchanged future targets
+**Learning:** Functions that periodically run via `setInterval` to check status can cause unnecessary performance overhead when recalculating current state, even if the end target hasn't been reached yet.
+**Action:** When running background checks against a target in the future, always add an early return that checks if the current time has passed the pre-calculated target before doing any further math or logic operations.
