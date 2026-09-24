@@ -39,6 +39,12 @@ export function getTomorrowSchedule(
 }
 
 export function parseTimeToSeconds(timeStr: string): number {
+  // Optimization: avoid string splitting, array allocation, and Number() conversions in hot path
+  if (timeStr.length === 5 && timeStr[2] === ":") {
+    const h = (timeStr.charCodeAt(0) - 48) * 10 + (timeStr.charCodeAt(1) - 48);
+    const m = (timeStr.charCodeAt(3) - 48) * 10 + (timeStr.charCodeAt(4) - 48);
+    return h * 3600 + m * 60;
+  }
   const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
 }
