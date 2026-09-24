@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-09-24 - Screen reader announcements for dynamic empty and error states
+**Learning:** Screen readers cannot automatically detect dynamic UI updates like new error states or "no results" empty states unless properly annotated. This lack of notification forces visually impaired users to guess if an action (like a search query) failed or succeeded. Adding `role="alert"` and `aria-live="polite"` ensures these changes are proactively announced without immediately interrupting the user.
+**Action:** Always wrap dynamic error messages and specific empty states (e.g., search yielding 0 results) with `role="alert"` and `aria-live="polite"` so screen readers immediately announce their appearance.

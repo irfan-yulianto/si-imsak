@@ -294,7 +294,7 @@ export default function ScheduleTable() {
           onNext={goToNextMonth}
           onToday={goToCurrentMonth}
         />
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
+        <div role="alert" aria-live="polite" className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
           <p className="text-sm text-red-600 dark:text-red-400">{schedule.error}</p>
           <button
             type="button"
@@ -310,7 +310,7 @@ export default function ScheduleTable() {
 
   if (!schedule.loading && schedule.data.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-700/50 dark:bg-slate-800/80">
+      <div role="alert" aria-live="polite" className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-700/50 dark:bg-slate-800/80">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Pilih kota untuk melihat jadwal sholat.
         </p>

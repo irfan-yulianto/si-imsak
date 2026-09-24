@@ -10,7 +10,7 @@ export default function GlobalError({
     <html lang="id">
       <body className="bg-white dark:bg-slate-950">
         <div className="flex min-h-screen flex-col items-center justify-center px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-red-100 bg-white p-6 text-center shadow-lg dark:border-red-900/50 dark:bg-slate-900">
+          <div role="alert" aria-live="polite" className="w-full max-w-sm rounded-2xl border border-red-100 bg-white p-6 text-center shadow-lg dark:border-red-900/50 dark:bg-slate-900">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/30">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 dark:text-red-400">
                 <circle cx="12" cy="12" r="10" />
