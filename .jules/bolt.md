@@ -20,3 +20,11 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-25 - Pre-computing user coordinate constants in distance loops
+**Learning:** Re-calculating constant user variables (like radians of the user's latitude) inside a loop processing an array of map locations introduces significant overhead (up to ~15x slower for large arrays).
+**Action:** When calculating distances to multiple points in a loop, always pull out and pre-compute the constant values (user coordinates, Earth radius, conversion functions) before the loop and inline the algorithm rather than repeatedly calling an external function.
+
+## 2024-06-25 - Factoring out Math constants
+**Learning:** In a highly-called distance algorithm (e.g. equirectangular approximation over arrays), executing closure functions containing `Math.PI / 180` repeatedly takes noticeable overhead over many iterations.
+**Action:** Extract mathematical conversion factors (`const TO_RAD = Math.PI / 180;`) to module scope outside of the distance function entirely to avoid redundant allocations on every invocation.
