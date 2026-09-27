@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-06-22 - Static Property Length Caching and Inlining Inner Functions
+**Learning:** Found that reading `.length` on arrays in hot loops (`getCityGuess`) or declaring inline helper functions (`toRad` in `haversineDistance`) adds hidden overhead for function allocations and property lookups.
+**Action:** When writing performance-sensitive math functions or heavy loops, inline small utility functions and cache loop variables (like array length) into the local scope to minimize property lookups and prevent unnecessary object allocations.

@@ -602,7 +602,9 @@ export function getCityGuess(lat: number, lng: number): string | null {
   const cosLat = Math.cos(latRad);
   const cosLatSq = cosLat * cosLat;
 
-  for (let i = 0; i < CITIES.length; i++) {
+  // Optimization: caching the length of the array prevents reading the .length property repeatedly.
+  // Optimization: use a for loop instead of for-of or higher order functions.
+  for (let i = 0, len = CITIES.length; i < len; i++) {
     const city = CITIES[i];
     const dLat = lat - city.lat;
     let dLng = lng - city.lng;
