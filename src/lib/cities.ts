@@ -598,12 +598,15 @@ export function getCityGuess(lat: number, lng: number): string | null {
   // Fast Pythagorean approximation (squared Euclidean distance).
   // We compute the latitude scaling factor once outside the loop.
   // This avoids expensive trigonometric functions inside the loop over 500+ cities.
-  const latRad = (lat * Math.PI) / 180;
-  const cosLat = Math.cos(latRad);
-  const cosLatSq = cosLat * cosLat;
+  const latRad = lat * 0.017453292519943295; // Math.PI / 180
+  const cosLatSq = Math.cos(latRad) ** 2;
+  const len = CITIES.length;
+  // Optimization: Pre-cache CITIES array to avoid repeated global scope and property lookups
+  // in the hot path. Pre-caching length also avoids CITIES.length evaluation every iteration.
+  const cities = CITIES;
 
-  for (let i = 0; i < CITIES.length; i++) {
-    const city = CITIES[i];
+  for (let i = 0; i < len; i++) {
+    const city = cities[i];
     const dLat = lat - city.lat;
     let dLng = lng - city.lng;
 
