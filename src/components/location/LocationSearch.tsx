@@ -241,7 +241,7 @@ export default function LocationSearch() {
     <div ref={containerRef} className="relative w-full max-w-[260px]">
       {/* Location permission prompt */}
       {showLocationPrompt && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-lg dark:border-emerald-800 dark:bg-emerald-900/40">
+        <div role="alert" aria-live="polite" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-lg dark:border-emerald-800 dark:bg-emerald-900/40">
           <p className="mb-2 text-xs font-medium text-emerald-800 dark:text-emerald-200">
             Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?
           </p>
@@ -330,7 +330,7 @@ export default function LocationSearch() {
               </li>
             ))
           ) : (
-            <li className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-slate-500">
+            <li role="alert" aria-live="polite" className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-slate-500">
               Kota tidak ditemukan
             </li>
           )}
