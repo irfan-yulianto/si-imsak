@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-10-27 - Fast Date and String parsing in Hot Paths
+**Learning:** Using `.toISOString().split("T")[0]` and `.split(":").map(Number)` allocates unnecessary arrays and intermediate strings which creates overhead in hot paths (e.g. loops called by `setInterval`).
+**Action:** Use primitive string concatenations (e.g. `m < 10 ? "0" + m : "" + m`) and `.substring()` instead to drastically improve performance and reduce garbage collection.
