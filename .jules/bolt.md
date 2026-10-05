@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-25 - Avoid Date object allocation in interval loops
+**Learning:** Creating a new `Date` object inside a `setInterval` or `requestAnimationFrame` loop creates unnecessary garbage collection pressure and CPU overhead, especially when only looking for simple properties like hours or minutes.
+**Action:** Use primitive math with `Date.now()` (e.g., `(Date.now() + offset) % 86400000` to find milliseconds since midnight) instead of `new Date(ms).getUTCHours()` in hot paths to significantly speed up computation and avoid GC pauses.
