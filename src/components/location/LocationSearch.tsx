@@ -331,7 +331,7 @@ export default function LocationSearch() {
             ))
           ) : (
             <li className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-slate-500">
-              Kota tidak ditemukan
+              <span role="status" aria-live="polite">Kota tidak ditemukan</span>
             </li>
           )}
         </ul>
