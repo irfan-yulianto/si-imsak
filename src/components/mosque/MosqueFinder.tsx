@@ -446,7 +446,7 @@ export default function MosqueFinder() {
               setSearchQuery(e.target.value);
               setShowSearch(true);
             }}
-            onFocus={() => searchResults.length > 0 && setShowSearch(true)}
+            onFocus={() => (searchResults.length > 0 || searchQuery.length >= 2) && setShowSearch(true)}
             placeholder="Cari kota untuk lokasi masjid..."
             className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-9 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
           />
@@ -464,22 +464,28 @@ export default function MosqueFinder() {
               <XIcon size={14} />
             </button>
           )}
-          {showSearch && searchResults.length > 0 && (
+          {showSearch && searchQuery.length >= 2 && (
             <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-              {searchResults.map((city) => (
-                <li key={city.name}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCity(city)}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                  >
-                    <MapPinIcon size={12} className="shrink-0 text-slate-300 dark:text-slate-500" />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                      {city.name}
-                    </span>
-                  </button>
+              {searchResults.length > 0 ? (
+                searchResults.map((city) => (
+                  <li key={city.name}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCity(city)}
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                    >
+                      <MapPinIcon size={12} className="shrink-0 text-slate-300 dark:text-slate-500" />
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                        {city.name}
+                      </span>
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-slate-500">
+                  <span role="status" aria-live="polite">Kota tidak ditemukan</span>
                 </li>
-              ))}
+              )}
             </ul>
           )}
         </div>

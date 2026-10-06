@@ -1,3 +1,6 @@
 ## 2024-07-29 - Add clear buttons to search inputs
 **Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
 **Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-08-01 - Explicit empty states in dropdowns with polite announcement
+**Learning:** Silently hiding a search dropdown when no results match leaves the user wondering if the search broke or is still loading. Additionally, adding `role="status"` directly to an `<li>` element overrides its implicit `listitem` role. Wrapping the "No results found" text inside a `<span role="status" aria-live="polite">` within the `<li>` ensures the empty state is visually clear and correctly announced by screen readers.
+**Action:** When creating search dropdowns, always provide an explicit empty state instead of hiding the list, and wrap the text in `<span role="status" aria-live="polite">` to preserve valid list semantics.
