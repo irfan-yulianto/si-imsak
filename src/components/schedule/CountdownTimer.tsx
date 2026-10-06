@@ -232,7 +232,7 @@ export default function CountdownTimer() {
             </div>
           </div>
         ) : (
-          <div className="py-3 text-center">
+          <div role="status" aria-live="polite" className="py-3 text-center">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-green-300">
               {loadError ? "Jadwal Tidak Tersedia" : "Memuat Jadwal..."}
             </p>

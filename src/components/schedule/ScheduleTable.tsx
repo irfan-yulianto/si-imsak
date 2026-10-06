@@ -294,7 +294,7 @@ export default function ScheduleTable() {
           onNext={goToNextMonth}
           onToday={goToCurrentMonth}
         />
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
+        <div role="status" aria-live="polite" className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
           <p className="text-sm text-red-600 dark:text-red-400">{schedule.error}</p>
           <button
             type="button"
