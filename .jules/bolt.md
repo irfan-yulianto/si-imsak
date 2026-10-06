@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2025-06-15 - Fast Date Formatting in React Renders
+**Learning:** Using `new Date().toLocaleDateString()` inside a React render function causes unnecessary object allocation and is significantly slower than using a pre-instantiated `Intl.DateTimeFormat`.
+**Action:** When rendering formatted dates, always pre-calculate the formatted string in a `useMemo` block using a cached `Intl.DateTimeFormat` instance to eliminate render overhead.

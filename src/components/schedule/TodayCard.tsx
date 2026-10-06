@@ -8,6 +8,13 @@ import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
 import { useMemo, useState, useEffect, useRef } from "react";
 
+// Optimization: Module-level formatter avoids re-allocation
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
 export default function TodayCard() {
   const countdownSchedule = useStore((s) => s.countdownSchedule);
   const schedule = useStore((s) => s.schedule);
@@ -15,13 +22,15 @@ export default function TodayCard() {
   const timeOffset = useStore((s) => s.timeOffset);
   const utcOffset = getUtcOffset(location.timezone);
 
-  const { todaySchedule, hijriDate, todayDateStr } = useMemo(() => {
+  const { todaySchedule, hijriDate, formattedGregorianDate } = useMemo(() => {
     const now = getAdjustedTime(timeOffset);
     const localTime = new Date(now.getTime() + utcOffset * 3600000);
     const dateStr = localTime.toISOString().split("T")[0];
     const today = countdownSchedule.find((s) => s.date === dateStr);
     const hijri = getHijriDate(dateStr);
-    return { todaySchedule: today, hijriDate: hijri, todayDateStr: dateStr };
+    // Optimization: Pre-calculate date string to avoid re-allocation during render
+    const formattedGregorianDate = dateFormatter.format(new Date(dateStr + "T12:00:00"));
+    return { todaySchedule: today, hijriDate: hijri, formattedGregorianDate };
   }, [countdownSchedule, timeOffset, utcOffset]);
 
   // Active prayer highlight — only re-renders when prayer actually transitions
@@ -119,12 +128,7 @@ export default function TodayCard() {
 
       <div className="p-4">
         <p className="mb-3 text-center text-xs text-slate-500 dark:text-slate-400">
-          {dayName},{" "}
-          {new Date(todayDateStr + "T12:00:00").toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
+          {dayName}, {formattedGregorianDate}
         </p>
 
         {/* Prayer times — 4-col grid (2 rows on mobile, 1 row on desktop) */}
