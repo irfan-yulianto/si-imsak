@@ -148,7 +148,7 @@ export default function CountdownTimer() {
           onClick={handleRefreshLocation}
           disabled={isRefreshing}
           aria-label="Perbarui lokasi"
-          className="group mb-3 flex min-h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2 text-left transition-all hover:bg-white/[0.12] active:scale-[0.98] disabled:opacity-60"
+          className="group mb-3 flex min-h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2 text-left transition-all hover:bg-white/[0.12] active:scale-[0.98] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/20">
             <MapPinIcon size={16} className="text-green-300" />
