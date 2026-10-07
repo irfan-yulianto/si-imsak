@@ -9,7 +9,8 @@ vi.mock("@/components/ui/Icons", () => ({
   MapPinIcon: () => <div data-testid="map-pin-icon" />,
   SearchIcon: () => <div data-testid="search-icon" />,
   CrosshairIcon: () => <div data-testid="crosshair-icon" />,
-  ExternalLinkIcon: () => <div data-testid="external-link-icon" />
+  ExternalLinkIcon: () => <div data-testid="external-link-icon" />,
+  XIcon: () => <div data-testid="x-icon" />
 }));
 
 // Mock CITIES to prevent heavy filtering during tests
@@ -135,6 +136,26 @@ describe("MosqueFinder Component - U6 Fixes", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.")).toBeInTheDocument();
+    });
+  });
+
+  it("displays 'Kota tidak ditemukan' empty state when search yields no results", async () => {
+    render(<MosqueFinder />);
+
+    const input = screen.getByPlaceholderText("Cari kota untuk lokasi masjid...");
+
+    // Simulate typing quickly
+    act(() => {
+      fireEvent.change(input, { target: { value: "UNKNOWN CITY" } });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Check if the empty state is visible
+    await waitFor(() => {
+      expect(screen.getByText("Kota tidak ditemukan")).toBeInTheDocument();
     });
   });
 });
