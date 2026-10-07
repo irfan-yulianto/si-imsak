@@ -46,10 +46,11 @@ export default function TodayCard() {
   useEffect(() => {
     function computeIdx() {
       if (!todaySchedule) return;
+      // Optimization: avoid allocating new Date() in the interval tick using primitive math
       const now = getAdjustedTime(timeOffset);
-      const localTime = new Date(now.getTime() + utcOffset * 3600000);
-      const currentMinutes =
-        localTime.getUTCHours() * 60 + localTime.getUTCMinutes();
+      const nowMs = now.getTime();
+      const timeOfDayMs = (nowMs + utcOffset * 3600000) % 86400000;
+      const currentMinutes = Math.floor(timeOfDayMs / 60000);
 
       let newIdx = -1;
       for (let i = prayerMinutesArray.length - 1; i >= 0; i--) {

@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-22 - Avoid Date allocations in interval ticks using modulo arithmetic
+**Learning:** Found a performance bottleneck in `TodayCard.tsx` where the 1-minute `setInterval` loop was allocating new `Date` objects to extract the current hour and minute.
+**Action:** When extracting time-of-day parts in a continuous interval, replace `new Date()` allocation and getters (`getUTCHours()`, `getUTCMinutes()`) with primitive modulo arithmetic (`timeOfDayMs = ms % 86400000; Math.floor(timeOfDayMs / 60000)`) to reduce garbage collection overhead.
