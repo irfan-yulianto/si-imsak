@@ -24,7 +24,7 @@ describe("Footer Component", () => {
 
     const githubLink = screen.getByText("GitHub");
     expect(githubLink).toBeInTheDocument();
-    expect(githubLink).toHaveAttribute("href", "https://github.com/irfan-yulianto/jadwal-imsakiyah");
+    expect(githubLink).toHaveAttribute("href", "https://github.com/irfan-yulianto/si-imsak");
     expect(githubLink).toHaveAttribute("target", "_blank");
     expect(githubLink).toHaveAttribute("rel", "noopener noreferrer");
   });

@@ -81,6 +81,7 @@ const ScheduleDayCard = React.memo(function ScheduleDayCard({ day, index, isToda
   return (
     <div
       ref={isToday ? todayRef : undefined}
+      aria-current={isToday ? "date" : undefined}
       className={`rounded-xl border p-3 transition-colors ${
         isToday
           ? "border-emerald-400/60 bg-emerald-50/50 ring-1 ring-emerald-400/20 dark:border-emerald-500/40 dark:bg-emerald-950/30 dark:ring-emerald-500/10"
@@ -101,13 +102,13 @@ const ScheduleDayCard = React.memo(function ScheduleDayCard({ day, index, isToda
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {day.dayName}
             </span>
-            <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               {day.hijriDay} {day.hijriMonth}
             </span>
           </div>
         </div>
         {isToday && (
-          <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-bold text-white">
+          <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">
             Hari Ini
           </span>
         )}
@@ -123,14 +124,14 @@ const ScheduleDayCard = React.memo(function ScheduleDayCard({ day, index, isToda
                 ? "bg-amber-50 dark:bg-amber-900/20"
                 : "bg-slate-50 dark:bg-slate-700/40"
             }`}>
-              <p className={`text-[8px] font-semibold uppercase tracking-wide ${
+              <p className={`text-[11px] font-semibold uppercase ${
                 col.isImsak
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-slate-400 dark:text-slate-500"
+                  ? "text-amber-700 dark:text-amber-400"
+                  : "text-slate-500 dark:text-slate-400"
               }`}>
                 {col.label}
               </p>
-              <p className={`font-mono text-[11px] font-bold ${
+              <p className={`font-mono text-xs font-bold ${
                 col.isImsak
                   ? "text-amber-800 dark:text-amber-300"
                   : "text-slate-700 dark:text-slate-200"
@@ -170,7 +171,7 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
         type="button"
         onClick={onPrev}
         disabled={!canGoPrev}
-        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
         aria-label="Bulan sebelumnya"
       >
         <ChevronLeftIcon size={16} />
@@ -185,13 +186,13 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
             <button
               type="button"
               onClick={onToday}
-              className="cursor-pointer rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60"
+              className="focus-ring min-h-8 cursor-pointer rounded-full bg-emerald-100 px-3 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60"
             >
               Hari Ini
             </button>
           )}
         </div>
-        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
           {hijriLabel}
         </p>
       </div>
@@ -200,7 +201,7 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
         type="button"
         onClick={onNext}
         disabled={!canGoNext}
-        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
         aria-label="Bulan berikutnya"
       >
         <ChevronRightIcon size={16} />
@@ -302,12 +303,13 @@ export default function ScheduleTable() {
           onNext={goToNextMonth}
           onToday={goToCurrentMonth}
         />
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
-          <p className="text-sm text-red-600 dark:text-red-400">{schedule.error}</p>
+        <div role="alert" className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
+          <p className="text-sm text-red-700 dark:text-red-300">{schedule.error}</p>
           <button
             type="button"
             onClick={() => fetchScheduleForMonth(viewYear, viewMonth)}
-            className="mt-3 cursor-pointer rounded-lg bg-red-100 px-4 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
+            aria-label={`Coba lagi memuat jadwal ${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}
+            className="focus-ring mt-3 min-h-11 cursor-pointer rounded-lg bg-red-100 px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
           >
             Coba Lagi
           </button>
@@ -318,8 +320,8 @@ export default function ScheduleTable() {
 
   if (!schedule.loading && schedule.data.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-700/50 dark:bg-slate-800/80">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+      <div role="status" className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-700/50 dark:bg-slate-800/80">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
           Pilih kota untuk melihat jadwal sholat.
         </p>
       </div>
@@ -327,7 +329,12 @@ export default function ScheduleTable() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" aria-busy={showSkeleton}>
+      {showSkeleton && (
+        <p role="status" className="sr-only">
+          Memuat jadwal...
+        </p>
+      )}
       <MonthNav
         viewMonth={viewMonth}
         viewYear={viewYear}
@@ -345,19 +352,19 @@ export default function ScheduleTable() {
           <table className="w-full text-sm" aria-label={`Jadwal imsakiyah ${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}>
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-700/50">
-                <th className="sticky top-0 z-10 whitespace-nowrap bg-slate-50 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                <th className="sticky top-0 z-10 whitespace-nowrap bg-slate-50 px-3 py-3 text-center text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   No
                 </th>
-                <th className="sticky top-0 z-10 whitespace-nowrap bg-slate-50 px-3 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                <th className="sticky top-0 z-10 whitespace-nowrap bg-slate-50 px-3 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   Tanggal
                 </th>
                 {TIME_COLUMNS.map((col) => (
                   <th
                     key={col.key}
-                    className={`sticky top-0 z-10 whitespace-nowrap px-3 py-3 text-center text-[10px] font-bold uppercase tracking-widest ${
+                    className={`sticky top-0 z-10 whitespace-nowrap px-3 py-3 text-center text-[11px] font-bold uppercase tracking-widest ${
                       col.isImsak
                         ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
-                        : "bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+                        : "bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                     }`}
                   >
                     {col.label}
@@ -375,6 +382,7 @@ export default function ScheduleTable() {
                   return (
                     <tr
                       key={day.date}
+                      aria-current={isToday ? "date" : undefined}
                       className={`border-b border-slate-50 transition-colors dark:border-slate-700/30 ${
                         isToday
                           ? "border-l-4 border-l-green-500 bg-green-50/80 dark:border-l-emerald-400 dark:bg-emerald-950/40"
@@ -383,21 +391,21 @@ export default function ScheduleTable() {
                             : "bg-slate-50/30 hover:bg-slate-50/70 dark:bg-slate-800/30 dark:hover:bg-slate-700/30"
                       }`}
                     >
-                      <td className={`px-3 py-2 text-center text-xs ${isToday ? "font-bold text-green-700 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"}`}>
+                      <td className={`px-3 py-2 text-center text-xs ${isToday ? "font-bold text-green-700 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"}`}>
                         {idx + 1}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2">
+                      <th scope="row" className="whitespace-nowrap px-3 py-2 text-left font-normal">
                         <div className="flex items-center gap-1.5">
                           <span className={`text-xs font-medium ${isToday ? "text-green-800 dark:text-emerald-300" : "text-slate-700 dark:text-slate-300"}`}>
                             {day.dayName.substring(0, 3)}, {day.dateNum}
                           </span>
-                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                            isToday ? "bg-green-200 text-green-800 dark:bg-emerald-800/50 dark:text-emerald-300" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
+                            isToday ? "bg-green-200 text-green-800 dark:bg-emerald-800/50 dark:text-emerald-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                           }`}>
                             {day.hijriDay}
                           </span>
                         </div>
-                      </td>
+                      </th>
                       {TIME_COLUMNS.map((col) => {
                         const value = day[col.key as keyof typeof day] as string;
                         return (
@@ -447,7 +455,8 @@ export default function ScheduleTable() {
           <button
             type="button"
             onClick={scrollToToday}
-            className="fixed bottom-20 right-4 z-40 flex cursor-pointer items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-700 active:scale-95"
+            aria-label="Gulir ke jadwal hari ini"
+            className="focus-ring fixed bottom-20 right-4 z-40 flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-700 active:scale-95"
           >
             <CalendarIcon size={14} />
             Hari Ini

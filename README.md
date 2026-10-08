@@ -15,6 +15,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **PWA** — Installable sebagai Progressive Web App dengan service worker caching
 - **Offline Support** — Cache jadwal di localStorage dan service worker untuk akses tanpa internet
 - **Responsive** — Optimal di mobile dan desktop dengan bottom navigation pada mobile
+- **Aksesibilitas** — Lolos audit axe-core WCAG 2.1 AA: navigasi keyboard penuh (skip link, tab ARIA, pencarian kota dengan panah/Enter/Escape), status & error diumumkan ke screen reader, target sentuh 44px, menghormati `prefers-reduced-motion`
 - **Sinkronisasi Waktu** — NTP-style time sync ke endpoint `/api/time` milik aplikasi sendiri, dengan sessionStorage caching untuk instant startup
 
 ## Tech Stack

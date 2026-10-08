@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
 import { roundCoord } from "@/lib/constants";
 import { CITIES, CITY_MAP } from "@/lib/cities";
-import { MosqueIcon, MapPinIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
+import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
+import CityCombobox from "@/components/ui/CityCombobox";
 
 function NavigationIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
       <polygon points="3 11 22 2 13 21 11 13 3 11" />
     </svg>
   );
@@ -17,7 +18,7 @@ function NavigationIcon({ size = 16 }: { size?: number }) {
 
 function ExternalLinkIcon({ size = 14 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
@@ -27,7 +28,7 @@ function ExternalLinkIcon({ size = 14 }: { size?: number }) {
 
 function CrosshairIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <circle cx="12" cy="12" r="3" />
       <line x1="12" y1="2" x2="12" y2="6" />
@@ -81,17 +82,17 @@ function AccuracyBadge({ accuracy }: { accuracy: number }) {
   let color: string;
   let label: string;
   if (accuracy <= 50) {
-    color = "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/30";
+    color = "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/30";
     label = `GPS akurat ±${Math.round(accuracy)}m`;
   } else if (accuracy <= 300) {
-    color = "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30";
-    label = `WiFi ±${Math.round(accuracy)}m`;
+    color = "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30";
+    label = `Akurasi sedang ±${Math.round(accuracy)}m`;
   } else {
     color = "text-red-500 bg-red-50 dark:text-red-400 dark:bg-red-900/30";
     label = `Akurasi rendah ±${Math.round(accuracy)}m`;
   }
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${color}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
       {label}
     </span>
   );
@@ -123,10 +124,6 @@ export default function MosqueFinder() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<typeof CITIES>([]);
-  const [showSearch, setShowSearch] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Initialize coords from store or city lookup
   useEffect(() => {
@@ -142,38 +139,19 @@ export default function MosqueFinder() {
     }
   }, [userCoords, location.cityName]);
 
-  // Search cities
-  useEffect(() => {
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      const q = searchQuery.toUpperCase();
-      const results: typeof CITIES = [];
-      for (let i = 0; i < CITIES.length; i++) {
-        if (CITIES[i].name.includes(q)) {
-          results.push(CITIES[i]);
-          if (results.length === 8) break;
-        }
+  // Search the local city table (500+ entries — fast enough to filter on every keystroke)
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toUpperCase();
+    if (q.length < 2) return [];
+    const results: typeof CITIES = [];
+    for (let i = 0; i < CITIES.length; i++) {
+      if (CITIES[i].name.includes(q)) {
+        results.push(CITIES[i]);
+        if (results.length === 8) break;
       }
-      setSearchResults(results);
-    }, 150); // Debounce to prevent blocking main thread on rapid typing
-
-    return () => clearTimeout(timeoutId);
+    }
+    return results;
   }, [searchQuery]);
-
-  // Close search dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowSearch(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   // Cleanup watchPosition on unmount
   useEffect(() => {
@@ -267,7 +245,6 @@ export default function MosqueFinder() {
     setAccuracy(null);
     setCustomRadius(null);
     setSearchQuery("");
-    setShowSearch(false);
   };
 
   // fetchMosques takes all needed params explicitly, no dependency on changing state
@@ -316,7 +293,9 @@ export default function MosqueFinder() {
         const status = res?.status ?? 0;
         setError(status === 502
           ? "Layanan pencarian masjid sedang sibuk. Coba lagi beberapa saat."
-          : `Server error (${status}). Coba lagi nanti.`);
+          : status === 429
+            ? "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi."
+            : "Server sedang bermasalah. Coba lagi nanti.");
         return;
       }
       const data = await res.json();
@@ -337,7 +316,7 @@ export default function MosqueFinder() {
         }
       } else {
         // Distinct "API error" message
-        setError(data.error || "Server gagal memuat data masjid. Coba tekan Refresh.");
+        setError(data.error || "Server gagal memuat data masjid. Coba tekan Muat Ulang.");
       }
     } catch {
       // Distinct "network error" message
@@ -394,7 +373,7 @@ export default function MosqueFinder() {
       <div className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MosqueIcon size={18} className="text-emerald-600 dark:text-emerald-400" />
+            <MosqueIcon size={18} className="text-emerald-700 dark:text-emerald-400" />
             <h2 className="text-sm font-bold text-slate-800 dark:text-white">
               Masjid Terdekat
             </h2>
@@ -403,9 +382,10 @@ export default function MosqueFinder() {
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="cursor-pointer rounded-lg px-2.5 py-1 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+              aria-label="Muat ulang daftar masjid"
+              className="focus-ring min-h-11 cursor-pointer rounded-lg px-3 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
-              Refresh
+              Muat Ulang
             </button>
           )}
         </div>
@@ -413,14 +393,15 @@ export default function MosqueFinder() {
         {/* GPS detect / cancel button */}
         {detecting ? (
           <div className="mb-3 flex gap-2">
-            <div className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white">
-              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <div role="status" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">
+              <span aria-hidden="true" className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               Mendeteksi lokasi...
             </div>
             <button
               type="button"
               onClick={cancelGps}
-              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              aria-label="Batal mendeteksi lokasi"
+              className="focus-ring min-h-11 cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
             >
               Batal
             </button>
@@ -429,7 +410,7 @@ export default function MosqueFinder() {
           <button
             type="button"
             onClick={detectGps}
-            className="mb-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+            className="focus-ring mb-3 flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-800"
           >
             <CrosshairIcon size={14} />
             {isGps ? "Perbarui Lokasi GPS" : "Gunakan Lokasi GPS"}
@@ -437,61 +418,25 @@ export default function MosqueFinder() {
         )}
 
         {gpsError && (
-          <p className="mb-3 text-[11px] text-red-500 dark:text-red-400">{gpsError}</p>
+          <p role="alert" className="mb-3 text-xs text-red-700 dark:text-red-300">{gpsError}</p>
         )}
 
         {/* Search input */}
-        <div ref={searchRef} className="relative mb-3">
-          <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" />
-          <input
-            ref={inputRef}
-            type="text"
-            aria-label="Cari kota untuk lokasi masjid"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setShowSearch(true);
-            }}
-            onFocus={() => searchResults.length > 0 && setShowSearch(true)}
+        <div className="mb-3">
+          <CityCombobox
+            label="Cari kota untuk lokasi masjid"
             placeholder="Cari kota untuk lokasi masjid..."
-            className="w-full rounded-xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-9 pr-9 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            results={searchResults}
+            getKey={(city) => city.name}
+            getLabel={(city) => city.name}
+            onSelect={handleSelectCity}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              aria-label="Bersihkan pencarian"
-              onClick={() => {
-                setSearchQuery("");
-                setSearchResults([]);
-                inputRef.current?.focus();
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-sm cursor-pointer"
-            >
-              <XIcon size={14} />
-            </button>
-          )}
-          {showSearch && searchResults.length > 0 && (
-            <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-              {searchResults.map((city) => (
-                <li key={city.name}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCity(city)}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                  >
-                    <MapPinIcon size={12} className="shrink-0 text-slate-300 dark:text-slate-500" />
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                      {city.name}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
         {/* Location info */}
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <MapPinIcon size={12} />
           <span>
             {isGps ? (
@@ -506,14 +451,14 @@ export default function MosqueFinder() {
         {isGps && accuracy !== null && (
           <div className="mt-1.5 flex items-center gap-2">
             <AccuracyBadge accuracy={accuracy} />
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Radius: {radius >= 1000 ? `${radius / 1000} km` : `${radius} m`}
             </span>
           </div>
         )}
 
         {!isGps && coords && (
-          <p className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+          <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
             Aktifkan GPS untuk hasil yang lebih akurat.
           </p>
         )}
@@ -521,7 +466,7 @@ export default function MosqueFinder() {
 
       {/* Loading state */}
       {loading && (
-        <div className="space-y-2">
+        <div role="status" aria-label="Memuat daftar masjid" className="space-y-2">
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
@@ -534,15 +479,16 @@ export default function MosqueFinder() {
 
       {/* Stale data warning — shown when refresh failed but old results still available */}
       {!loading && error && mosques.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
-          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+        <div role="status" className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/30">
+          <p className="text-xs text-amber-800 dark:text-amber-300">
             Gagal memperbarui data. Menampilkan hasil sebelumnya.
           </p>
           {coords && (
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
+              aria-label="Coba lagi memperbarui daftar masjid"
+              className="focus-ring min-h-11 cursor-pointer rounded-lg px-3 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
             >
               Coba Lagi
             </button>
@@ -552,14 +498,15 @@ export default function MosqueFinder() {
 
       {/* Error state */}
       {!loading && error && mosques.length === 0 && (
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
+        <div role="alert" className="rounded-2xl border border-slate-100 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
           <MosqueIcon size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-          <p className="text-xs text-slate-500 dark:text-slate-400">{error}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{error}</p>
           {coords && (
             <button
               type="button"
               onClick={() => fetchMosques(coords, accuracy, true, isGps)}
-              className="mt-3 cursor-pointer rounded-lg bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+              aria-label="Coba lagi mencari masjid"
+              className="focus-ring mt-3 min-h-11 cursor-pointer rounded-lg bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
               Coba Lagi
             </button>
@@ -579,24 +526,24 @@ export default function MosqueFinder() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="truncate text-xs font-bold text-slate-800 dark:text-white">
+                    <h3 className="truncate text-sm font-bold text-slate-800 dark:text-white">
                       {mosque.name}
                     </h3>
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold ${
                       mosque.type === "musholla"
-                        ? "bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400"
-                        : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        ? "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+                        : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                     }`}>
                       {mosque.type === "musholla" ? "Musholla" : "Masjid"}
                     </span>
                   </div>
                   {mosque.address && (
-                    <p className="mt-0.5 truncate text-[10px] text-slate-400 dark:text-slate-500">
+                    <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
                       {mosque.address}
                     </p>
                   )}
                 </div>
-                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
                   {formatDistance(mosque.distance)}
                 </span>
               </div>
@@ -605,7 +552,8 @@ export default function MosqueFinder() {
                   href={`https://www.google.com/maps/dir/?api=1&destination=${mosque.lat},${mosque.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+                  aria-label={`Navigasi ke ${mosque.name} (buka Google Maps di tab baru)`}
+                  className="focus-ring inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
                 >
                   <NavigationIcon size={12} />
                   Navigasi
@@ -621,7 +569,7 @@ export default function MosqueFinder() {
         <button
           type="button"
           onClick={handleExpandRadius}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 py-3 text-xs font-semibold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
+          className="focus-ring flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 py-3 text-xs font-semibold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/50"
         >
           <SearchIcon size={14} />
           Perluas Pencarian ({radius >= 1000 ? `${radius / 1000} km` : `${radius} m`} → {Math.min(radius * 2, MAX_RADIUS) >= 1000 ? `${Math.min(radius * 2, MAX_RADIUS) / 1000} km` : `${Math.min(radius * 2, MAX_RADIUS)} m`})
@@ -634,10 +582,11 @@ export default function MosqueFinder() {
           href={googleMapsSearchUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white py-4 text-xs font-semibold text-slate-500 transition-colors hover:border-emerald-300 hover:text-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700 dark:hover:text-emerald-400"
+          className="focus-ring flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white py-4 text-sm font-semibold text-slate-600 transition-colors hover:border-emerald-300 hover:text-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-700 dark:hover:text-emerald-400"
         >
           <ExternalLinkIcon size={14} />
           Cari lebih banyak di Google Maps
+          <span className="sr-only"> (buka di tab baru)</span>
         </a>
       )}
     </div>

@@ -147,8 +147,8 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Check if it's visible
-    expect(screen.getByText("Pasang Si-Imsak di Home Screen")).toBeInTheDocument();
-    expect(screen.getByText(/"Add to Home Screen"/)).toBeInTheDocument();
+    expect(screen.getByText("Pasang Si-Imsak di Layar Utama")).toBeInTheDocument();
+    expect(screen.getByText(/"Tambah ke Layar Utama"/)).toBeInTheDocument();
   });
 
   it("should show iOS instructions on iPadOS Safari", () => {
@@ -168,7 +168,7 @@ describe("InstallBanner", () => {
 
     render(<InstallBanner />);
 
-    expect(screen.getByText("Pasang Si-Imsak di Home Screen")).toBeInTheDocument();
+    expect(screen.getByText("Pasang Si-Imsak di Layar Utama")).toBeInTheDocument();
   });
 
   it("should show Chromium prompt when beforeinstallprompt fires", () => {
@@ -238,7 +238,7 @@ describe("InstallBanner", () => {
     expect(event.prompt).toHaveBeenCalled();
     // Banner should still be visible because outcome was dismissed
     const banner = screen.getByText("Pasang Si-Imsak di perangkatmu").closest('div.relative');
-    expect(banner).toHaveClass("max-h-24");
+    expect(banner).toHaveClass("max-h-32");
   });
 
   it("should dismiss banner when close button is clicked", () => {
