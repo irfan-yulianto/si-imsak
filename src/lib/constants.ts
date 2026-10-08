@@ -5,11 +5,37 @@ export const DEFAULT_LOCATION = {
   daerah: "DKI JAKARTA",
 };
 
+// Build timestamp, inlined into server and client bundles by next.config.ts.
+// Used where the server render and the client's first render must agree on "now".
+export const BUILD_TIME = Number(process.env.NEXT_PUBLIC_BUILD_TIME) || Date.now();
+// Identifies the deploy; the service worker URL carries it so each deploy gets a fresh worker.
+export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+
 // API base URL (v3 LTS)
 export const MYQURAN_API_BASE = "https://api.myquran.com/v3/sholat";
 
 // Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
 export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
+
+// CDN caching for upstream data that changes rarely (schedules, city search).
+// Vercel's edge serves repeat requests without invoking the function.
+export const CDN_CACHE_DAY = "public, s-maxage=86400, stale-while-revalidate=604800";
+export const CDN_CACHE_HOUR = "public, s-maxage=3600, stale-while-revalidate=7200";
+export const NO_STORE = "no-store";
+
+/**
+ * Years the schedule API and month navigation accept: previous, current and next year.
+ * Keeps the range rolling instead of a hardcoded cutoff.
+ */
+export function getScheduleYearRange(now: Date = new Date()): { min: number; max: number } {
+  const year = now.getFullYear();
+  return { min: year - 1, max: year + 1 };
+}
+
+/** Round a coordinate to 3 decimals (~110 m) so nearby requests share CDN cache entries. */
+export function roundCoord(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
 
 // Indonesia geographic bounds for input validation
 export const INDONESIA_BOUNDS = {

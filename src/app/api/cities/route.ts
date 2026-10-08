@@ -1,4 +1,4 @@
-import { MYQURAN_API_BASE } from "@/lib/constants";
+import { CDN_CACHE_DAY, MYQURAN_API_BASE } from "@/lib/constants";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q");
 
   if (!q || q.length < 2) {
-    return NextResponse.json({ status: false, data: [] });
+    return NextResponse.json({ status: false, data: [] }, { status: 400 });
   }
 
-  // Sanitize: allow only letters, spaces, dots, and common Indonesian characters
-  const sanitized = q.replace(/[^a-zA-Z\s.\-']/g, "").trim();
+  // Sanitize: allow only letters (any script), spaces, dots, hyphens and apostrophes
+  const sanitized = q.replace(/[^\p{L}\s.\-']/gu, "").trim();
   if (sanitized.length < 2 || sanitized.length > 50) {
-    return NextResponse.json({ status: false, data: [] });
+    return NextResponse.json({ status: false, data: [] }, { status: 400 });
   }
 
   const controller = new AbortController();
@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
 
     // v3 API returns 404 for "not found" — treat as empty results, not an error
     if (res.status === 404) {
-      return NextResponse.json({ status: true, data: [] });
+      return NextResponse.json(
+        { status: true, data: [] },
+        { headers: { "Cache-Control": CDN_CACHE_DAY } }
+      );
     }
 
     if (!res.ok) {
@@ -52,7 +55,9 @@ export async function GET(request: NextRequest) {
           })).filter((c: { id: string }) => c.id)
         : [],
     };
-    return NextResponse.json(safeData);
+    return NextResponse.json(safeData, {
+      headers: safeData.status ? { "Cache-Control": CDN_CACHE_DAY } : undefined,
+    });
   } catch (err) {
     console.error("[cities] Failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(

@@ -82,17 +82,20 @@ describe("GET /api/geocode", () => {
     );
   });
 
-  it("returns status false when Nominatim returns non-ok", async () => {
-    mockFetch.mockResolvedValue({ ok: false });
+  it("returns 502 with status false when Nominatim returns non-ok", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 503 });
     const res = await GET(makeRequest({ lat: "-7.25", lng: "112.43" }));
+    expect(res.status).toBe(502);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
     const json = await res.json();
     expect(json.status).toBe(false);
     expect(json.city).toBe("");
   });
 
-  it("returns status false on fetch error (timeout)", async () => {
+  it("returns 502 with status false on fetch error (timeout)", async () => {
     mockFetch.mockRejectedValue(new Error("AbortError"));
     const res = await GET(makeRequest({ lat: "-7.25", lng: "112.43" }));
+    expect(res.status).toBe(502);
     const json = await res.json();
     expect(json.status).toBe(false);
     expect(json.city).toBe("");
@@ -104,5 +107,14 @@ describe("GET /api/geocode", () => {
     const res = await GET(makeRequest({ lat: "-7.25", lng: "112.43" }));
     const json = await res.json();
     expect(json.status).toBe(false);
+  });
+
+  it("rounds coordinates to 3 decimals and sets CDN cache headers", async () => {
+    const res = await GET(makeRequest({ lat: "-7.251234", lng: "112.438765" }));
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("lat=-7.251&lon=112.439"),
+      expect.any(Object)
+    );
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=86400");
   });
 });

@@ -1,6 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import InstallBanner from "./InstallBanner";
+
+type InstallPromptEvent = Event & {
+  prompt: Mock;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
 // Mock the icon component
 vi.mock("@/components/ui/Icons", () => ({
@@ -97,7 +102,6 @@ describe("InstallBanner", () => {
 
   it("should handle localStorage errors gracefully when checking dismissal", () => {
     // Mock localStorage to throw an error
-    const originalGetItem = localStorage.getItem;
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error("Access denied");
     });
@@ -147,8 +151,8 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Check if it's visible
-    expect(screen.getByText("Pasang Si-Imsak di Home Screen")).toBeInTheDocument();
-    expect(screen.getByText(/"Add to Home Screen"/)).toBeInTheDocument();
+    expect(screen.getByText("Pasang Si-Imsak di Layar Utama")).toBeInTheDocument();
+    expect(screen.getByText(/"Tambah ke Layar Utama"/)).toBeInTheDocument();
   });
 
   it("should show iOS instructions on iPadOS Safari", () => {
@@ -168,14 +172,14 @@ describe("InstallBanner", () => {
 
     render(<InstallBanner />);
 
-    expect(screen.getByText("Pasang Si-Imsak di Home Screen")).toBeInTheDocument();
+    expect(screen.getByText("Pasang Si-Imsak di Layar Utama")).toBeInTheDocument();
   });
 
   it("should show Chromium prompt when beforeinstallprompt fires", () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
-    const event = new Event('beforeinstallprompt') as any;
+    const event = new Event('beforeinstallprompt') as InstallPromptEvent;
     event.prompt = vi.fn();
     event.userChoice = Promise.resolve({ outcome: 'accepted' });
 
@@ -191,7 +195,7 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
-    const event = new Event('beforeinstallprompt') as any;
+    const event = new Event('beforeinstallprompt') as InstallPromptEvent;
     event.prompt = vi.fn().mockResolvedValue(undefined);
     event.userChoice = Promise.resolve({ outcome: 'accepted' });
 
@@ -220,7 +224,7 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
-    const event = new Event('beforeinstallprompt') as any;
+    const event = new Event('beforeinstallprompt') as InstallPromptEvent;
     event.prompt = vi.fn().mockResolvedValue(undefined);
     event.userChoice = Promise.resolve({ outcome: 'dismissed' });
 
@@ -238,7 +242,7 @@ describe("InstallBanner", () => {
     expect(event.prompt).toHaveBeenCalled();
     // Banner should still be visible because outcome was dismissed
     const banner = screen.getByText("Pasang Si-Imsak di perangkatmu").closest('div.relative');
-    expect(banner).toHaveClass("max-h-24");
+    expect(banner).toHaveClass("max-h-32");
   });
 
   it("should dismiss banner when close button is clicked", () => {

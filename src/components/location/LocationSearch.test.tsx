@@ -25,7 +25,7 @@ if (typeof global.AbortController === "undefined") {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     },
-  })) as any;
+  })) as unknown as typeof AbortController;
 }
 
 // Ensure cleanup after each test
@@ -172,7 +172,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota...");
+    const input = screen.getByPlaceholderText("Cari kota");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "jak" } });
@@ -203,7 +203,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota...");
+    const input = screen.getByPlaceholderText("Cari kota");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "xyz" } });
@@ -214,8 +214,10 @@ describe("LocationSearch Component", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Kota tidak ditemukan")).toBeInTheDocument();
+      expect(screen.getByRole("listbox")).toHaveTextContent("Kota tidak ditemukan");
     });
+    // Also announced to screen readers
+    expect(screen.getByRole("status")).toHaveTextContent("Kota tidak ditemukan");
   });
 
   it("selects a location and fetches its schedule", async () => {
@@ -241,7 +243,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota...");
+    const input = screen.getByPlaceholderText("Cari kota");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "ban" } });
@@ -257,7 +259,7 @@ describe("LocationSearch Component", () => {
     });
 
     // Click the result
-    const resultBtn = screen.getByRole("button", { name: "BANDUNG" });
+    const resultBtn = screen.getByRole("option", { name: "BANDUNG" });
     await act(async () => {
       fireEvent.click(resultBtn);
     });
@@ -266,7 +268,7 @@ describe("LocationSearch Component", () => {
     expect(input).toHaveValue("");
 
     // Result dropdown should be closed
-    expect(screen.queryByText("BANDUNG")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "BANDUNG" })).not.toBeInTheDocument();
 
     // LocalStorage should be updated
     const saved = JSON.parse(localStorage.getItem("selectedLocation") || "{}");
@@ -279,7 +281,7 @@ describe("LocationSearch Component", () => {
     });
   });
 
-  it("closes dropdown on Escape key", async () => {
+  it("closes the list on Escape, then clears the text on a second Escape", async () => {
     const mockResults = [{ id: "1", lokasi: "TEST", daerah: "TEST" }];
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: mockResults });
 
@@ -290,7 +292,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota...");
+    const input = screen.getByPlaceholderText("Cari kota");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "tes" } });
@@ -307,7 +309,73 @@ describe("LocationSearch Component", () => {
       fireEvent.keyDown(input, { key: "Escape" });
     });
 
-    expect(screen.queryByText("TEST")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "TEST" })).not.toBeInTheDocument();
+    expect(input).toHaveValue("tes");
+    expect(input).toHaveAttribute("aria-expanded", "false");
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
     expect(input).toHaveValue("");
+  });
+
+  it("selects a result with the arrow keys and Enter", async () => {
+    vi.mocked(searchCities).mockResolvedValue({
+      status: true,
+      data: [
+        { id: "1", lokasi: "KOTA BOGOR", daerah: "JAWA BARAT" },
+        { id: "2", lokasi: "KAB. BOGOR", daerah: "JAWA BARAT" },
+      ],
+    });
+    vi.mocked(getSchedule).mockResolvedValue({ status: true, data: { id: "2", lokasi: "KAB. BOGOR", daerah: "JAWA BARAT", jadwal: [] } });
+
+    render(<LocationSearch />);
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const input = screen.getByRole("combobox", { name: "Cari kota" });
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "bog" } });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    await waitFor(() => {
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    const second = screen.getByRole("option", { name: "KAB. BOGOR" });
+    expect(second).toHaveAttribute("aria-selected", "true");
+    expect(input).toHaveAttribute("aria-activedescendant", second.id);
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+    expect(JSON.parse(localStorage.getItem("selectedLocation") || "{}").id).toBe("2");
+  });
+
+  it("keeps the location prompt open with an explanation when detection fails", async () => {
+    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, error: "Izin lokasi ditolak" });
+
+    render(<LocationSearch />);
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAccessibleName("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?");
+    // Focus moves into the prompt
+    expect(screen.getByRole("button", { name: "Gunakan Lokasi" })).toHaveFocus();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Gunakan Lokasi" }));
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Izin lokasi ditolak");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tutup" })).toBeInTheDocument();
   });
 });

@@ -15,12 +15,27 @@ import {
   formatCountdown,
 } from "@/lib/countdown-helpers";
 
+/** What to say when a time arrives — Imsak, Terbit and Dhuha aren't obligatory prayers */
+export function arrivalMessage(key: string, name: string): { title: string; subtitle: string } {
+  switch (key) {
+    case "imsak":
+      return { title: "Waktu Imsak", subtitle: "Saatnya berhenti makan dan minum" };
+    case "terbit":
+      return { title: "Matahari Terbit", subtitle: "Waktu sholat Subuh telah berakhir" };
+    case "dhuha":
+      return { title: "Waktu Dhuha", subtitle: "Waktu sholat sunnah Dhuha telah masuk" };
+    default:
+      return { title: `Waktunya ${name}!`, subtitle: "Segera tunaikan sholat" };
+  }
+}
+
 export default function CountdownTimer() {
   const countdownSchedule = useStore((s) => s.countdownSchedule);
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
   const setTimeOffset = useStore((s) => s.setTimeOffset);
   const refetchSchedule = useStore((s) => s.refetchSchedule);
+  const setTodayDateStr = useStore((s) => s.setTodayDateStr);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [prayerArrived, setPrayerArrived] = useState<{ name: string; key: string } | null>(null);
@@ -37,7 +52,16 @@ export default function CountdownTimer() {
   const nextPrayerRef = useRef<NextPrayer | null>(null);
 
   useEffect(() => {
-    syncServerTime().then(setTimeOffset).catch(() => {});
+    const sync = () => {
+      syncServerTime(setTimeOffset).then(setTimeOffset).catch(() => {});
+    };
+    sync();
+    // Phones suspend timers in the background — re-sync when the app comes back
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [setTimeOffset]);
 
   const utcOffset = getUtcOffset(location.timezone);
@@ -75,13 +99,19 @@ export default function CountdownTimer() {
         }
       }
       lastDateRef.current = currentDateStr;
+      setTodayDateStr(currentDateStr);
 
       const next = getNextPrayerCyclic(countdownSchedule, now, utcOffset);
       if (next) {
         refetchCountRef.current = 0;
         setLoadError(false);
         nextPrayerRef.current = next;
-        setNextPrayer(next);
+        // Only re-render when the target prayer changes, not on every 3s check
+        setNextPrayer((prev) =>
+          prev && prev.key === next.key && prev.time === next.time && prev.isTomorrow === next.isTomorrow
+            ? prev
+            : next
+        );
         const formatted = formatCountdown(next.remainingMs);
         if (hoursRef.current) hoursRef.current.textContent = formatted.hours;
         if (minutesRef.current) minutesRef.current.textContent = formatted.minutes;
@@ -100,7 +130,7 @@ export default function CountdownTimer() {
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
-  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule]);
+  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule, setTodayDateStr]);
 
   // Fast countdown tick — only updates display, no state recalculation
   useEffect(() => {
@@ -133,9 +163,25 @@ export default function CountdownTimer() {
 
   const PrayerIcon = nextPrayer ? PRAYER_ICON_MAP[nextPrayer.key] : null;
   const ArrivedIcon = prayerArrived ? PRAYER_ICON_MAP[prayerArrived.key] : null;
+  const arrived = prayerArrived ? arrivalMessage(prayerArrived.key, prayerArrived.name) : null;
+  const nextLabel = nextPrayer
+    ? nextPrayer.isTomorrow
+      ? "Menuju Imsak Besok"
+      : `Menuju Waktu ${nextPrayer.name}`
+    : "";
+
+  // One persistent live region: screen readers announce changes of the target
+  // prayer and arrivals, not the per-second digits.
+  const announcement = arrived
+    ? `${arrived.title} ${arrived.subtitle}.`
+    : nextPrayer
+      ? `${nextLabel}, pukul ${nextPrayer.time} ${location.timezone}.`
+      : loadError
+        ? "Jadwal tidak tersedia."
+        : "";
 
   return (
-    <div role="timer" aria-label="Countdown waktu sholat" className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-green-800 to-teal-800 p-4 text-white shadow-xl shadow-green-900/20 md:min-h-[252px] md:p-6">
+    <section aria-label="Hitung mundur waktu sholat" className="relative min-h-[220px] overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-green-800 to-teal-800 p-4 text-white shadow-xl shadow-green-900/20 md:min-h-[252px] md:p-6">
       {/* Geometric pattern overlay */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23fff' fill-opacity='1'%3E%3Cpath d='M20 0l4 8h-8zM0 20l8-4v8zM40 20l-8 4v-8zM20 40l-4-8h8z'/%3E%3C/g%3E%3C/svg%3E")`,
@@ -147,8 +193,8 @@ export default function CountdownTimer() {
           type="button"
           onClick={handleRefreshLocation}
           disabled={isRefreshing}
-          aria-label="Perbarui lokasi"
-          className="group mb-3 flex min-h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2 text-left transition-all hover:bg-white/[0.12] active:scale-[0.98] disabled:opacity-60"
+          aria-label={`${location.cityName}, ${location.province}. Perbarui lokasi dengan GPS`}
+          className="focus-ring group mb-3 flex min-h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2 text-left transition-all hover:bg-white/[0.12] active:scale-[0.98] disabled:opacity-60"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/20">
             <MapPinIcon size={16} className="text-green-300" />
@@ -158,11 +204,11 @@ export default function CountdownTimer() {
               <p className="truncate text-xs font-semibold text-green-100">
                 {location.cityName}
               </p>
-              <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold leading-none text-green-300">
+              <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-bold leading-none text-green-200">
                 {location.timezone}
               </span>
             </div>
-            <p className="mt-0.5 truncate text-[10px] text-green-400">
+            <p className="mt-0.5 truncate text-[11px] text-green-200/90">
               {location.province}
             </p>
           </div>
@@ -175,7 +221,7 @@ export default function CountdownTimer() {
           </div>
         </button>
         {refreshError && (
-          <p className="-mt-1.5 mb-2 text-center text-[10px] font-medium text-red-300">
+          <p role="alert" className="-mt-1.5 mb-2 text-center text-xs font-medium text-red-200">
             {refreshError}
           </p>
         )}
@@ -185,43 +231,43 @@ export default function CountdownTimer() {
             <div className="mb-3 flex items-center justify-center gap-2">
               {ArrivedIcon && <ArrivedIcon size={24} className="animate-pulse-glow text-amber-300" />}
             </div>
-            <p aria-live="assertive" className="text-lg font-extrabold text-amber-300 md:text-xl">
-              Waktunya {prayerArrived.name}!
+            <p className="text-lg font-extrabold text-amber-300 md:text-xl">
+              {arrived?.title}
             </p>
-            <p className="mt-1 text-[11px] font-medium text-green-300/80">
-              Segera tunaikan shalat
+            <p className="mt-1 text-xs font-medium text-green-200">
+              {arrived?.subtitle}
             </p>
           </div>
         ) : nextPrayer ? (
           <div className="text-center">
             <div className="mb-2 flex items-center justify-center gap-2">
               {PrayerIcon && <PrayerIcon size={18} className="text-amber-300" />}
-              <p aria-live="polite" className="text-[11px] font-bold uppercase tracking-[0.2em] text-green-200">
-                {nextPrayer.isTomorrow ? "Menuju Imsak Besok" : `Menuju Waktu ${nextPrayer.name}`}
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-200">
+                {nextLabel}
               </p>
             </div>
 
             {/* Countdown digits — refs written directly to bypass React re-renders */}
-            <div className="flex items-center justify-center gap-1.5 md:gap-2">
+            <div role="timer" aria-label={`Sisa waktu ${nextLabel.toLowerCase()}`} className="flex items-center justify-center gap-1.5 md:gap-2">
               <div className="rounded-xl bg-white/10 px-3 py-2 backdrop-blur-sm md:px-5 md:py-3">
                 <span ref={hoursRef} className="font-mono text-3xl font-extrabold tracking-tight md:text-5xl">
                   --
                 </span>
-                <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-green-300">Jam</p>
+                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-green-200">Jam</p>
               </div>
               <span className="animate-countdown-pulse font-mono text-2xl font-bold text-green-300 md:text-4xl">:</span>
               <div className="rounded-xl bg-white/10 px-3 py-2 backdrop-blur-sm md:px-5 md:py-3">
                 <span ref={minutesRef} className="font-mono text-3xl font-extrabold tracking-tight md:text-5xl">
                   --
                 </span>
-                <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-green-300">Menit</p>
+                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-green-200">Menit</p>
               </div>
               <span className="animate-countdown-pulse font-mono text-2xl font-bold text-green-300 md:text-4xl">:</span>
               <div className="rounded-xl bg-white/10 px-3 py-2 backdrop-blur-sm md:px-5 md:py-3">
                 <span ref={secondsRef} className="font-mono text-3xl font-extrabold tracking-tight md:text-5xl">
                   --
                 </span>
-                <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-green-300">Detik</p>
+                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-green-200">Detik</p>
               </div>
             </div>
 
@@ -233,11 +279,11 @@ export default function CountdownTimer() {
           </div>
         ) : (
           <div className="py-3 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-green-300">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-200">
               {loadError ? "Jadwal Tidak Tersedia" : "Memuat Jadwal..."}
             </p>
             {loadError ? (
-              <p className="mt-2 text-[10px] text-green-400/70">
+              <p className="mt-2 text-xs text-green-200">
                 Coba pilih lokasi atau periksa koneksi internet
               </p>
             ) : (
@@ -248,6 +294,9 @@ export default function CountdownTimer() {
           </div>
         )}
       </div>
-    </div>
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
+    </section>
   );
 }

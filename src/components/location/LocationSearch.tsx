@@ -5,25 +5,24 @@ import { Location } from "@/types";
 import { searchCities, getSchedule } from "@/lib/api";
 import { getTimezone } from "@/lib/timezone";
 import { useStore } from "@/store/useStore";
-import { SearchIcon, MapPinIcon, XIcon } from "@/components/ui/Icons";
+import CityCombobox from "@/components/ui/CityCombobox";
 import { detectAndUpdateLocation } from "@/lib/detect-location";
 
 export default function LocationSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Location[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [promptError, setPromptError] = useState("");
+  const promptButtonRef = useRef<HTMLButtonElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const location = useStore((s) => s.location);
   const setLocation = useStore((s) => s.setLocation);
   const setSchedule = useStore((s) => s.setSchedule);
-  const setScheduleLoading = useStore((s) => s.setScheduleLoading);
+  const beginScheduleLoad = useStore((s) => s.beginScheduleLoad);
   const setScheduleError = useStore((s) => s.setScheduleError);
   const setViewMonth = useStore((s) => s.setViewMonth);
   const setCountdownSchedule = useStore((s) => s.setCountdownSchedule);
@@ -45,7 +44,7 @@ export default function LocationSearch() {
   const fetchSchedule = useCallback(
     async (cityId: string, daerah: string, loc: Location) => {
       const now = new Date();
-      setScheduleLoading(true);
+      beginScheduleLoad(cityId, now.getFullYear(), now.getMonth() + 1);
       try {
         const res = await getSchedule(cityId, now.getFullYear(), now.getMonth() + 1);
         if (res.status && res.data?.jadwal) {
@@ -65,22 +64,30 @@ export default function LocationSearch() {
         );
       }
     },
-    [setLocation, setSchedule, setScheduleLoading, setScheduleError, setViewMonth, setCountdownSchedule]
+    [setLocation, setSchedule, beginScheduleLoad, setScheduleError, setViewMonth, setCountdownSchedule]
   );
 
   const detectLocation = useCallback(async () => {
     setIsDetecting(true);
+    setPromptError("");
     const result = await detectAndUpdateLocation();
     setIsDetecting(false);
     if (result.success) {
       setShowLocationPrompt(false);
     } else {
-      setShowLocationPrompt(false);
-      if (result.error?.includes("ditolak")) {
-        setScheduleError("Izin lokasi ditolak. Gunakan pencarian manual di atas.");
-      }
+      // Keep the prompt open and explain — the schedule already on screen stays usable
+      setPromptError(
+        result.error?.includes("ditolak")
+          ? "Izin lokasi ditolak. Ketik nama kotamu di kolom pencarian."
+          : `${result.error || "Lokasi tidak dapat dideteksi"}. Ketik nama kotamu di kolom pencarian.`
+      );
     }
-  }, [setScheduleError]);
+  }, []);
+
+  // Move focus into the prompt when it appears so keyboard and screen reader users find it
+  useEffect(() => {
+    if (showLocationPrompt) promptButtonRef.current?.focus();
+  }, [showLocationPrompt]);
 
   const hasInitialized = useRef(false);
 
@@ -143,32 +150,40 @@ export default function LocationSearch() {
     });
   }, [fetchSchedule, location.cityId, location.cityName, location.province]);
 
-  // Auto-refresh: check every hour if month changed
+  // Auto-refresh when the month changes: checked hourly, and whenever the app comes
+  // back to the foreground (timers are suspended while a phone is locked).
   useEffect(() => {
     let lastMonth = new Date().getMonth();
-    const interval = setInterval(() => {
+    const checkMonth = () => {
       const currentMonth = new Date().getMonth();
-      if (currentMonth !== lastMonth) {
-        lastMonth = currentMonth;
-        let savedLocation: string | null = null;
+      if (currentMonth === lastMonth) return;
+      lastMonth = currentMonth;
+      let savedLocation: string | null = null;
+      try {
+        savedLocation = localStorage.getItem("selectedLocation");
+      } catch (e) {
+        console.warn("Failed to get selected location for auto-refresh", e);
+      }
+      if (savedLocation) {
         try {
-          savedLocation = localStorage.getItem("selectedLocation");
-        } catch (e) {
-          console.warn("Failed to get selected location for auto-refresh", e);
-        }
-        if (savedLocation) {
-          try {
-            const parsed = JSON.parse(savedLocation);
-            if (parsed.id && parsed.lokasi) {
-              fetchSchedule(parsed.id, parsed.daerah || "", parsed);
-            }
-          } catch (e) {
-            console.warn("Failed to parse saved location for auto-refresh", e);
+          const parsed = JSON.parse(savedLocation);
+          if (parsed.id && parsed.lokasi) {
+            fetchSchedule(parsed.id, parsed.daerah || "", parsed);
           }
+        } catch (e) {
+          console.warn("Failed to parse saved location for auto-refresh", e);
         }
       }
-    }, 3600000); // 1 hour
-    return () => clearInterval(interval);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkMonth();
+    };
+    const interval = setInterval(checkMonth, 3600000); // 1 hour
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchSchedule]);
 
   useEffect(() => {
@@ -176,7 +191,6 @@ export default function LocationSearch() {
     if (abortRef.current) abortRef.current.abort();
     if (query.length < 2) {
       setResults([]);
-      setIsOpen(false);
       setIsSearching(false);
       return;
     }
@@ -189,13 +203,9 @@ export default function LocationSearch() {
         if (!controller.signal.aborted) {
           const data = res.status && res.data ? res.data : [];
           setResults(data);
-          setIsOpen(true);
         }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setResults([]);
-          setIsOpen(true);
-        }
+      } catch {
+        if (!controller.signal.aborted) setResults([]);
       } finally {
         if (!controller.signal.aborted) setIsSearching(false);
       }
@@ -206,19 +216,9 @@ export default function LocationSearch() {
     };
   }, [query]);
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
   const handleSelect = (city: Location) => {
     setQuery("");
-    setIsOpen(false);
+    setShowLocationPrompt(false);
     try {
       localStorage.setItem("selectedLocation", JSON.stringify(city));
       localStorage.removeItem("detectedKecamatan"); // clean up legacy key
@@ -238,25 +238,44 @@ export default function LocationSearch() {
   };
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-[260px]">
+    <div className="relative w-full max-w-[260px]">
       {/* Location permission prompt */}
       {showLocationPrompt && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-lg dark:border-emerald-800 dark:bg-emerald-900/40">
-          <p className="mb-2 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+        <div
+          role="dialog"
+          aria-labelledby="location-prompt-title"
+          aria-describedby="location-prompt-desc"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") handleDismissPrompt();
+          }}
+          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-lg dark:border-emerald-800 dark:bg-emerald-950"
+        >
+          <p id="location-prompt-title" className="mb-1 text-sm font-semibold text-emerald-900 dark:text-emerald-100">
             Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?
           </p>
+          <p id="location-prompt-desc" className="mb-2 text-xs text-emerald-800 dark:text-emerald-200">
+            Saat ini menampilkan jadwal {location.cityName} sebagai contoh. Anda juga bisa mencari kota secara manual.
+          </p>
+          {promptError && (
+            <p role="alert" className="mb-2 text-xs font-medium text-red-700 dark:text-red-300">
+              {promptError}
+            </p>
+          )}
           <div className="flex gap-2">
             <button
+              ref={promptButtonRef}
               type="button"
               onClick={detectLocation}
               disabled={isDetecting}
-              className="flex-1 cursor-pointer rounded-md bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              className="focus-ring min-h-11 flex-1 cursor-pointer rounded-md bg-emerald-700 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
             >
               {isDetecting ? (
                 <span className="flex items-center justify-center gap-1.5">
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span aria-hidden="true" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Mendeteksi...
                 </span>
+              ) : promptError ? (
+                "Coba Lagi"
               ) : (
                 "Gunakan Lokasi"
               )}
@@ -264,78 +283,26 @@ export default function LocationSearch() {
             <button
               type="button"
               onClick={handleDismissPrompt}
-              className="cursor-pointer rounded-md px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-800/50"
+              className="focus-ring min-h-11 cursor-pointer rounded-md px-3 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-800/50"
             >
-              Nanti
+              {promptError ? "Tutup" : "Nanti"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="relative">
-        <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" />
-        <input
-          ref={inputRef}
-          type="text"
-          aria-label="Cari kota"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setIsOpen(false);
-              setQuery("");
-              (e.target as HTMLInputElement).blur();
-            }
-          }}
-          placeholder="Cari kota..."
-          className="w-full rounded-lg border border-slate-200/80 bg-slate-50/80 py-2 pl-9 pr-9 text-xs font-medium text-slate-700 placeholder-slate-400 transition-all focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800"
-        />
-        {query && !isSearching && (
-          <button
-            type="button"
-            aria-label="Bersihkan pencarian"
-            onClick={() => {
-              setQuery("");
-              setIsOpen(false);
-              inputRef.current?.focus();
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-sm cursor-pointer"
-          >
-            <XIcon size={14} />
-          </button>
-        )}
-        {isSearching && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          </div>
-        )}
-      </div>
-
-      {isOpen && (
-        <ul className="absolute z-50 mt-1.5 max-h-60 w-full overflow-auto rounded-lg border border-slate-100 bg-white py-1 shadow-xl shadow-black/[0.08] dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30">
-          {results.length > 0 ? (
-            results.map((city) => (
-              <li key={city.id}>
-                <button
-                  type="button"
-                  onClick={() => handleSelect(city)}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                >
-                  <MapPinIcon size={14} className="shrink-0 text-slate-300 dark:text-slate-500" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                    {city.lokasi}
-                  </span>
-                </button>
-              </li>
-            ))
-          ) : (
-            <li className="px-3 py-2.5 text-center text-xs text-slate-400 dark:text-slate-500">
-              Kota tidak ditemukan
-            </li>
-          )}
-        </ul>
-      )}
+      <CityCombobox
+        variant="compact"
+        label="Cari kota"
+        placeholder="Cari kota"
+        query={query}
+        onQueryChange={setQuery}
+        results={results}
+        getKey={(city) => city.id}
+        getLabel={(city) => city.lokasi}
+        onSelect={handleSelect}
+        isSearching={isSearching}
+      />
     </div>
   );
 }

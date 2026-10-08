@@ -1,5 +1,4 @@
 import { useStore } from "@/store/useStore";
-import { getCityGuess } from "./cities";
 import { reverseGeocodeCity, searchCities, getSchedule } from "./api";
 import { getTimezone } from "./timezone";
 import { Location } from "@/types";
@@ -30,7 +29,9 @@ export function detectAndUpdateLocation(): Promise<DetectionResult> {
         // Try reverse geocoding first, fall back to local centroid database
         let geocodedCity = "";
         try { geocodedCity = await reverseGeocodeCity(latitude, longitude); } catch {}
-        const cityGuess = geocodedCity || getCityGuess(latitude, longitude);
+        // The 500+ city table is only loaded when geocoding failed — keeps it out of the initial bundle
+        const cityGuess =
+          geocodedCity || (await import("./cities")).getCityGuess(latitude, longitude);
         if (!cityGuess) {
           resolve({ success: false, error: "Tidak dapat mendeteksi kota" });
           return;
@@ -57,7 +58,7 @@ export function detectAndUpdateLocation(): Promise<DetectionResult> {
 
           // Fetch prayer schedule
           const now = new Date();
-          store.setScheduleLoading(true);
+          store.beginScheduleLoad(city.id, now.getFullYear(), now.getMonth() + 1);
 
           const res = await getSchedule(city.id, now.getFullYear(), now.getMonth() + 1);
           if (res.status && res.data?.jadwal) {

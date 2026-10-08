@@ -11,6 +11,9 @@ const defaultProps = (size: number = 24): SVGProps<SVGSVGElement> => ({
   strokeWidth: 1.5,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
+  // Icons are decorative: the surrounding text or aria-label carries the meaning
+  "aria-hidden": true,
+  focusable: false,
 });
 
 // Crescent moon + plate (pre-dawn meal)

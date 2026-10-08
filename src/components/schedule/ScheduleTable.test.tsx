@@ -23,6 +23,7 @@ vi.mock("@/lib/timezone", () => ({
 }));
 
 const mockFetchScheduleForMonth = vi.fn();
+const CURRENT_YEAR = new Date().getFullYear();
 
 const defaultStoreState = {
   schedule: {
@@ -45,7 +46,7 @@ const defaultStoreState = {
 describe("ScheduleTable Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector(defaultStoreState)
     );
   });
@@ -56,7 +57,7 @@ describe("ScheduleTable Component", () => {
   });
 
   it("renders error state when schedule fetch fails", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         schedule: { data: [], loading: false, error: "Gagal memuat jadwal" },
@@ -74,7 +75,7 @@ describe("ScheduleTable Component", () => {
   });
 
   it("renders skeleton rows when loading", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         schedule: { data: [], loading: true, error: null },
@@ -105,7 +106,7 @@ describe("ScheduleTable Component", () => {
       },
     ];
 
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         schedule: { data: mockData, loading: false, error: null },
@@ -126,9 +127,10 @@ describe("ScheduleTable Component", () => {
   });
 
   it("allows navigating to previous and next month", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
+        viewYear: CURRENT_YEAR, // navigation is limited to last..next year
         schedule: { data: [{
           tanggal: "Selasa, 12/03/2024",
           date: "2024-03-12",
@@ -150,14 +152,14 @@ describe("ScheduleTable Component", () => {
     const nextButton = screen.getByLabelText("Bulan berikutnya");
 
     fireEvent.click(prevButton);
-    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(2024, 2);
+    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(CURRENT_YEAR, 2);
 
     fireEvent.click(nextButton);
-    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(2024, 4);
+    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(CURRENT_YEAR, 4);
   });
 
   it("navigates to current month when 'Hari Ini' is clicked", () => {
-     (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+     (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         viewMonth: 2, // Not current month
@@ -190,5 +192,37 @@ describe("ScheduleTable Component", () => {
     expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(2024, 3);
 
     vi.useRealTimers();
+  });
+
+  it("disables month navigation outside the supported year range", () => {
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({
+        ...defaultStoreState,
+        viewYear: CURRENT_YEAR - 1,
+        viewMonth: 1,
+        schedule: { data: [{ date: "2024-01-01", tanggal: "Senin, 01/01/2024" }], loading: false, error: null },
+      })
+    );
+    render(<ScheduleTable />);
+    expect(screen.getByLabelText("Bulan sebelumnya")).toBeDisabled();
+    expect(screen.getByLabelText("Bulan berikutnya")).not.toBeDisabled();
+  });
+
+  it("keeps cached rows visible while revalidating", () => {
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({
+        ...defaultStoreState,
+        schedule: {
+          data: [{
+            tanggal: "Selasa, 12/03/2024", date: "2024-03-12", imsak: "04:32", subuh: "04:42",
+            terbit: "05:54", dhuha: "06:21", dzuhur: "12:05", ashar: "15:10", maghrib: "18:10", isya: "19:18",
+          }],
+          loading: true,
+          error: null,
+        },
+      })
+    );
+    render(<ScheduleTable />);
+    expect(screen.getAllByText("12:05").length).toBeGreaterThan(0);
   });
 });

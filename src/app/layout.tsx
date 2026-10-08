@@ -83,7 +83,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         {CLARITY_ID && (
-          <Script id="microsoft-clarity" strategy="afterInteractive">
+          <Script id="microsoft-clarity" strategy="lazyOnload">
             {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "${CLARITY_ID}");`}
           </Script>
         )}
@@ -91,9 +91,6 @@ export default function RootLayout({
       <body className={`${jakarta.variable} ${jetbrains.variable} antialiased`}>
         <Script id="theme-init" strategy="beforeInteractive">
           {`(function(){try{var t=localStorage.getItem('theme');if(t!=='light'){document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`}
-        </Script>
-        <Script id="sw-register" strategy="afterInteractive">
-          {`if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}`}
         </Script>
         {children}
         <Analytics />

@@ -1,6 +1,6 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
-import { INDONESIA_BOUNDS } from "@/lib/constants";
+import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, roundCoord } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 25;
@@ -13,9 +13,11 @@ const OVERPASS_ENDPOINTS = [
 
 const FETCH_TIMEOUT = 10000;
 
-async function fetchSingleEndpoint(endpoint: string, query: string): Promise<Response> {
+async function fetchSingleEndpoint(endpoint: string, query: string, signal: AbortSignal): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+  const onRaceSettled = () => controller.abort();
+  signal.addEventListener("abort", onRaceSettled, { once: true });
   try {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -23,20 +25,34 @@ async function fetchSingleEndpoint(endpoint: string, query: string): Promise<Res
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       signal: controller.signal,
     });
-    clearTimeout(timeout);
     if (res.ok) return res;
     throw new Error(`HTTP ${res.status}`);
   } catch (err) {
-    clearTimeout(timeout);
     const msg = err instanceof Error ? err.message : "unknown error";
     throw new Error(`${endpoint}: ${msg}`);
+  } finally {
+    clearTimeout(timeout);
+    signal.removeEventListener("abort", onRaceSettled);
   }
 }
 
-async function fetchOverpass(query: string): Promise<Response> {
+/**
+ * Race all mirrors and use the first success. The losing requests are aborted
+ * once a winner is in, so each search costs the public mirrors one full query.
+ */
+async function fetchOverpass(query: string): Promise<unknown> {
+  const race = new AbortController();
   try {
     return await Promise.any(
-      OVERPASS_ENDPOINTS.map((ep) => fetchSingleEndpoint(ep, query))
+      OVERPASS_ENDPOINTS.map(async (ep) => {
+        const res = await fetchSingleEndpoint(ep, query, race.signal);
+        // Read the body before aborting the others — abort would cancel this stream too
+        try {
+          return await res.json();
+        } catch {
+          throw new Error(`${ep}: invalid JSON`);
+        }
+      })
     );
   } catch (err) {
     if (err instanceof AggregateError) {
@@ -44,6 +60,8 @@ async function fetchOverpass(query: string): Promise<Response> {
       throw new Error(`All Overpass endpoints failed: ${details}`);
     }
     throw err;
+  } finally {
+    race.abort();
   }
 }
 
@@ -91,16 +109,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const query = buildOverpassQuery(latNum, lngNum, radiusNum);
-    const res = await fetchOverpass(query);
-    const data = await res.json();
-    const mosques = parseOverpassResponse(data, latNum, lngNum);
+    // ~110 m precision: the client recomputes exact distances, and rounding keeps
+    // nearby users on the same CDN cache entry.
+    const qLat = roundCoord(latNum);
+    const qLng = roundCoord(lngNum);
+    const query = buildOverpassQuery(qLat, qLng, radiusNum);
+    const data = await fetchOverpass(query);
+    const mosques = parseOverpassResponse(data as Parameters<typeof parseOverpassResponse>[0], qLat, qLng);
 
     return NextResponse.json(
       { status: true, data: mosques },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=7200",
+          "Cache-Control": CDN_CACHE_HOUR,
         },
       }
     );

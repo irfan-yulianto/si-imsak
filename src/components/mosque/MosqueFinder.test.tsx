@@ -53,7 +53,7 @@ describe("MosqueFinder Component - U6 Fixes", () => {
 
     // Reset store state
     useStore.setState({
-      location: { id: "test-city", cityName: "TEST CITY", province: "TEST PROV" },
+      location: { cityId: "test-city", cityName: "TEST CITY", province: "TEST PROV", timezone: "WIB" },
       userCoords: { lat: -6.2, lng: 106.8 },
       isOffline: false
     });
@@ -79,7 +79,7 @@ describe("MosqueFinder Component - U6 Fixes", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const refreshBtn = screen.getByText("Refresh");
+    const refreshBtn = screen.getByRole("button", { name: "Muat ulang daftar masjid" });
 
     await act(async () => {
       fireEvent.click(refreshBtn);
@@ -113,7 +113,7 @@ describe("MosqueFinder Component - U6 Fixes", () => {
     }));
 
     await waitFor(() => {
-      expect(screen.getByText("Server gagal memuat data masjid. Coba tekan Refresh.")).toBeInTheDocument();
+      expect(screen.getByText("Server gagal memuat data masjid. Coba tekan Muat Ulang.")).toBeInTheDocument();
     });
   });
 

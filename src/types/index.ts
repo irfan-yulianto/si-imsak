@@ -30,6 +30,8 @@ export interface ScheduleDay {
 
 export interface ScheduleResponse {
   status: boolean;
+  /** True when upstream was missing some days of the month (response is not cached). */
+  partial?: boolean;
   data?: {
     id: string;
     lokasi: string;

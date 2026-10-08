@@ -210,3 +210,36 @@ describe("getSchedule", () => {
     expect(result).toEqual(mockSchedule);
   });
 });
+
+describe("getSchedule request sharing and partial months", () => {
+  const ok = (body: object) => ({ ok: true, json: () => Promise.resolve(body) });
+
+  it("shares one request between concurrent callers for the same month", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(ok({ status: true, data: { jadwal: [] } }));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const [a, b] = await Promise.all([
+      getSchedule("abc", 2026, 3),
+      getSchedule("abc", 2026, 3),
+    ]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(a).toBe(b);
+
+    // Once settled, a new call fetches again
+    await getSchedule("abc", 2026, 3);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not cache partial months in localStorage", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok({ status: true, partial: true, data: { jadwal: [] } })));
+    await getSchedule("abc", 2026, 4);
+    expect(localStorage.getItem("schedule_abc_2026_4")).toBeNull();
+  });
+});
+
+describe("searchCities with an invalid query", () => {
+  it("treats a 400 response as no results", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400 }));
+    expect(await searchCities("12")).toEqual({ status: false, data: [] });
+  });
+});
