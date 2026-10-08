@@ -13,16 +13,18 @@ export default function TodayCard() {
   const schedule = useStore((s) => s.schedule);
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
+  // Kept current by the countdown, so the card rolls over at midnight
+  const storeTodayDateStr = useStore((s) => s.todayDateStr);
   const utcOffset = getUtcOffset(location.timezone);
 
   const { todaySchedule, hijriDate, todayDateStr } = useMemo(() => {
     const now = getAdjustedTime(timeOffset);
     const localTime = new Date(now.getTime() + utcOffset * 3600000);
-    const dateStr = localTime.toISOString().split("T")[0];
+    const dateStr = storeTodayDateStr || localTime.toISOString().split("T")[0];
     const today = countdownSchedule.find((s) => s.date === dateStr);
     const hijri = getHijriDate(dateStr);
     return { todaySchedule: today, hijriDate: hijri, todayDateStr: dateStr };
-  }, [countdownSchedule, timeOffset, utcOffset]);
+  }, [countdownSchedule, timeOffset, utcOffset, storeTodayDateStr]);
 
   // Active prayer highlight — only re-renders when prayer actually transitions
   const [currentPrayerIdx, setCurrentPrayerIdx] = useState(-1);
@@ -66,9 +68,18 @@ export default function TodayCard() {
       }
     }
 
+    // Re-check right after each minute boundary so the highlight switches on time
+    let timer: ReturnType<typeof setTimeout>;
+    function scheduleNextCheck() {
+      const msIntoMinute = (Date.now() + timeOffset) % 60000;
+      timer = setTimeout(() => {
+        computeIdx();
+        scheduleNextCheck();
+      }, 60000 - msIntoMinute + 50);
+    }
     computeIdx();
-    const interval = setInterval(computeIdx, 60000);
-    return () => clearInterval(interval);
+    scheduleNextCheck();
+    return () => clearTimeout(timer);
   }, [todaySchedule, timeOffset, utcOffset, prayerMinutesArray]);
 
   if (!todaySchedule) {

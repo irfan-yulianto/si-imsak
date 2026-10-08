@@ -23,7 +23,7 @@ export default function LocationSearch() {
   const location = useStore((s) => s.location);
   const setLocation = useStore((s) => s.setLocation);
   const setSchedule = useStore((s) => s.setSchedule);
-  const setScheduleLoading = useStore((s) => s.setScheduleLoading);
+  const beginScheduleLoad = useStore((s) => s.beginScheduleLoad);
   const setScheduleError = useStore((s) => s.setScheduleError);
   const setViewMonth = useStore((s) => s.setViewMonth);
   const setCountdownSchedule = useStore((s) => s.setCountdownSchedule);
@@ -45,7 +45,7 @@ export default function LocationSearch() {
   const fetchSchedule = useCallback(
     async (cityId: string, daerah: string, loc: Location) => {
       const now = new Date();
-      setScheduleLoading(true);
+      beginScheduleLoad(cityId, now.getFullYear(), now.getMonth() + 1);
       try {
         const res = await getSchedule(cityId, now.getFullYear(), now.getMonth() + 1);
         if (res.status && res.data?.jadwal) {
@@ -65,7 +65,7 @@ export default function LocationSearch() {
         );
       }
     },
-    [setLocation, setSchedule, setScheduleLoading, setScheduleError, setViewMonth, setCountdownSchedule]
+    [setLocation, setSchedule, beginScheduleLoad, setScheduleError, setViewMonth, setCountdownSchedule]
   );
 
   const detectLocation = useCallback(async () => {
@@ -143,32 +143,40 @@ export default function LocationSearch() {
     });
   }, [fetchSchedule, location.cityId, location.cityName, location.province]);
 
-  // Auto-refresh: check every hour if month changed
+  // Auto-refresh when the month changes: checked hourly, and whenever the app comes
+  // back to the foreground (timers are suspended while a phone is locked).
   useEffect(() => {
     let lastMonth = new Date().getMonth();
-    const interval = setInterval(() => {
+    const checkMonth = () => {
       const currentMonth = new Date().getMonth();
-      if (currentMonth !== lastMonth) {
-        lastMonth = currentMonth;
-        let savedLocation: string | null = null;
+      if (currentMonth === lastMonth) return;
+      lastMonth = currentMonth;
+      let savedLocation: string | null = null;
+      try {
+        savedLocation = localStorage.getItem("selectedLocation");
+      } catch (e) {
+        console.warn("Failed to get selected location for auto-refresh", e);
+      }
+      if (savedLocation) {
         try {
-          savedLocation = localStorage.getItem("selectedLocation");
-        } catch (e) {
-          console.warn("Failed to get selected location for auto-refresh", e);
-        }
-        if (savedLocation) {
-          try {
-            const parsed = JSON.parse(savedLocation);
-            if (parsed.id && parsed.lokasi) {
-              fetchSchedule(parsed.id, parsed.daerah || "", parsed);
-            }
-          } catch (e) {
-            console.warn("Failed to parse saved location for auto-refresh", e);
+          const parsed = JSON.parse(savedLocation);
+          if (parsed.id && parsed.lokasi) {
+            fetchSchedule(parsed.id, parsed.daerah || "", parsed);
           }
+        } catch (e) {
+          console.warn("Failed to parse saved location for auto-refresh", e);
         }
       }
-    }, 3600000); // 1 hour
-    return () => clearInterval(interval);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkMonth();
+    };
+    const interval = setInterval(checkMonth, 3600000); // 1 hour
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchSchedule]);
 
   useEffect(() => {

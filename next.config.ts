@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 
+// One timestamp per build, shared by the server and client bundles: the store uses it
+// as "now" for the prerendered first render, and the service worker URL carries the
+// build id so each deploy installs a fresh worker and cache.
+// next.config is evaluated by several build processes; storing the value in the
+// environment lets the child processes (which inherit it) reuse the same timestamp.
+process.env.SI_IMSAK_BUILD_TIME ||= String(Date.now());
+const BUILD_TIME = process.env.SI_IMSAK_BUILD_TIME;
+const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA || BUILD_TIME).slice(0, 12);
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_TIME: BUILD_TIME,
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
+  },
   async headers() {
     return [
       {

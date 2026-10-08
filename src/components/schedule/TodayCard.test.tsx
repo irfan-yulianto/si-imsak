@@ -200,7 +200,7 @@ describe("TodayCard", () => {
     vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T04:46:00Z"));
 
     act(() => {
-      vi.advanceTimersByTime(60000); // Trigger the setInterval(..., 60000)
+      vi.advanceTimersByTime(61000); // past the next minute-boundary re-check
     });
 
     // Now Dzuhur should be highlighted

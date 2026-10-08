@@ -218,17 +218,22 @@ export default function ScheduleTable() {
   const fetchScheduleForMonth = useStore((s) => s.fetchScheduleForMonth);
   const utcOffset = getUtcOffset(location.timezone);
   const todayRef = useRef<HTMLDivElement>(null);
+  // Skeletons only on a cold load; revalidating cached data keeps it on screen
+  const showSkeleton = schedule.loading && schedule.data.length === 0;
   const [todayVisible, setTodayVisible] = useState(true);
 
   const scrollToToday = useCallback(() => {
     todayRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
+  // todayDateStr is kept current by the countdown, so "today" rolls over at midnight
+  const storeTodayDateStr = useStore((s) => s.todayDateStr);
   const todayDate = useMemo(() => {
+    if (storeTodayDateStr) return storeTodayDateStr;
     const now = getAdjustedTime(timeOffset);
     const localTime = new Date(now.getTime() + utcOffset * 3600000);
     return localTime.toISOString().split("T")[0];
-  }, [timeOffset, utcOffset]);
+  }, [storeTodayDateStr, timeOffset, utcOffset]);
 
   const processedSchedule = useMemo(() => {
     return schedule.data.map(day => {
@@ -243,10 +248,10 @@ export default function ScheduleTable() {
     });
   }, [schedule.data]);
 
-  const isCurrentMonth = useMemo(() => {
-    const now = new Date();
-    return viewMonth === now.getMonth() + 1 && viewYear === now.getFullYear();
-  }, [viewMonth, viewYear]);
+  const isCurrentMonth = useMemo(
+    () => todayDate.startsWith(`${viewYear}-${String(viewMonth).padStart(2, "0")}-`),
+    [todayDate, viewMonth, viewYear]
+  );
 
   useEffect(() => {
     const el = todayRef.current;
@@ -361,7 +366,7 @@ export default function ScheduleTable() {
               </tr>
             </thead>
             <tbody>
-              {schedule.loading ? (
+              {showSkeleton ? (
                 <SkeletonRows />
               ) : (
                 processedSchedule.map((day, idx) => {
@@ -423,7 +428,7 @@ export default function ScheduleTable() {
 
       {/* MOBILE: Card-per-day view */}
       <div className="relative md:hidden space-y-2">
-        {schedule.loading ? (
+        {showSkeleton ? (
           <MobileSkeletonCards />
         ) : (
           processedSchedule.map((day, idx) => (
@@ -438,7 +443,7 @@ export default function ScheduleTable() {
         )}
 
         {/* Floating scroll-to-today button */}
-        {isCurrentMonth && !todayVisible && !schedule.loading && (
+        {isCurrentMonth && !todayVisible && !showSkeleton && (
           <button
             type="button"
             onClick={scrollToToday}

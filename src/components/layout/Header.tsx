@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import LocationSearch from "@/components/location/LocationSearch";
 import { CrescentIcon, SunIcon, MoonIcon } from "@/components/ui/Icons";
 import { useStore } from "@/store/useStore";
@@ -12,21 +12,6 @@ export default function Header() {
   const setTheme = useStore((s) => s.setTheme);
   const viewMonth = useStore((s) => s.viewMonth);
   const viewYear = useStore((s) => s.viewYear);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("theme") as "light" | "dark" | null;
-      if (saved) {
-        setTheme(saved);
-      } else {
-        // Default dark — matches layout.tsx inline script
-        setTheme("dark");
-      }
-    } catch {
-      // localStorage unavailable (Safari private mode) — default dark
-      setTheme("dark");
-    }
-  }, [setTheme]);
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 

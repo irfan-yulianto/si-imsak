@@ -21,6 +21,7 @@ export default function CountdownTimer() {
   const timeOffset = useStore((s) => s.timeOffset);
   const setTimeOffset = useStore((s) => s.setTimeOffset);
   const refetchSchedule = useStore((s) => s.refetchSchedule);
+  const setTodayDateStr = useStore((s) => s.setTodayDateStr);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [prayerArrived, setPrayerArrived] = useState<{ name: string; key: string } | null>(null);
@@ -37,7 +38,16 @@ export default function CountdownTimer() {
   const nextPrayerRef = useRef<NextPrayer | null>(null);
 
   useEffect(() => {
-    syncServerTime(setTimeOffset).then(setTimeOffset).catch(() => {});
+    const sync = () => {
+      syncServerTime(setTimeOffset).then(setTimeOffset).catch(() => {});
+    };
+    sync();
+    // Phones suspend timers in the background — re-sync when the app comes back
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [setTimeOffset]);
 
   const utcOffset = getUtcOffset(location.timezone);
@@ -75,13 +85,19 @@ export default function CountdownTimer() {
         }
       }
       lastDateRef.current = currentDateStr;
+      setTodayDateStr(currentDateStr);
 
       const next = getNextPrayerCyclic(countdownSchedule, now, utcOffset);
       if (next) {
         refetchCountRef.current = 0;
         setLoadError(false);
         nextPrayerRef.current = next;
-        setNextPrayer(next);
+        // Only re-render when the target prayer changes, not on every 3s check
+        setNextPrayer((prev) =>
+          prev && prev.key === next.key && prev.time === next.time && prev.isTomorrow === next.isTomorrow
+            ? prev
+            : next
+        );
         const formatted = formatCountdown(next.remainingMs);
         if (hoursRef.current) hoursRef.current.textContent = formatted.hours;
         if (minutesRef.current) minutesRef.current.textContent = formatted.minutes;
@@ -100,7 +116,7 @@ export default function CountdownTimer() {
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
-  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule]);
+  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule, setTodayDateStr]);
 
   // Fast countdown tick — only updates display, no state recalculation
   useEffect(() => {

@@ -120,7 +120,7 @@ src/
 - **Rate Limiting** — Sliding window per IP di memori (30 req/menit untuk jadwal, 10 req/menit untuk masjid & geocode). Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment)
 - **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius 100-10.000m)
 - **Request Timeout** — 5-15 detik timeout pada semua upstream API calls dengan retry logic
-- **Service Worker Versioning** — Cache invalidation via versioned cache name pada setiap deploy
+- **Service Worker Versioning** — Worker didaftarkan sebagai `/sw.js?v=<build id>`, jadi setiap deploy memasang worker dan cache baru; cache lama dihapus saat aktivasi. Versi baru menunggu sampai pengguna menekan "Muat ulang" pada notifikasi pembaruan
 - **No Personal Data** — Tidak menyimpan data personal pengguna di server
 
 ## Deployment

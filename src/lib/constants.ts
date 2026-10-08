@@ -5,6 +5,12 @@ export const DEFAULT_LOCATION = {
   daerah: "DKI JAKARTA",
 };
 
+// Build timestamp, inlined into server and client bundles by next.config.ts.
+// Used where the server render and the client's first render must agree on "now".
+export const BUILD_TIME = Number(process.env.NEXT_PUBLIC_BUILD_TIME) || Date.now();
+// Identifies the deploy; the service worker URL carries it so each deploy gets a fresh worker.
+export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+
 // API base URL (v3 LTS)
 export const MYQURAN_API_BASE = "https://api.myquran.com/v3/sholat";
 

@@ -5,6 +5,7 @@ vi.mock("@/store/useStore", () => ({
     getState: vi.fn(() => ({
       setUserCoords: vi.fn(),
       setScheduleLoading: vi.fn(),
+      beginScheduleLoad: vi.fn(),
       setLocation: vi.fn(),
       setSchedule: vi.fn(),
       setCountdownSchedule: vi.fn(),

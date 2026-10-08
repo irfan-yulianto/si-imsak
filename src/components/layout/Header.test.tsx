@@ -68,36 +68,6 @@ describe("Header Component", () => {
     expect(screen.getByTestId("location-search-mock")).toBeInTheDocument();
   });
 
-  it("loads theme from localStorage if available", () => {
-    // Mock localStorage to return "light" theme
-    window.localStorage.getItem = vi.fn().mockReturnValue("light");
-
-    render(<Header />);
-
-    expect(window.localStorage.getItem).toHaveBeenCalledWith("theme");
-    expect(mockSetTheme).toHaveBeenCalledWith("light");
-  });
-
-  it("defaults to 'dark' theme if localStorage is empty", () => {
-    window.localStorage.getItem = vi.fn().mockReturnValue(null);
-
-    render(<Header />);
-
-    expect(window.localStorage.getItem).toHaveBeenCalledWith("theme");
-    expect(mockSetTheme).toHaveBeenCalledWith("dark");
-  });
-
-  it("defaults to 'dark' theme if localStorage throws an error", () => {
-    window.localStorage.getItem = vi.fn().mockImplementation(() => {
-      throw new Error("Access denied");
-    });
-
-    render(<Header />);
-
-    expect(window.localStorage.getItem).toHaveBeenCalledWith("theme");
-    expect(mockSetTheme).toHaveBeenCalledWith("dark");
-  });
-
   it("displays hijri subtitle based on viewMonth and viewYear", () => {
     render(<Header />);
 
