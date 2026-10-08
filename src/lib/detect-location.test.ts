@@ -27,7 +27,7 @@ beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); });
 
 function mockGeoSuccess() {
   vi.stubGlobal("navigator", {
-    geolocation: { getCurrentPosition: (cb: Function) => cb({ coords: { latitude: -6.17, longitude: 106.85 } }) },
+    geolocation: { getCurrentPosition: (cb: (pos: { coords: { latitude: number; longitude: number } }) => void) => cb({ coords: { latitude: -6.17, longitude: 106.85 } }) },
     onLine: true,
   });
 }
@@ -41,7 +41,7 @@ describe("detectAndUpdateLocation", () => {
   });
 
   it("returns error on permission denied", async () => {
-    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: (_: unknown, e: Function) => e({ code: 1, PERMISSION_DENIED: 1, TIMEOUT: 3 }) } });
+    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: (_: unknown, e: (err: { code: number; PERMISSION_DENIED: number; TIMEOUT: number }) => void) => e({ code: 1, PERMISSION_DENIED: 1, TIMEOUT: 3 }) } });
     const { detectAndUpdateLocation } = await import("./detect-location");
     const r = await detectAndUpdateLocation();
     expect(r.success).toBe(false);
@@ -49,7 +49,7 @@ describe("detectAndUpdateLocation", () => {
   });
 
   it("returns error on timeout", async () => {
-    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: (_: unknown, e: Function) => e({ code: 3, PERMISSION_DENIED: 1, TIMEOUT: 3 }) } });
+    vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: (_: unknown, e: (err: { code: number; PERMISSION_DENIED: number; TIMEOUT: number }) => void) => e({ code: 3, PERMISSION_DENIED: 1, TIMEOUT: 3 }) } });
     const { detectAndUpdateLocation } = await import("./detect-location");
     const r = await detectAndUpdateLocation();
     expect(r.error).toContain("habis");

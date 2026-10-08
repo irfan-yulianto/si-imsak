@@ -256,10 +256,7 @@ export default function ScheduleTable() {
 
   useEffect(() => {
     const el = todayRef.current;
-    if (!el || !isCurrentMonth) {
-      setTodayVisible(true);
-      return;
-    }
+    if (!el || !isCurrentMonth) return;
     const observer = new IntersectionObserver(
       ([entry]) => setTodayVisible(entry.isIntersecting),
       { threshold: 0.1 }
@@ -267,6 +264,10 @@ export default function ScheduleTable() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [isCurrentMonth, schedule.data.length]);
+
+  // Floating "Hari Ini" button: only when today's card exists and is scrolled out of view
+  const showTodayButton =
+    isCurrentMonth && !todayVisible && !showSkeleton && processedSchedule.some((d) => d.date === todayDate);
 
   // Must match the range /api/schedule accepts
   const yearRange = getScheduleYearRange();
@@ -451,7 +452,7 @@ export default function ScheduleTable() {
         )}
 
         {/* Floating scroll-to-today button */}
-        {isCurrentMonth && !todayVisible && !showSkeleton && (
+        {showTodayButton && (
           <button
             type="button"
             onClick={scrollToToday}

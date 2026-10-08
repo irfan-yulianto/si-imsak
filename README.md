@@ -41,8 +41,8 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 
 ### Prasyarat
 
-- Node.js 18+
-- npm
+- Node.js 20+ (versi yang dipakai CI ada di `.nvmrc`)
+- npm — gunakan npm (`package-lock.json`), bukan package manager lain, agar dependensi sama dengan CI dan Vercel
 
 ### Instalasi
 
@@ -155,6 +155,36 @@ Fitur Vercel yang terintegrasi:
 - **Vercel Analytics** — Page views dan web vitals
 - **Vercel Speed Insights** — Performance monitoring
 - **Microsoft Clarity** — Session replay dan heatmap
+
+## Kontribusi & Pemeliharaan
+
+### Pemeriksaan sebelum merge
+
+Setiap pull request dan push ke `main` menjalankan workflow **CI** (`.github/workflows/ci.yml`). Jalankan langkah yang sama secara lokal:
+
+```bash
+npm ci
+npm run lint        # ESLint, tanpa warning
+npm run typecheck   # tsc --noEmit
+npm test            # Vitest (semua API eksternal di-mock)
+npm run build
+```
+
+### Pengaturan repo yang disarankan
+
+- **Branch protection** untuk `main` (Settings → Branches): wajibkan status check **CI** lulus sebelum merge.
+- **Automatically delete head branches** (Settings → General → Pull Requests) supaya branch PR yang sudah di-merge terhapus otomatis.
+
+### Membersihkan branch lama
+
+Branch dari PR yang ditutup tanpa merge tidak ikut terhapus otomatis. Untuk menghapus semua branch remote kecuali `main`:
+
+```bash
+git fetch --prune origin
+git branch -r | grep -vE 'origin/(main|HEAD)' | sed 's#^ *origin/##' | xargs -n 20 git push origin --delete
+```
+
+Periksa dulu daftarnya (`git branch -r`) bila ada branch yang masih dipakai.
 
 ## Lisensi
 

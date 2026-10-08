@@ -6,7 +6,7 @@ import { getAdjustedTime } from "@/lib/time";
 // Mock zustand store
 const mockUseStore = vi.fn();
 vi.mock("@/store/useStore", () => ({
-  useStore: (selector: any) => selector(mockUseStore()),
+  useStore: (selector: (state: unknown) => unknown) => selector(mockUseStore()),
 }));
 
 // Mock time utils

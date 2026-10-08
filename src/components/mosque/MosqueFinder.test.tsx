@@ -53,7 +53,7 @@ describe("MosqueFinder Component - U6 Fixes", () => {
 
     // Reset store state
     useStore.setState({
-      location: { id: "test-city", cityName: "TEST CITY", province: "TEST PROV" },
+      location: { cityId: "test-city", cityName: "TEST CITY", province: "TEST PROV", timezone: "WIB" },
       userCoords: { lat: -6.2, lng: 106.8 },
       isOffline: false
     });

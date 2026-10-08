@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import Header from "./Header";
 import { useStore } from "@/store/useStore";
 
@@ -9,19 +9,22 @@ vi.mock("@/components/location/LocationSearch", () => ({
 }));
 
 // Mock the getHijriMonthsForGregorianMonth function
-const mockGetHijriMonths = vi.fn(() => [
+const mockGetHijriMonths = vi.fn<(year: number, month: number) => { monthName: string; year: number }[]>(() => [
   { monthName: "Ramadan", year: 1445 },
   { monthName: "Syawal", year: 1445 },
 ]);
 
 vi.mock("@/lib/hijri", () => ({
-  getHijriMonthsForGregorianMonth: (...args: any[]) => mockGetHijriMonths(...args),
+  getHijriMonthsForGregorianMonth: (year: number, month: number) => mockGetHijriMonths(year, month),
 }));
 
 // Mock useStore
 vi.mock("@/store/useStore", () => ({
   useStore: vi.fn(),
 }));
+
+// The component only calls useStore(selector); type the mock for that use
+const mockedUseStore = useStore as unknown as Mock<(selector: (state: unknown) => unknown) => unknown>;
 
 describe("Header Component", () => {
   const mockSetTheme = vi.fn();
@@ -38,12 +41,7 @@ describe("Header Component", () => {
     vi.clearAllMocks();
 
     // Default mock implementation for useStore
-    vi.mocked(useStore).mockImplementation((selector) => {
-      if (typeof selector === "function") {
-        return selector(defaultStoreState);
-      }
-      return defaultStoreState;
-    });
+    mockedUseStore.mockImplementation((selector) => selector(defaultStoreState));
 
     // Mock localStorage
     const localStorageMock = {
@@ -88,7 +86,7 @@ describe("Header Component", () => {
   });
 
   it("shows offline badge when isOffline is true", () => {
-    vi.mocked(useStore).mockImplementation((selector: any) => {
+    mockedUseStore.mockImplementation((selector) => {
       const state = { ...defaultStoreState, isOffline: true };
       return selector(state);
     });
@@ -114,7 +112,7 @@ describe("Header Component", () => {
   });
 
   it("toggles theme from light to dark", () => {
-    vi.mocked(useStore).mockImplementation((selector: any) => {
+    mockedUseStore.mockImplementation((selector) => {
       const state = { ...defaultStoreState, theme: "light" };
       return selector(state);
     });

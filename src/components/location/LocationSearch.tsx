@@ -204,7 +204,7 @@ export default function LocationSearch() {
           const data = res.status && res.data ? res.data : [];
           setResults(data);
         }
-      } catch (err) {
+      } catch {
         if (!controller.signal.aborted) setResults([]);
       } finally {
         if (!controller.signal.aborted) setIsSearching(false);

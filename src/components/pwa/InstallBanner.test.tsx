@@ -1,6 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import InstallBanner from "./InstallBanner";
+
+type InstallPromptEvent = Event & {
+  prompt: Mock;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
 // Mock the icon component
 vi.mock("@/components/ui/Icons", () => ({
@@ -97,7 +102,6 @@ describe("InstallBanner", () => {
 
   it("should handle localStorage errors gracefully when checking dismissal", () => {
     // Mock localStorage to throw an error
-    const originalGetItem = localStorage.getItem;
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error("Access denied");
     });
@@ -175,7 +179,7 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
-    const event = new Event('beforeinstallprompt') as any;
+    const event = new Event('beforeinstallprompt') as InstallPromptEvent;
     event.prompt = vi.fn();
     event.userChoice = Promise.resolve({ outcome: 'accepted' });
 
@@ -191,7 +195,7 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
-    const event = new Event('beforeinstallprompt') as any;
+    const event = new Event('beforeinstallprompt') as InstallPromptEvent;
     event.prompt = vi.fn().mockResolvedValue(undefined);
     event.userChoice = Promise.resolve({ outcome: 'accepted' });
 
@@ -220,7 +224,7 @@ describe("InstallBanner", () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
-    const event = new Event('beforeinstallprompt') as any;
+    const event = new Event('beforeinstallprompt') as InstallPromptEvent;
     event.prompt = vi.fn().mockResolvedValue(undefined);
     event.userChoice = Promise.resolve({ outcome: 'dismissed' });
 

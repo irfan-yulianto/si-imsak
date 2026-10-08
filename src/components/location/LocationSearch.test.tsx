@@ -25,7 +25,7 @@ if (typeof global.AbortController === "undefined") {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     },
-  })) as any;
+  })) as unknown as typeof AbortController;
 }
 
 // Ensure cleanup after each test

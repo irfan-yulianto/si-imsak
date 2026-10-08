@@ -220,7 +220,7 @@ describe("parseOverpassResponse", () => {
   });
 
   it("uses name fallback chain: name > name:id > name:en > old_name", () => {
-    const data = {
+    const data: Parameters<typeof parseOverpassResponse>[0] = {
       elements: [
         { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { "name:id": "Masjid Indo" } },
         { type: "node" as const, id: 2, lat: -6.18, lon: 106.86, tags: { "name:en": "English Mosque" } },

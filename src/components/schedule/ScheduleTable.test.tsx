@@ -46,7 +46,7 @@ const defaultStoreState = {
 describe("ScheduleTable Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector(defaultStoreState)
     );
   });
@@ -57,7 +57,7 @@ describe("ScheduleTable Component", () => {
   });
 
   it("renders error state when schedule fetch fails", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         schedule: { data: [], loading: false, error: "Gagal memuat jadwal" },
@@ -75,7 +75,7 @@ describe("ScheduleTable Component", () => {
   });
 
   it("renders skeleton rows when loading", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         schedule: { data: [], loading: true, error: null },
@@ -106,7 +106,7 @@ describe("ScheduleTable Component", () => {
       },
     ];
 
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         schedule: { data: mockData, loading: false, error: null },
@@ -127,7 +127,7 @@ describe("ScheduleTable Component", () => {
   });
 
   it("allows navigating to previous and next month", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         viewYear: CURRENT_YEAR, // navigation is limited to last..next year
@@ -159,7 +159,7 @@ describe("ScheduleTable Component", () => {
   });
 
   it("navigates to current month when 'Hari Ini' is clicked", () => {
-     (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+     (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
         viewMonth: 2, // Not current month

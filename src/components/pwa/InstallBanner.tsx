@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
 import { CrescentIcon } from "@/components/ui/Icons";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -60,43 +60,47 @@ function CloseButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+const noSubscribe = () => () => {};
+
 export default function InstallBanner() {
-  const [mode, setMode] = useState<BannerMode>(null);
+  // iOS instructions depend only on the browser, so read them as an external value:
+  // false during server render and hydration, the real answer right after.
+  const isIosBanner = useSyncExternalStore(
+    noSubscribe,
+    () => detectBannerMode() === "ios",
+    () => false
+  );
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
+  const [chromiumReady, setChromiumReady] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    const detected = detectBannerMode();
-    if (!detected) return;
-
-    if (detected === "ios") {
-      setMode("ios");
-      return;
-    }
+    if (detectBannerMode() !== "chromium") return;
 
     // Chromium: wait for beforeinstallprompt
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setMode("chromium");
+      setChromiumReady(true);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
+  const mode: BannerMode = hidden ? null : isIosBanner ? "ios" : chromiumReady ? "chromium" : null;
+
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setMode(null);
-    }
+    if (outcome === "accepted") setHidden(true);
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 
   const handleDismiss = useCallback(() => {
-    setMode(null);
+    setHidden(true);
     try { localStorage.setItem(DISMISSED_KEY, "1"); } catch {}
   }, []);
 
