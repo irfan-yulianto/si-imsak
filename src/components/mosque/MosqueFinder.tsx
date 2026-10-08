@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
+import { roundCoord } from "@/lib/constants";
 import { CITIES, CITY_MAP } from "@/lib/cities";
 import { MosqueIcon, MapPinIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
 
@@ -303,7 +304,8 @@ export default function MosqueFinder() {
     setError(null);
 
     try {
-      const url = `/api/mosques?lat=${targetCoords.lat}&lng=${targetCoords.lng}&radius=${radius}`;
+      // Rounded coords match the server's precision so nearby users hit the same CDN entry
+      const url = `/api/mosques?lat=${roundCoord(targetCoords.lat)}&lng=${roundCoord(targetCoords.lng)}&radius=${radius}`;
       let res: Response | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         res = await fetch(url);
@@ -320,12 +322,16 @@ export default function MosqueFinder() {
       const data = await res.json();
 
       if (data.status && data.data) {
-        setMosques(data.data);
-        setCache(cacheKey, data.data);
+        // Server distances use rounded coords — recompute from the exact position
+        const results: Mosque[] = (data.data as Mosque[])
+          .map((m) => ({ ...m, distance: haversineDistance(targetCoords.lat, targetCoords.lng, m.lat, m.lng) }))
+          .sort((a, b) => a.distance - b.distance);
+        setMosques(results);
+        setCache(cacheKey, results);
         lastFetchCoordsRef.current = targetCoords;
         lastFetchAccuracyRef.current = currentAccuracy;
         lastFetchWasGpsRef.current = !!gpsSource;
-        if (data.data.length === 0) {
+        if (results.length === 0) {
           // Distinct "no results" message
           setError(`Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`);
         }

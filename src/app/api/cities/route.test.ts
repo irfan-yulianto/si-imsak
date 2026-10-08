@@ -145,4 +145,29 @@ describe("GET /api/cities", () => {
     expect(json.data).toHaveLength(1);
     expect(json.data[0].id).toBe("valid");
   });
+
+  it("returns 400 for a query that is too short after sanitizing", async () => {
+    const res = await GET(makeRequest("12"));
+    expect(res.status).toBe(400);
+  });
+
+  it("keeps accented letters in the query", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: true, data: [] }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await GET(makeRequest("Bàli"));
+    expect(mockFetch.mock.calls[0][0]).toContain(encodeURIComponent("Bàli"));
+  });
+
+  it("sets CDN cache headers on success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ status: true, data: [] }) })
+    );
+    const res = await GET(makeRequest("jakarta"));
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=86400");
+  });
 });

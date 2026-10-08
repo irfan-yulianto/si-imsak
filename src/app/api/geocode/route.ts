@@ -1,10 +1,11 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { extractCityFromNominatim, normalizeToMyquranName } from "@/lib/geocode";
-import { INDONESIA_BOUNDS } from "@/lib/constants";
+import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
-const USER_AGENT = "Si-Imsak/1.0 (jadwal-imsakiyah prayer times app)";
+// Nominatim's usage policy requires an identifying User-Agent with a way to reach the operator.
+const USER_AGENT = "Si-Imsak/1.0 (+https://github.com/irfan-yulianto/si-imsak)";
 
 export async function GET(request: NextRequest) {
   const ip = extractClientIp(request);
@@ -45,7 +46,8 @@ export async function GET(request: NextRequest) {
   const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
-    const url = `${NOMINATIM_URL}?lat=${latNum}&lon=${lngNum}&format=json&zoom=10&addressdetails=1&accept-language=id`;
+    // City-level lookup: ~110 m precision is plenty and lets nearby users share cache entries
+    const url = `${NOMINATIM_URL}?lat=${roundCoord(latNum)}&lon=${roundCoord(lngNum)}&format=json&zoom=10&addressdetails=1&accept-language=id`;
     const res = await fetch(url, {
       headers: { "User-Agent": USER_AGENT },
       signal: controller.signal,
@@ -54,21 +56,28 @@ export async function GET(request: NextRequest) {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      return NextResponse.json({ status: false, city: "" });
+      console.error("[geocode] Upstream HTTP", res.status);
+      return NextResponse.json(
+        { status: false, city: "" },
+        { status: 502, headers: { "Cache-Control": NO_STORE } }
+      );
     }
 
     const data = await res.json();
     const rawCity = extractCityFromNominatim(data.address);
 
-    if (!rawCity) {
-      return NextResponse.json({ status: false, city: "" });
-    }
-
-    const city = normalizeToMyquranName(rawCity);
-    return NextResponse.json({ status: true, city });
+    // "No city here" is a real answer, so it is cached like a hit
+    const city = rawCity ? normalizeToMyquranName(rawCity) : "";
+    return NextResponse.json(
+      { status: !!city, city },
+      { headers: { "Cache-Control": CDN_CACHE_DAY } }
+    );
   } catch (err) {
     clearTimeout(timeout);
     console.error("[geocode] Failed:", err instanceof Error ? err.message : err);
-    return NextResponse.json({ status: false, city: "" });
+    return NextResponse.json(
+      { status: false, city: "" },
+      { status: 502, headers: { "Cache-Control": NO_STORE } }
+    );
   }
 }

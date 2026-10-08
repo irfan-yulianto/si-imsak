@@ -43,7 +43,9 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          if (response.ok) {
+          // Partial months are sent with no-store — don't keep them offline either
+          const noStore = (response.headers.get("Cache-Control") || "").includes("no-store");
+          if (response.ok && !noStore) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               const headers = new Headers(clone.headers);

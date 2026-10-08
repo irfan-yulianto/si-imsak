@@ -1,28 +1,33 @@
+function cacheOffset(offset: number) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem("timeOffset", JSON.stringify({ offset, ts: Date.now() }));
+  } catch (e) {
+    console.warn("Failed to write timeOffset in sessionStorage", e);
+  }
+}
+
 /**
- * Sync time with worldtimeapi.org to avoid relying on user's device clock.
+ * Sync with the app server's clock (/api/time) to avoid relying on the device clock.
  * Returns the offset in milliseconds (serverTime - clientTime).
- * Note: the timezone parameter (Asia/Jakarta) doesn't affect the offset —
- * the API returns an ISO 8601 datetime parsed to an absolute UTC timestamp,
- * so the drift calculation is timezone-independent.
+ *
+ * A cached offset (valid for 1 hour) is returned immediately for instant startup;
+ * the fresh offset from the background refresh is passed to `onRefresh`.
  */
-export async function syncServerTime(): Promise<number> {
-  // Use cached offset for instant startup (valid for 1 hour)
+export async function syncServerTime(onRefresh?: (offset: number) => void): Promise<number> {
   if (typeof window !== "undefined") {
     try {
       const cached = sessionStorage.getItem("timeOffset");
       if (cached) {
         const { offset, ts } = JSON.parse(cached);
         if (typeof offset === "number" && Date.now() - ts < 3600000) {
-          // Refresh in background
-          fetchServerTimeOffset().then((o) => {
-            try {
-              sessionStorage.setItem("timeOffset", JSON.stringify({ offset: o, ts: Date.now() }));
-            } catch (e) {
-              console.warn("Failed to write timeOffset in sessionStorage", e);
-            }
-          }).catch((e) => {
-            console.warn("Background server time fetch failed", e);
-          });
+          fetchServerTimeOffset()
+            .then((fresh) => {
+              if (fresh !== null) onRefresh?.(fresh);
+            })
+            .catch((e) => {
+              console.warn("Background server time fetch failed", e);
+            });
           return offset;
         }
       }
@@ -30,38 +35,32 @@ export async function syncServerTime(): Promise<number> {
       console.warn("Failed to read timeOffset from sessionStorage", e);
     }
   }
-  return fetchServerTimeOffset();
+  return (await fetchServerTimeOffset()) ?? 0;
 }
 
-async function fetchServerTimeOffset(): Promise<number> {
+/** Returns the clock offset, or null when the server could not be reached. */
+async function fetchServerTimeOffset(): Promise<number | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
     const before = Date.now();
-    const res = await fetch("https://worldtimeapi.org/api/timezone/Asia/Jakarta", {
-      signal: controller.signal,
-    });
+    const res = await fetch("/api/time", { signal: controller.signal, cache: "no-store" });
     const after = Date.now();
 
-    if (!res.ok) return 0;
+    if (!res.ok) return null;
 
     const data = await res.json();
-    const serverTime = new Date(data.datetime).getTime();
-    if (isNaN(serverTime)) return 0;
+    const serverTime = Number(data.now);
+    if (!Number.isFinite(serverTime)) return null;
+    // NTP-style: assume the server read its clock halfway through the round trip
     const latency = (after - before) / 2;
     const offset = serverTime + latency - after;
 
-    if (typeof window !== "undefined") {
-      try {
-        sessionStorage.setItem("timeOffset", JSON.stringify({ offset, ts: Date.now() }));
-      } catch (e) {
-        console.warn("Failed to write timeOffset in sessionStorage", e);
-      }
-    }
+    cacheOffset(offset);
     return offset;
   } catch (e) {
     console.warn("Failed to fetch server time offset", e);
-    return 0;
+    return null;
   } finally {
     clearTimeout(timeout);
   }

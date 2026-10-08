@@ -7,10 +7,10 @@
  * a single client can bypass limits by hitting different instances.
  *
  * This provides best-effort protection against unsophisticated abuse
- * (e.g., accidental loops, basic scrapers). For strict rate limiting in
- * production, replace with a distributed store such as Vercel KV (Redis).
- *
- * Acceptable trade-off for this app's current scale; upgrade path is clear.
+ * (e.g., accidental loops, basic scrapers). The real protection in production is:
+ * - CDN caching (s-maxage) on schedule/cities/geocode/mosques, so repeat requests
+ *   never reach the function or the upstream APIs;
+ * - a Vercel Firewall rate-limit rule on /api/* (configured in the dashboard, see README).
  */
 
 const windowMs = 60_000; // 1 minute window
@@ -31,10 +31,12 @@ setInterval(() => {
 
 /**
  * Extract client IP from request.
- * Uses the rightmost IP in x-forwarded-for, or falls back to x-real-ip or request.ip.
- * This prevents spoofing via prepended IPs.
+ * On Vercel, x-vercel-forwarded-for / x-real-ip / x-forwarded-for are set by the
+ * platform and overwrite client-supplied values. Elsewhere, the rightmost
+ * x-forwarded-for entry (added by the nearest proxy) is used, so prepended IPs
+ * can't be spoofed.
  */
-export function extractClientIp(request: { ip?: string, headers?: Headers | Record<string, string> | { get: (name: string) => string | null } } | string | null): string {
+export function extractClientIp(request: { headers?: Headers | Record<string, string> | { get: (name: string) => string | null } } | string | null): string {
   if (!request) return "unknown";
 
   if (typeof request === "string") {
@@ -43,13 +45,9 @@ export function extractClientIp(request: { ip?: string, headers?: Headers | Reco
     return last || "unknown";
   }
 
-  // NextRequest or Request object
-  if (request.ip) return request.ip;
-
   const headers = request.headers;
   if (!headers) return "unknown";
 
-  // Check headers.get or headers object access
   const getHeader = (name: string): string | null => {
     if ('get' in headers && typeof headers.get === "function") {
       return headers.get(name) as string | null;
@@ -57,6 +55,9 @@ export function extractClientIp(request: { ip?: string, headers?: Headers | Reco
     const record = headers as Record<string, string>;
     return record[name] || record[name.toLowerCase()] || null;
   };
+
+  const vercelIp = getHeader("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+  if (vercelIp) return vercelIp;
 
   const xRealIp = getHeader("x-real-ip");
   if (xRealIp) return xRealIp.trim();
@@ -82,11 +83,15 @@ export function isRateLimited(ip: string, limit: number = maxRequests): boolean 
     return true;
   }
 
-  // Prevent memory exhaustion from high-cardinality IPs
+  // Bound memory: evict the oldest-tracked key instead of rejecting new clients
+  // (rejecting would let a flood of spoofed IPs lock everyone out).
   if (!requests.has(key) && requests.size >= MAX_IPS) {
-    return true; // Reject untracked IPs when map is full
+    const oldest = requests.keys().next().value;
+    if (oldest !== undefined) requests.delete(oldest);
   }
 
+  // Re-insert so Map order tracks recency for eviction
+  requests.delete(key);
   valid.push(now);
   requests.set(key, valid);
   return false;

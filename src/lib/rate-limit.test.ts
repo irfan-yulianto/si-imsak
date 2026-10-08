@@ -38,8 +38,13 @@ describe("extractClientIp", () => {
     expect(extractClientIp("  10.0.0.1  , 10.0.0.2  ")).toBe("10.0.0.2");
   });
 
-  it("extracts from request.ip", () => {
-    const req = { ip: "10.0.0.3" };
+  it("prefers x-vercel-forwarded-for over other headers", () => {
+    const headers: Record<string, string> = {
+      "x-vercel-forwarded-for": "10.0.0.3",
+      "x-real-ip": "10.0.0.9",
+      "x-forwarded-for": "10.0.0.8",
+    };
+    const req = { headers: { get: (name: string) => headers[name] ?? null } };
     expect(extractClientIp(req)).toBe("10.0.0.3");
   });
 
@@ -106,5 +111,18 @@ describe("isRateLimited", () => {
     expect(isRateLimited("6.6.6.6", 10)).toBe(true);
     // Default limit should still have room
     expect(isRateLimited("6.6.6.6")).toBe(false);
+  });
+
+  it("evicts the oldest client instead of rejecting new ones when the map is full", () => {
+    // Fill the tracker to its 10,000-key cap
+    for (let i = 0; i < 10000; i++) {
+      isRateLimited(`ip-${i}`);
+    }
+    // A brand-new client must still be served
+    expect(isRateLimited("new-client")).toBe(false);
+    // ...and the oldest entry was dropped, so it starts with a fresh window
+    for (let i = 0; i < 29; i++) {
+      expect(isRateLimited("ip-0")).toBe(false);
+    }
   });
 });

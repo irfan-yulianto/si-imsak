@@ -37,7 +37,7 @@ export default function CountdownTimer() {
   const nextPrayerRef = useRef<NextPrayer | null>(null);
 
   useEffect(() => {
-    syncServerTime().then(setTimeOffset).catch(() => {});
+    syncServerTime(setTimeOffset).then(setTimeOffset).catch(() => {});
   }, [setTimeOffset]);
 
   const utcOffset = getUtcOffset(location.timezone);

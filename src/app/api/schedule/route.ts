@@ -1,4 +1,4 @@
-import { MYQURAN_API_BASE } from "@/lib/constants";
+import { CDN_CACHE_DAY, MYQURAN_API_BASE, NO_STORE, getScheduleYearRange } from "@/lib/constants";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -36,17 +36,49 @@ async function withConcurrency<T>(
   return results;
 }
 
-interface UpstreamDayResponse {
+interface UpstreamDay {
+  tanggal: string; imsak: string; subuh: string;
+  terbit: string; dhuha: string; dzuhur: string;
+  ashar: string; maghrib: string; isya: string;
+}
+
+interface UpstreamResponse {
   status: boolean;
   data?: {
     kabko: string;
     prov: string;
-    jadwal: Record<string, {
-      tanggal: string; imsak: string; subuh: string;
-      terbit: string; dhuha: string; dzuhur: string;
-      ashar: string; maghrib: string; isya: string;
-    }>;
+    jadwal: Record<string, UpstreamDay>;
   };
+}
+
+/**
+ * Fetch one upstream period (a day "YYYY-MM-DD" or a month "YYYY-MM") with retry
+ * and per-request timeout. Returns null when the upstream has no usable data.
+ * 4xx responses are not retried — they won't succeed on a second attempt.
+ */
+async function fetchPeriod(cityId: string, period: string, retries: number): Promise<UpstreamResponse | null> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
+        next: { revalidate: 86400 },
+        signal: controller.signal,
+      });
+      if (res.ok) {
+        const data: UpstreamResponse = await res.json();
+        if (data?.status && data.data?.jadwal) return data;
+      } else if (res.status >= 400 && res.status < 500) {
+        return null;
+      }
+    } catch {
+      // retry on timeout, network error or malformed JSON
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (attempt < retries) await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+  }
+  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -80,7 +112,8 @@ export async function GET(request: NextRequest) {
   // Validate year and month
   const yearNum = Number(year);
   const monthNum = Number(month);
-  if (!Number.isInteger(yearNum) || yearNum < 2020 || yearNum > 2030) {
+  const yearRange = getScheduleYearRange();
+  if (!Number.isInteger(yearNum) || yearNum < yearRange.min || yearNum > yearRange.max) {
     return NextResponse.json(
       { status: false, error: "Invalid year" },
       { status: 400 }
@@ -99,58 +132,30 @@ export async function GET(request: NextRequest) {
       formatDate(yearNum, monthNum, i + 1)
     );
 
-    // Fetch a single day with retry and per-request timeout
-    async function fetchDay(date: string, retries = 2): Promise<UpstreamDayResponse | null> {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        try {
-          const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${date}`, {
-            next: { revalidate: 86400 },
-            signal: controller.signal,
-          });
-          if (res.ok) return res.json();
-        } catch {
-          // retry on timeout or network error
-        } finally {
-          clearTimeout(timeout);
-        }
-        if (attempt < retries) await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
-      }
-      return null;
-    }
+    // Try the whole month in one upstream call first; fill any missing days per-day.
+    const monthPeriod = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
+    const monthly = await fetchPeriod(cityId, monthPeriod, 1);
 
-    /**
-     * Fetch all days in parallel with a concurrency cap of 10.
-     *
-     * Why 10 (not 31)?
-     * - Fully sequential (old batch=15 approach): ~sequential bottleneck per batch
-     * - Promise.all(31): risks overwhelming upstream API / hitting rate limits
-     * - Concurrency=10: good balance — fetches a full month in ~3 "waves" of 10,
-     *   respects upstream rate limits, and is 3-5x faster than two-batch sequential.
-     */
-    const tasks = dates.map((date) => () => fetchDay(date));
-    const responses = await withConcurrency(tasks, 10);
+    const days: Record<string, UpstreamDay> = { ...monthly?.data?.jadwal };
+    let meta = monthly?.data;
 
-    // Extract city info from first successful response
-    const firstValid = responses.find(
-      (r): r is UpstreamDayResponse & { data: NonNullable<UpstreamDayResponse["data"]> } =>
-        !!r?.status && !!r?.data
-    );
-    if (!firstValid) {
-      return NextResponse.json(
-        { status: false, error: "Upstream API error" },
-        { status: 502 }
-      );
+    const missing = dates.filter((date) => !days[date]);
+    if (missing.length > 0) {
+      // Concurrency 10: fast enough (~3 waves for a full month) without hammering upstream.
+      const tasks = missing.map((date) => () => fetchPeriod(cityId, date, 2));
+      const responses = await withConcurrency(tasks, 10);
+      responses.forEach((res, i) => {
+        const day = res?.data?.jadwal?.[missing[i]];
+        if (day) days[missing[i]] = day;
+        if (!meta && res?.data) meta = res.data;
+      });
     }
 
     // Transform v3 responses to v2-compatible format
     const jadwal = dates
-      .map((date, i) => {
-        const res = responses[i];
-        if (!res?.status || !res?.data?.jadwal?.[date]) return null;
-        const day = res.data.jadwal[date];
-        if (!day.tanggal || !day.imsak || !day.subuh) return null;
+      .map((date) => {
+        const day = days[date];
+        if (!day?.tanggal || !day.imsak || !day.subuh) return null;
         return {
           tanggal: day.tanggal,
           date,
@@ -166,15 +171,30 @@ export async function GET(request: NextRequest) {
       })
       .filter(Boolean);
 
-    return NextResponse.json({
-      status: true,
-      data: {
-        id: cityId,
-        lokasi: firstValid.data.kabko,
-        daerah: firstValid.data.prov,
-        jadwal,
+    if (!meta || jadwal.length === 0) {
+      return NextResponse.json(
+        { status: false, error: "Upstream API error" },
+        { status: 502, headers: { "Cache-Control": NO_STORE } }
+      );
+    }
+
+    // A month with gaps must not be cached (CDN, service worker or localStorage),
+    // otherwise the gaps stick around long after upstream recovers.
+    const partial = jadwal.length < dates.length;
+
+    return NextResponse.json(
+      {
+        status: true,
+        ...(partial && { partial: true }),
+        data: {
+          id: cityId,
+          lokasi: meta.kabko,
+          daerah: meta.prov,
+          jadwal,
+        },
       },
-    });
+      { headers: { "Cache-Control": partial ? NO_STORE : CDN_CACHE_DAY } }
+    );
   } catch (err) {
     console.error("[schedule] Failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(

@@ -11,6 +11,26 @@ export const MYQURAN_API_BASE = "https://api.myquran.com/v3/sholat";
 // Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
 export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
 
+// CDN caching for upstream data that changes rarely (schedules, city search).
+// Vercel's edge serves repeat requests without invoking the function.
+export const CDN_CACHE_DAY = "public, s-maxage=86400, stale-while-revalidate=604800";
+export const CDN_CACHE_HOUR = "public, s-maxage=3600, stale-while-revalidate=7200";
+export const NO_STORE = "no-store";
+
+/**
+ * Years the schedule API and month navigation accept: previous, current and next year.
+ * Keeps the range rolling instead of a hardcoded cutoff.
+ */
+export function getScheduleYearRange(now: Date = new Date()): { min: number; max: number } {
+  const year = now.getFullYear();
+  return { min: year - 1, max: year + 1 };
+}
+
+/** Round a coordinate to 3 decimals (~110 m) so nearby requests share CDN cache entries. */
+export function roundCoord(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 // Indonesia geographic bounds for input validation
 export const INDONESIA_BOUNDS = {
   latMin: -11,

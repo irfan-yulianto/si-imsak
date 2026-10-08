@@ -4,6 +4,7 @@ import { useStore } from "@/store/useStore";
 import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
 import { getAdjustedTime } from "@/lib/time";
 import { getUtcOffset } from "@/lib/timezone";
+import { getScheduleYearRange } from "@/lib/constants";
 import { ScheduleDay } from "@/types";
 import React, { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "@/components/ui/Icons";
@@ -261,8 +262,10 @@ export default function ScheduleTable() {
     return () => observer.disconnect();
   }, [isCurrentMonth, schedule.data.length]);
 
-  const canGoPrev = viewYear > 2020 || (viewYear === 2020 && viewMonth > 1);
-  const canGoNext = viewYear < 2030 || (viewYear === 2030 && viewMonth < 12);
+  // Must match the range /api/schedule accepts
+  const yearRange = getScheduleYearRange();
+  const canGoPrev = viewYear > yearRange.min || (viewYear === yearRange.min && viewMonth > 1);
+  const canGoNext = viewYear < yearRange.max || (viewYear === yearRange.max && viewMonth < 12);
 
   const goToPrevMonth = useCallback(() => {
     const prev = viewMonth === 1 ? 12 : viewMonth - 1;

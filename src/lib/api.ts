@@ -1,5 +1,5 @@
 import { CitySearchResponse, ScheduleResponse } from "@/types";
-import { SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
+import { SCHEDULE_CACHE_MAX_AGE, roundCoord } from "@/lib/constants";
 
 const API_BASE = "/api";
 const REQUEST_TIMEOUT = 15000; // 15 seconds
@@ -30,7 +30,7 @@ export async function reverseGeocodeCity(lat: number, lng: number): Promise<stri
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(`${API_BASE}/geocode?lat=${lat}&lng=${lng}`, {
+    const res = await fetch(`${API_BASE}/geocode?lat=${roundCoord(lat)}&lng=${roundCoord(lng)}`, {
       signal: controller.signal,
     });
     if (!res.ok) return "";
@@ -50,6 +50,8 @@ export async function searchCities(keyword: string, signal?: AbortSignal): Promi
 
   try {
     const res = await fetch(`${API_BASE}/cities?q=${encodeURIComponent(keyword)}`, { signal: controller.signal });
+    // 400 = query too short/invalid after sanitizing — same as "no results"
+    if (res.status === 400) return { status: false, data: [] };
     if (!res.ok) throw new Error("Failed to search cities");
     return res.json();
   } finally {
@@ -57,12 +59,32 @@ export async function searchCities(keyword: string, signal?: AbortSignal): Promi
   }
 }
 
-export async function getSchedule(
+// In-flight schedule requests, keyed by city/year/month. Startup, location detection
+// and the countdown can ask for the same month at once — they share one request.
+const inflightSchedules = new Map<string, Promise<ScheduleResponse>>();
+
+export function getSchedule(
   cityId: string,
   year: number,
   month: number
 ): Promise<ScheduleResponse> {
   const cacheKey = `schedule_${cityId}_${year}_${month}`;
+  const pending = inflightSchedules.get(cacheKey);
+  if (pending) return pending;
+
+  const request = fetchSchedule(cityId, year, month, cacheKey).finally(() => {
+    inflightSchedules.delete(cacheKey);
+  });
+  inflightSchedules.set(cacheKey, request);
+  return request;
+}
+
+async function fetchSchedule(
+  cityId: string,
+  year: number,
+  month: number,
+  cacheKey: string
+): Promise<ScheduleResponse> {
 
   try {
     const controller = new AbortController();
@@ -77,8 +99,9 @@ export async function getSchedule(
       if (!res.ok) throw new Error("Failed to fetch schedule");
       const data: ScheduleResponse = await res.json();
 
-      // Cache to localStorage for offline use (with timestamp for TTL)
-      if (typeof window !== "undefined") {
+      // Cache to localStorage for offline use (with timestamp for TTL).
+      // Partial months (some days missing upstream) are not cached.
+      if (typeof window !== "undefined" && data.status && !data.partial) {
         try {
           localStorage.setItem(cacheKey, JSON.stringify({ _ts: Date.now(), ...data }));
         } catch (e) {

@@ -84,14 +84,13 @@ describe("syncServerTime", () => {
   it("calls fetch when no cache exists", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({ datetime: new Date().toISOString() }),
+      json: () => Promise.resolve({ now: Date.now() }),
     });
     vi.stubGlobal("fetch", mockFetch);
 
     await syncServerTime();
     expect(mockFetch).toHaveBeenCalledWith(
-      "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
+      "/api/time",
       expect.any(Object)
     );
   });
@@ -102,7 +101,7 @@ describe("syncServerTime", () => {
 
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ datetime: new Date().toISOString() }),
+      json: () => Promise.resolve({ now: Date.now() }),
     });
     vi.stubGlobal("fetch", mockFetch);
 
@@ -125,12 +124,12 @@ describe("syncServerTime", () => {
     expect(result).toBe(0);
   });
 
-  it("returns 0 when datetime is invalid", async () => {
+  it("returns 0 when server time is invalid", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ datetime: "invalid" }),
+        json: () => Promise.resolve({ now: "invalid" }),
       })
     );
     const result = await syncServerTime();
@@ -143,7 +142,7 @@ describe("syncServerTime", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ datetime: now.toISOString() }),
+        json: () => Promise.resolve({ now: now.getTime() }),
       })
     );
 
@@ -153,5 +152,32 @@ describe("syncServerTime", () => {
     const parsed = JSON.parse(stored!);
     expect(typeof parsed.offset).toBe("number");
     expect(typeof parsed.ts).toBe("number");
+  });
+
+  it("passes the background-refreshed offset to onRefresh", async () => {
+    sessionStorage.setItem("timeOffset", JSON.stringify({ offset: 500, ts: Date.now() - 1000 }));
+    const serverNow = Date.now() + 2000;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ now: serverNow }) })
+    );
+    const onRefresh = vi.fn();
+
+    const result = await syncServerTime(onRefresh);
+    expect(result).toBe(500);
+    await vi.waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+    expect(onRefresh.mock.calls[0][0]).toBeGreaterThan(1000);
+  });
+
+  it("does not call onRefresh when the background refresh fails", async () => {
+    sessionStorage.setItem("timeOffset", JSON.stringify({ offset: 500, ts: Date.now() - 1000 }));
+    const mockFetch = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.stubGlobal("fetch", mockFetch);
+    const onRefresh = vi.fn();
+
+    await syncServerTime(onRefresh);
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(onRefresh).not.toHaveBeenCalled();
   });
 });
