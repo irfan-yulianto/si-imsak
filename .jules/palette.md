@@ -1,3 +1,3 @@
-## 2024-07-29 - Add clear buttons to search inputs
-**Learning:** Users often need to clear the entire search query to restart their location or mosque search. A lack of a clear button forces repetitive keyboard deletes, hurting accessibility and efficiency. Adding an accessible clear button that correctly restores focus to the input drastically improves the search UX.
-**Action:** When creating search inputs with state, proactively include a clear button with an `aria-label` that restores focus to the input via a `useRef` when clicked.
+## 2024-05-23 - Add role="status" and aria-live="polite" to conditional empty states
+**Learning:** Found that conditional non-critical empty states (like "Kota tidak ditemukan" or "Tidak ada masjid ditemukan") are missing `role="status"` and `aria-live="polite"`. According to guidelines, when implementing dynamic UI states in this repository, always wrap them in a container with `role="status"` (not `role="alert"`) and `aria-live="polite"` to properly align the ARIA role with the polite announcement behavior for screen readers.
+**Action:** Add these attributes to the empty state container in `LocationSearch.tsx` and `MosqueFinder.tsx`.
