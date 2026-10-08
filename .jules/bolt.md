@@ -20,3 +20,7 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+
+## 2024-06-25 - Silent React Re-renders in Periodic Background Tasks
+**Learning:** Found a performance bottleneck where a 3000ms `setInterval` background loop was generating a new object reference (`const next = getNextPrayerCyclic(...)`) and immediately calling `setNextPrayer(next)`. Even though the logical value didn't change, the new object reference bypassed React's bailout, silently triggering a full component re-render every 3 seconds.
+**Action:** When executing background loops (`setInterval`) inside React components, add a strict early return condition (e.g. `if (nextPrayerRef.current) return;`) to short-circuit the loop entirely when its state target has not expired, preventing wasteful object allocations and unintended React re-renders.
