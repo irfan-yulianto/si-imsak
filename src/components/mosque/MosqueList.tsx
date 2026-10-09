@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import type { Mosque } from "@/types";
-import { formatDistance, formatRadius, widerRadius } from "@/lib/mosques";
+import { formatDistance } from "@/lib/mosques";
 import { roundCoord } from "@/lib/constants";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
-import { MosqueIcon, SearchIcon } from "@/components/ui/Icons";
+import { MosqueIcon } from "@/components/ui/Icons";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Skeleton from "@/components/ui/Skeleton";
@@ -20,18 +20,14 @@ const PAGE = 20;
  * The search's outcome — loading, a failure, the mosques — and the ways to search further.
  * Rendered as siblings of the controls card (the page spaces them evenly).
  */
-export default function MosqueList({ mosques, loading, error, coords, radius, canWiden, onRetry, onWiden }: {
+export default function MosqueList({ mosques, loading, error, coords, onRetry }: {
   /** Nearest first */
   mosques: Mosque[];
   loading: boolean;
   error: string | null;
   /** Where the search is; null when no place is known yet */
   coords: { lat: number; lng: number } | null;
-  radius: number;
-  /** Few results, and the radius can still grow */
-  canWiden: boolean;
   onRetry: () => void;
-  onWiden: () => void;
 }) {
   const [shown, setShown] = useState(PAGE);
 
@@ -124,18 +120,6 @@ export default function MosqueList({ mosques, loading, error, coords, radius, ca
         <Button variant="secondary" onClick={() => setShown(shown + PAGE)} className="w-full">
           Tampilkan lebih banyak ({mosques.length - shown} lagi)
         </Button>
-      )}
-
-      {/* Few results, and the search can still widen */}
-      {!loading && canWiden && (
-        <button
-          type="button"
-          onClick={onWiden}
-          className="focus-ring flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-card border border-dashed border-accent/40 bg-accent-soft py-3 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-soft-hover"
-        >
-          <SearchIcon size={16} />
-          Perluas Pencarian ({formatRadius(radius)} → {formatRadius(widerRadius(radius))})
-        </button>
       )}
 
       {!loading && (

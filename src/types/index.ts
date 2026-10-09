@@ -95,6 +95,8 @@ export interface Mosque {
 export interface MosqueSearchResponse {
   status: boolean;
   data?: Mosque[];
+  /** Where the server searched (the rounded position), and how far from there the list is complete (m) */
+  meta?: { center: { lat: number; lng: number }; coverage: number; dataDate: string };
   error?: string;
   /** The failure was upstream's; trying again later may work */
   retryable?: boolean;

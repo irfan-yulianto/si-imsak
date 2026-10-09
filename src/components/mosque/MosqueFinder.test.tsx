@@ -44,7 +44,14 @@ function allowLocation(state: PermissionState | undefined) {
 }
 
 const fetchMock = vi.fn();
-const okResponse = (mosques: object[]) => ({ ok: true, status: 200, json: async () => ({ status: true, data: mosques }) });
+/** The server's answer: these mosques, complete (as it would say) to 25 km around the point asked about */
+const okResponse = (mosques: object[], url?: string) => {
+  const asked = url ? new URL(url, "http://x").searchParams : null;
+  const meta = asked && { center: { lat: Number(asked.get("lat")), lng: Number(asked.get("lng")) }, coverage: 25_000, dataDate: "2026-10-06" };
+  return { ok: true, status: 200, json: async () => ({ status: true, data: mosques, ...(meta && { meta }) }) };
+};
+/** As okResponse, for every request */
+const answering = (mosques: object[]) => async (url: string) => okResponse(mosques, url);
 const mosque = (id: string, name: string, north = 0, distance = 0) => ({
   id,
   name,
@@ -61,7 +68,8 @@ const around =
     const lat = Number(asked.get("lat"));
     const lng = Number(asked.get("lng"));
     return okResponse(
-      list.map(([id, name, north = 0]) => ({ id, name, lat: lat + north / 111_200, lng, type: "masjid", distance: north }))
+      list.map(([id, name, north = 0]) => ({ id, name, lat: lat + north / 111_200, lng, type: "masjid", distance: north })),
+      url
     );
   };
 const requested = (call: number) => new URL(fetchMock.mock.calls[call][0], "http://x").searchParams;
@@ -88,7 +96,7 @@ describe("MosqueFinder: where it searches", () => {
   it("starts the GPS by itself where the location is allowed, and searches around the first fix", async () => {
     allowLocation("granted");
     useStore.setState({ userCoords: null });
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Dekat", 100, 100)]));
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat", 100, 100)]));
     render(<MosqueFinder />);
 
     await waitFor(() => expect(geolocation.watchPosition).toHaveBeenCalled());
@@ -99,13 +107,14 @@ describe("MosqueFinder: where it searches", () => {
     act(() => onPosition(gpsFix(30, 1000)));
     await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(requested(0).get("lat")).toBe("-6.191");
+    // ~1 km is all the server learns
+    expect(requested(0).get("lat")).toBe("-6.19");
     expect(screen.getByText("Lokasi GPS Anda")).toBeInTheDocument();
   });
 
   it("where the location isn't allowed yet, searches around the city's centre and says so", async () => {
     useStore.setState({ userCoords: null });
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Pusat")]));
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Pusat")]));
     render(<MosqueFinder />);
 
     await waitFor(() => expect(screen.getByText("Masjid Pusat")).toBeInTheDocument());
@@ -118,7 +127,7 @@ describe("MosqueFinder: where it searches", () => {
   it("does the same in a browser that can't tell", async () => {
     allowLocation(undefined);
     useStore.setState({ userCoords: null });
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Pusat")]));
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Pusat")]));
     render(<MosqueFinder />);
     await waitFor(() => expect(screen.getByText("Masjid Pusat")).toBeInTheDocument());
     expect(geolocation.watchPosition).not.toHaveBeenCalled();
@@ -127,7 +136,7 @@ describe("MosqueFinder: where it searches", () => {
   it("searches around the city's centre when the GPS is cancelled before a first fix", async () => {
     allowLocation("granted");
     useStore.setState({ userCoords: null });
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Pusat")]));
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Pusat")]));
     render(<MosqueFinder />);
     await waitFor(() => expect(screen.getByText("Mendeteksi lokasi…")).toBeInTheDocument());
 
@@ -139,7 +148,7 @@ describe("MosqueFinder: where it searches", () => {
   it("sharpens a rough fix from the city detection", async () => {
     allowLocation("granted");
     useStore.setState({ userCoords: { lat: -6.2, lng: 106.8, accuracy: 900, at: Date.now() } });
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Dekat")]));
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat")]));
     render(<MosqueFinder />);
 
     // Results around the rough fix at once, and the GPS sharpens it meanwhile
@@ -151,9 +160,7 @@ describe("MosqueFinder: where it searches", () => {
   it("orders the results again as the fix sharpens, without asking the server again", async () => {
     allowLocation("granted");
     useStore.setState({ userCoords: null });
-    fetchMock.mockImplementation(async () =>
-      okResponse([mosque("a", "Masjid Selatan", 0, 0), mosque("b", "Masjid Utara", 600, 600)])
-    );
+    fetchMock.mockImplementation(answering([mosque("a", "Masjid Selatan", 0, 0), mosque("b", "Masjid Utara", 600, 600)]));
     render(<MosqueFinder />);
     await waitFor(() => expect(geolocation.watchPosition).toHaveBeenCalled());
 
@@ -186,25 +193,6 @@ describe("MosqueFinder: where it searches", () => {
 });
 
 describe("MosqueFinder: results", () => {
-  it("keeps the wider radius for 'Muat Ulang' after 'Perluas Pencarian'", async () => {
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Raya")]));
-    render(<MosqueFinder />);
-    await waitFor(() => expect(screen.getByText("Masjid Raya")).toBeInTheDocument());
-    expect(requested(0).get("radius")).toBe("2000");
-
-    fireEvent.click(screen.getByRole("button", { name: /Perluas Pencarian \(2 km → 4 km\)/ }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(requested(1).get("radius")).toBe("4000");
-
-    await waitFor(() => expect(screen.getByRole("button", { name: "Muat ulang daftar masjid" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Muat ulang daftar masjid" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(requested(2).get("radius")).toBe("4000");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /Perluas Pencarian \(4 km → 8 km\)/ })).toBeInTheDocument()
-    );
-  });
-
   it("never lets a slow older search replace a newer one", async () => {
     let finishFirst!: (v: unknown) => void;
     fetchMock
@@ -227,7 +215,7 @@ describe("MosqueFinder: results", () => {
 
   it("shows 20 at first, and more on request", async () => {
     const many = Array.from({ length: 25 }, (_, i) => mosque(`m${i}`, `Masjid ${i}`, i * 10, i * 10));
-    fetchMock.mockImplementation(async () => okResponse(many));
+    fetchMock.mockImplementation(answering(many));
     render(<MosqueFinder />);
     await waitFor(() => expect(screen.getAllByRole("link", { name: /^Navigasi ke / })).toHaveLength(20));
 
@@ -254,7 +242,7 @@ describe("MosqueFinder: results", () => {
   });
 
   it("keeps the location, the search, the results and the links out of Clarity recordings", async () => {
-    fetchMock.mockImplementation(async () => okResponse([mosque("m1", "Masjid Raya")]));
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Raya")]));
     render(<MosqueFinder />);
     await waitFor(() => expect(screen.getByText("Masjid Raya")).toBeInTheDocument());
 
@@ -267,13 +255,13 @@ describe("MosqueFinder: results", () => {
 });
 
 describe("MosqueFinder: messages", () => {
-  it("says when nothing is within the radius", async () => {
-    fetchMock.mockImplementation(async () => okResponse([]));
+  it("says when nothing is recorded within the distance searched", async () => {
+    fetchMock.mockImplementation(answering([]));
     render(<MosqueFinder />);
     await waitFor(() =>
       expect(
         screen.getByText(
-          "Tidak ada masjid atau musholla ditemukan dalam radius 2 km. Coba perluas pencarian atau pindah lokasi."
+          "Tidak ada masjid atau musholla yang tercatat dalam 25 km. Coba cari di Google Maps, atau laporkan yang Anda tahu di OpenStreetMap."
         )
       ).toBeInTheDocument()
     );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatRadius } from "@/lib/mosques";
 import { cityCentreLabel } from "@/lib/mosque-messages";
 import { CITIES, type CityCoord } from "@/lib/cities";
 import type { GpsStatus } from "@/hooks/useGeolocationWatch";
@@ -36,7 +35,7 @@ function searchCityTable(query: string): CityCoord[] {
 
 /** The mosque finder's card: where it searches, and the ways to change that */
 export default function MosqueControls({
-  mode, placeName, accuracy, radius, canRefresh, refreshing, gpsStatus, gpsError, onRefresh, onStartGps, onStopGps, onPickCity,
+  mode, placeName, accuracy, canRefresh, refreshing, gpsStatus, gpsError, onRefresh, onStartGps, onStopGps, onPickCity,
 }: {
   /** Around the GPS position, a city picked here, or the selected city's centre */
   mode: "gps" | "picked" | "centre";
@@ -44,7 +43,6 @@ export default function MosqueControls({
   placeName: string;
   /** The GPS fix's accuracy (m), when there is one */
   accuracy: number | null;
-  radius: number;
   canRefresh: boolean;
   /** A search is on its way while results are shown */
   refreshing: boolean;
@@ -130,9 +128,8 @@ export default function MosqueControls({
       </p>
 
       {mode === "gps" && accuracy !== null && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-2">
           <AccuracyBadge accuracy={accuracy} />
-          <span className="text-xs text-fg-subtle">Radius: {formatRadius(radius)}</span>
         </div>
       )}
     </Card>

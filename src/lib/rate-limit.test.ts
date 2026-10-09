@@ -54,8 +54,8 @@ describe("checkRateLimit", () => {
     expect(checkRateLimit(from("1.1.1.1"), "schedule")).toEqual({ ok: true });
   });
 
-  it("allows 20 mosque and 10 geocode requests a minute", () => {
-    expect(send(20, "2.2.2.2", "mosques")).toEqual({ ok: true });
+  it("allows 60 mosque and 10 geocode requests a minute", () => {
+    expect(send(60, "2.2.2.2", "mosques")).toEqual({ ok: true });
     expect(checkRateLimit(from("2.2.2.2"), "mosques")).toMatchObject({ ok: false });
     expect(send(10, "2.2.2.2", "geocode")).toEqual({ ok: true });
     expect(checkRateLimit(from("2.2.2.2"), "geocode")).toMatchObject({ ok: false });

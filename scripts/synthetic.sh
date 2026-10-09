@@ -2,10 +2,10 @@
 # Synthetic checks: production as a visitor gets it, and the upstream APIs it relies
 # on. Run by .github/workflows/synthetic.yml.
 #
-#   scripts/synthetic.sh hourly   the site (headers, region, schedule, assets) and
+#   scripts/synthetic.sh hourly   the site (headers, region, schedule, mosques, assets) and
 #                                 MyQuran's contract (monthly, daily, city search)
-#   scripts/synthetic.sh daily    Nominatim and Overpass, whose usage policies ask for
-#                                 few requests, and a probe of MyQuran's Hijri dates
+#   scripts/synthetic.sh daily    Nominatim, whose usage policy asks for few requests,
+#                                 and a probe of MyQuran's Hijri dates
 #
 # Each check prints one line, and a table row to $GITHUB_STEP_SUMMARY when set.
 # Failed checks are also appended to $FAILURES_FILE (when set) for the issue the
@@ -15,7 +15,6 @@
 #   SITE_URL       the deployed site
 #   MYQURAN_API    MyQuran's prayer-schedule API
 #   NOMINATIM_URL  Nominatim reverse geocoding
-#   OVERPASS_URLS  Overpass mirrors, space-separated (the ones the app asks, in turn)
 #   EXPECT_REGION  Vercel function region; empty skips the check (local runs)
 #   SYNTHETIC_TOKEN  sent to the site only, as the x-synthetic-monitor header, so a
 #                  Vercel Firewall bypass rule can let the monitor through (README)
@@ -25,7 +24,6 @@ MODE="${1:-hourly}"
 SITE_URL="${SITE_URL:-https://si-imsak.vercel.app}"
 MYQURAN_API="${MYQURAN_API:-https://api.myquran.com/v3/sholat}"
 NOMINATIM_URL="${NOMINATIM_URL:-https://nominatim.openstreetmap.org/reverse}"
-OVERPASS_URLS="${OVERPASS_URLS:-https://overpass.private.coffee/api/interpreter https://overpass-api.de/api/interpreter}"
 EXPECT_REGION="${EXPECT_REGION-sin1}"
 
 UA="Si-Imsak-Synthetic/1.0 (+https://github.com/irfan-yulianto/si-imsak)"
@@ -169,6 +167,21 @@ site_schedule() {
   ok "$THIS_MONTH, $days days${cache:+, CDN $cache}"
 }
 
+# The mosques near Monas, from the dataset the workflow "Mosque data" rebuilds weekly
+site_mosques() {
+  CHECK="mosque API"
+  site "/api/mosques?lat=-6.18&lng=106.83"
+  [[ $STATUS == 200 ]] || { bad "HTTP $STATUS: \`$(snippet)\`"; return; }
+  local count date age
+  count=$(jq -r 'if .status == true then (.data | length) else -1 end' "$TMP/body" 2>/dev/null || echo -1)
+  ((count >= 10)) || { bad "$count mosques near Monas: \`$(snippet)\`"; return; }
+  date=$(header x-data-date)
+  [[ -n $date ]] || { bad "no X-Data-Date: the dataset's date is unknown"; return; }
+  age=$((($(date -u +%s) - $(date -u -d "$date" +%s)) / 86400))
+  ((age <= 21)) || { bad "the data is $age days old (OpenStreetMap of $date): is the workflow Mosque data running?"; return; }
+  ok "$count near Monas, OpenStreetMap of $date ($age days)"
+}
+
 site_files() {
   CHECK="static files"
   local problems=() expires
@@ -252,27 +265,6 @@ nominatim() {
   ok "$(jq -r '.address.city // .address.state' "$TMP/body")"
 }
 
-# The app asks the mirrors in turn; one answering is enough
-overpass() {
-  CHECK="Overpass"
-  local query url answering=0 notes=()
-  query="[out:json][timeout:20];nw[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](around:1000,$LAT,$LNG);out center 5;"
-  for url in $OVERPASS_URLS; do
-    get "$url" --data-urlencode "data=$query"
-    if [[ $STATUS == 200 ]] && jq -e '.elements | length > 0' "$TMP/body" >/dev/null 2>&1; then
-      answering=$((answering + 1))
-      notes+=("${url#*://} ok")
-    else
-      notes+=("${url#*://} HTTP $STATUS")
-    fi
-  done
-  if ((answering > 0)); then
-    ok "${notes[*]}"
-  else
-    bad "no mirror answered: ${notes[*]}"
-  fi
-}
-
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   printf '\n### Synthetic checks (%s)\n\n|  | Check | Result |\n|---|---|---|\n' "$MODE" >>"$GITHUB_STEP_SUMMARY"
 fi
@@ -283,6 +275,7 @@ case $MODE in
     if site_page; then
       site_time
       site_schedule
+      site_mosques
       site_files
     fi
     myquran_month "MyQuran month" "$THIS_MONTH"
@@ -293,7 +286,6 @@ case $MODE in
     ;;
   daily)
     nominatim
-    overpass
     myquran_hijri
     ;;
   *)
