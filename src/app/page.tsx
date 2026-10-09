@@ -133,13 +133,16 @@ export default function Home() {
           <InstallBanner />
         </div>
 
-        {/* Mosque Finder — tab on mobile, section on desktop */}
+        {/* Mosque Finder — tab on mobile, section on desktop. Focusable, so the header's
+            "Masjid Terdekat" link moves the keyboard and screen reader here, not only the
+            scroll position */}
         <div
           id="panel-masjid"
           ref={mosqueSectionRef}
           role="tabpanel"
           aria-labelledby="tab-masjid"
-          className={`${activeTab === "masjid" ? "block" : "hidden"} md:mt-10 md:block`}
+          tabIndex={-1}
+          className={`${activeTab === "masjid" ? "block" : "hidden"} focus:outline-none md:mt-10 md:block`}
         >
           {showMosques ? <MosqueFinder /> : <MosquePlaceholder />}
         </div>

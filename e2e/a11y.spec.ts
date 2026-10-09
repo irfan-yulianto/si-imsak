@@ -29,6 +29,15 @@ test("first visit with the location prompt @desktop", async ({ page }) => {
   expect(await violations(page)).toEqual([]);
 });
 
+test("the header's 'Masjid Terdekat' link takes the keyboard focus to the mosque finder @desktop", async ({ page, isMobile }) => {
+  test.skip(isMobile, "The link is only shown on wide screens");
+  await seedCity(page, JAKARTA);
+  await page.goto("/");
+  await page.getByRole("link", { name: "Masjid Terdekat" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#panel-masjid")).toBeFocused();
+});
+
 test("mosque finder with results, light theme", async ({ page }) => {
   await seedCity(page, JAKARTA, { theme: "light" });
   await page.goto("/?tab=masjid");
