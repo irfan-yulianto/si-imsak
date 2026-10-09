@@ -11,8 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
-    background_color: "#0F1419",
-    theme_color: "#064E3B",
+    // The default (dark) theme's background, as the page sets theme-color to
+    background_color: "#0A0E13",
+    theme_color: "#0A0E13",
     categories: ["lifestyle", "education"],
     icons: [
       {

@@ -7,6 +7,7 @@ import { getTimezone } from "@/lib/timezone";
 import { KEYS, read, readJson, readRaw, remove, writeRaw } from "@/lib/storage";
 import { isLocation, isScheduleData } from "@/lib/validate";
 import { setClockOffset } from "@/lib/clock";
+import { applyTheme } from "@/lib/theme";
 import { monthId } from "./schedule-slice";
 
 export interface AppSlice {
@@ -52,7 +53,7 @@ export const createAppSlice: StateCreator<AppState, [], [], AppSlice> = (set, ge
   setTheme: (theme) => {
     if (typeof window !== "undefined") {
       writeRaw(KEYS.theme, theme);
-      document.documentElement.classList.toggle("dark", theme === "dark");
+      applyTheme(theme);
     }
     set({ theme });
   },
@@ -75,8 +76,11 @@ export const createAppSlice: StateCreator<AppState, [], [], AppSlice> = (set, ge
     const cached = read(KEYS.schedule(location.cityId, today.year, today.month), isScheduleData, SCHEDULE_CACHE_MAX_AGE);
     const id = monthId(location.cityId, today.year, today.month);
 
+    const theme = readRaw(KEYS.theme) === "light" ? "light" : "dark";
+    // The inline script did this before the first paint; again, in case it couldn't
+    applyTheme(theme);
     set((s) => ({
-      theme: readRaw(KEYS.theme) === "light" ? "light" : "dark",
+      theme,
       location,
       viewYear: today.year,
       viewMonth: today.month,

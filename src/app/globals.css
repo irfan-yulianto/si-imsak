@@ -8,30 +8,31 @@
  * once: light on :root, dark on .dark.
  */
 :root {
-  --bg: #F8FAF9;
+  color-scheme: light;
+  --bg: #F1F5F3;
   --surface: #FFFFFF;
   /* Insets on a surface: tiles, stripes, inputs */
-  --surface-2: #F8FAFC;
-  --surface-hover: #F1F5F9;
+  --surface-2: #F4F7F6;
+  --surface-hover: #EAF0ED;
   --fg: #0F172A;
   --fg-muted: #475569;
-  --fg-subtle: #64748B;
-  --border: #F1F5F9;
+  --fg-subtle: #5B6B7F;
+  --border: #E2E8F0;
   /* Solid buttons, with --on-accent text; --accent-fg for accent text and links */
   --accent: #047857;
   --accent-hover: #065F46;
   --on-accent: #FFFFFF;
-  --accent-soft: #ECFDF5;
-  --accent-soft-hover: #D1FAE5;
+  --accent-soft: #E7F6EF;
+  --accent-soft-hover: #D3EEE2;
   --accent-fg: #047857;
   /* Hijri dates, Imsak and the time in progress */
   --gold: #B45309;
-  --gold-soft: #FFFBEB;
+  --gold-soft: #FDF4E3;
   /* Offline, stale data, hints */
   --warning: #B45309;
-  --warning-soft: #FFFBEB;
+  --warning-soft: #FDF4E3;
   --danger: #B91C1C;
-  --danger-soft: #FEF2F2;
+  --danger-soft: #FDECEC;
   /* The countdown, in both themes */
   --hero-from: #064E3B;
   --hero-via: #166534;
@@ -39,11 +40,11 @@
   --on-hero: #FFFFFF;
   --on-hero-muted: #BBF7D0;
   --brand: #064E3B;
-  --shimmer-a: #E5E7EB;
-  --shimmer-b: #F3F4F6;
+  --shimmer-a: #E8EDEA;
+  --shimmer-b: #F3F6F4;
   --scrollbar: #CBD5E1;
   --scrollbar-hover: #94A3B8;
-  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --card-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.05);
 
   /* Layout */
   --safe-t: env(safe-area-inset-top);
@@ -65,31 +66,32 @@
 }
 
 .dark {
-  --bg: #0F1419;
-  --surface: #1B2534;
-  --surface-2: #273344;
-  --surface-hover: #334155;
-  --fg: #E2E8F0;
-  --fg-muted: #CBD5E1;
-  --fg-subtle: #94A3B8;
-  --border: rgb(51 65 85 / 0.5);
+  color-scheme: dark;
+  --bg: #0A0E13;
+  --surface: #1A2532;
+  --surface-2: #233140;
+  --surface-hover: #2C3B4C;
+  --fg: #E6EDF3;
+  --fg-muted: #B4C0CE;
+  --fg-subtle: #93A1B3;
+  --border: #2C3949;
   --accent: #047857;
   --accent-hover: #065F46;
   --on-accent: #FFFFFF;
-  --accent-soft: rgb(6 78 59 / 0.3);
-  --accent-soft-hover: rgb(6 78 59 / 0.5);
+  --accent-soft: #11332B;
+  --accent-soft-hover: #164034;
   --accent-fg: #34D399;
   --gold: #FBBF24;
-  --gold-soft: rgb(120 53 15 / 0.2);
+  --gold-soft: #302718;
   --warning: #FBBF24;
-  --warning-soft: rgb(120 53 15 / 0.3);
+  --warning-soft: #302718;
   --danger: #FCA5A5;
-  --danger-soft: rgb(69 10 10 / 0.3);
-  --shimmer-a: #1E293B;
-  --shimmer-b: #334155;
+  --danger-soft: #3D1E22;
+  --shimmer-a: #233140;
+  --shimmer-b: #2C3B4C;
   --scrollbar: #374151;
   --scrollbar-hover: #4B5563;
-  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.4);
 }
 
 /* `inline`: the utilities read the variables where they are used, so .dark applies.

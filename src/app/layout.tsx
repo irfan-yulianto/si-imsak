@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
 import "./globals.css";
+import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -76,7 +77,8 @@ export default function RootLayout({
     // variable defined only on <body> would be missing
     <html lang="id" className={`${jakarta.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#064E3B" />
+        {/* Set to the saved theme's background by the script below, before the first paint */}
+        <meta name="theme-color" content={THEME_COLORS.dark} />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -88,7 +90,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <Script id="theme-init" strategy="beforeInteractive">
-          {`(function(){try{var t=localStorage.getItem('theme');if(t!=='light'){document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`}
+          {THEME_INIT_SCRIPT}
         </Script>
         {children}
         <Analytics />
