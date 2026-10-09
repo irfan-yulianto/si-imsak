@@ -17,12 +17,13 @@ export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
 export const MOSQUE_CACHE_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 
-// CDN caching for upstream data that changes rarely (schedules, city search).
+// CDN caching for upstream data that changes rarely (schedules, city search, mosques).
 // Vercel's edge serves repeat requests without invoking the function, and keeps
 // serving the last good copy for a week if the function starts failing.
 export const CDN_CACHE_DAY =
   "public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800";
-export const CDN_CACHE_HOUR = "public, s-maxage=3600, stale-while-revalidate=7200";
+// For answers worth asking again soon, e.g. a mosque search that found nothing
+export const CDN_CACHE_SHORT = "public, s-maxage=600";
 export const NO_STORE = "no-store";
 
 /**

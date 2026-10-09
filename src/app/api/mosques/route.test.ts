@@ -140,7 +140,7 @@ describe("GET /api/mosques", () => {
     expect(json.status).toBe(true);
   });
 
-  it("sets Cache-Control header on success", async () => {
+  it("lets the CDN keep mosques for a day, and finding none for 10 minutes", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -149,8 +149,15 @@ describe("GET /api/mosques", () => {
       })
     );
 
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.headers.get("Cache-Control")).toContain("s-maxage=3600");
+    const found = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
+    expect(found.headers.get("Cache-Control")).toContain("s-maxage=86400");
+    expect(found.headers.get("Cache-Control")).toContain("stale-if-error");
+
+    const { parseOverpassResponse } = await import("@/lib/mosques");
+    vi.mocked(parseOverpassResponse).mockReturnValueOnce([]);
+    const none = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
+    expect(none.status).toBe(200);
+    expect(none.headers.get("Cache-Control")).toBe("public, s-maxage=600");
   });
 });
 
@@ -197,5 +204,30 @@ describe("GET /api/mosques: radius and mirrors", () => {
     const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  // Overpass answers such a query with HTTP 200, a remark and no elements
+  const ranOut = (remark: string) => ({ ok: true, json: () => Promise.resolve({ elements: [], remark }) });
+
+  it("moves on to the next mirror when a query ran out of time there", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(ranOut('runtime error: Query timed out in "query" at line 1 after 9 seconds.'))
+      .mockResolvedValueOnce(answer());
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("answers 502, not an empty list, when the query ran out of time or memory everywhere", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(ranOut("runtime error: Query run out of memory using about 2048 MB of RAM."))
+    );
+    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
+    expect(res.status).toBe(502);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(await res.json()).toMatchObject({ status: false, retryable: true });
   });
 });
