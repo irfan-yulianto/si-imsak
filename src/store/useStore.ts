@@ -275,7 +275,8 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 
-  // Re-fetch countdown schedule for current month (does NOT touch table schedule)
+  // Re-fetch the countdown's current month. The table is left alone unless it shows an
+  // error for that same month.
   refetchSchedule: async () => {
     const { location, timeOffset } = get();
     const { cityId } = location;
@@ -300,7 +301,20 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Ignore the result if the user switched city meanwhile
       if (get().location.cityId !== cityId) return;
-      set({ countdownSchedule: jadwal });
+      const monthDays = res.data.jadwal;
+      set((state) => {
+        // A table stuck on an error for this same month (e.g. offline at startup) recovers too
+        const tableFailedHere =
+          state.schedule.error !== null &&
+          !state.schedule.loading &&
+          state.schedule.data.length === 0 &&
+          state.viewYear === year &&
+          state.viewMonth === month;
+        return {
+          countdownSchedule: jadwal,
+          ...(tableFailedHere && { schedule: { data: monthDays, loading: false, error: null } }),
+        };
+      });
     } catch (e) {
       console.warn("Failed to refetch countdown schedule:", e);
       // silently fail — countdown retries on its next check
