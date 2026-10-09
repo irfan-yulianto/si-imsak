@@ -5,6 +5,9 @@ import { test, expect } from "@playwright/test";
 // are answered here, so the monitor never shows up in the analytics.
 test.skip(!process.env.E2E_BASE_URL, "runs against a deployed site only");
 
+// Lets the monitor through the Vercel Firewall's bypass rule (README); sent to the site only
+const token = process.env.SYNTHETIC_TOKEN;
+
 const JAKARTA = { id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" };
 
 test("the live site loads its schedule and third-party scripts without errors", async ({ page }) => {
@@ -24,11 +27,23 @@ test("the live site loads its schedule and third-party scripts without errors", 
     localStorage.setItem("selectedLocation", JSON.stringify(city));
     localStorage.setItem("pwa-install-dismissed", "1");
   }, JAKARTA);
+  if (token) {
+    const site = new URL(process.env.E2E_BASE_URL!).origin;
+    await page.route(
+      (url) => url.origin === site,
+      (route) => route.continue({ headers: { ...route.request().headers(), "x-synthetic-monitor": token } })
+    );
+  }
+  // Registered last, so it runs first for the beacons
   await page.route(/\.clarity\.ms\/collect|\/_vercel\/(insights|speed-insights)\/(view|event|vitals)/, (route) =>
     route.fulfill({ status: 204 })
   );
 
   const response = await page.goto("/");
+  expect(
+    response?.headers()["x-vercel-mitigated"],
+    "the Vercel firewall challenged the monitor: add the bypass rule from README → Synthetic monitoring"
+  ).toBeUndefined();
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("region", { name: "Jadwal sholat hari ini" })).toContainText(/\d{2}:\d{2}/);
 

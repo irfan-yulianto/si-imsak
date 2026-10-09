@@ -40,6 +40,8 @@ jobs:
 
       - name: Site and MyQuran
         id: checks
+        env:
+          SYNTHETIC_TOKEN: ${{ secrets.SYNTHETIC_TOKEN }}
         run: |
           status=0
           FAILURES_FILE="$RUNNER_TEMP/failures.md" scripts/synthetic.sh hourly || status=$?
@@ -104,6 +106,7 @@ jobs:
         run: npx playwright test --project=prod
         env:
           E2E_BASE_URL: ${{ env.SITE_URL }}
+          SYNTHETIC_TOKEN: ${{ secrets.SYNTHETIC_TOKEN }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: steps.smoke.outcome == 'failure'
@@ -121,7 +124,7 @@ jobs:
           SMOKE: ${{ steps.smoke.outcome }}
         run: |
           if [[ $SMOKE != success ]]; then
-            echo "- **browser smoke test**: console errors or CSP violations on the live site (Playwright report in the run's artifacts)" >> "$RUNNER_TEMP/failures.md"
+            echo "- **browser smoke test**: failed; the Playwright report in the run's artifacts says why (a firewall challenge, a CSP violation or a console error)" >> "$RUNNER_TEMP/failures.md"
           fi
           {
             echo "failures<<EOF_FAILURES"
