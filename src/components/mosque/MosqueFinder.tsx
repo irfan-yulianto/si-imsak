@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useStore } from "@/store/useStore";
-import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
+import { formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
+import type { Mosque } from "@/types";
 import { roundCoord } from "@/lib/constants";
 import { CITIES, CITY_MAP } from "@/lib/cities";
 import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";

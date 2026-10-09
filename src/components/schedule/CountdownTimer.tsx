@@ -6,6 +6,7 @@ import { syncServerTime, getAdjustedTime } from "@/lib/time";
 import { getUtcOffset } from "@/lib/timezone";
 import { PRAYER_ICON_MAP, MapPinIcon, RefreshIcon } from "@/components/ui/Icons";
 import { detectAndUpdateLocation } from "@/lib/detect-location";
+import type { PrayerKey } from "@/types";
 import {
   type NextPrayer,
   getLocalDate,
@@ -22,7 +23,7 @@ const RETRY_DELAYS_MS = [3_000, 10_000, 30_000, 60_000];
 const STALE_ARRIVAL_MS = 60_000;
 
 /** What to say when a time arrives — Imsak, Terbit and Dhuha aren't obligatory prayers */
-export function arrivalMessage(key: string, name: string): { title: string; subtitle: string } {
+export function arrivalMessage(key: PrayerKey, name: string): { title: string; subtitle: string } {
   switch (key) {
     case "imsak":
       return { title: "Waktu Imsak", subtitle: "Saatnya berhenti makan dan minum" };
@@ -45,7 +46,7 @@ export default function CountdownTimer() {
   const setTodayDateStr = useStore((s) => s.setTodayDateStr);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [prayerArrived, setPrayerArrived] = useState<{ name: string; key: string } | null>(null);
+  const [prayerArrived, setPrayerArrived] = useState<{ name: string; key: PrayerKey } | null>(null);
   const arrivedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // DOM refs for countdown digits — bypass React re-render on every tick
   const hoursRef = useRef<HTMLSpanElement>(null);

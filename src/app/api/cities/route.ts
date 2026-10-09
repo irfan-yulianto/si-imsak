@@ -2,12 +2,13 @@ import { CDN_CACHE_DAY, NO_STORE } from "@/lib/constants";
 import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { log, errorMessage } from "@/lib/log";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
+import type { CitySearchResponse } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const ip = extractClientIp(request);
   if (isRateLimited(ip)) {
-    return NextResponse.json(
+    return NextResponse.json<CitySearchResponse>(
       { status: false, data: [], error: "Too many requests" },
       { status: 429 }
     );
@@ -16,13 +17,13 @@ export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q");
 
   if (!q || q.length < 2) {
-    return NextResponse.json({ status: false, data: [] }, { status: 400 });
+    return NextResponse.json<CitySearchResponse>({ status: false, data: [] }, { status: 400 });
   }
 
   // Sanitize: allow only letters (any script), spaces, dots, hyphens and apostrophes
   const sanitized = q.replace(/[^\p{L}\s.\-']/gu, "").trim();
   if (sanitized.length < 2 || sanitized.length > 50) {
-    return NextResponse.json({ status: false, data: [] }, { status: 400 });
+    return NextResponse.json<CitySearchResponse>({ status: false, data: [] }, { status: 400 });
   }
 
   try {
@@ -36,14 +37,14 @@ export async function GET(request: NextRequest) {
 
     // v3 API returns 404 for "not found" — treat as empty results, not an error
     if (res.status === 404) {
-      return NextResponse.json(
+      return NextResponse.json<CitySearchResponse>(
         { status: true, data: [] },
         { headers: { "Cache-Control": CDN_CACHE_DAY } }
       );
     }
 
     if (!res.ok) {
-      return NextResponse.json(
+      return NextResponse.json<CitySearchResponse>(
         { status: false, data: [] },
         { status: 502, headers: { "Cache-Control": NO_STORE } }
       );
@@ -61,12 +62,12 @@ export async function GET(request: NextRequest) {
           })).filter((c: { id: string }) => c.id)
         : [],
     };
-    return NextResponse.json(safeData, {
+    return NextResponse.json<CitySearchResponse>(safeData, {
       headers: { "Cache-Control": safeData.status ? CDN_CACHE_DAY : NO_STORE },
     });
   } catch (err) {
     log("error", { route: "cities", error: errorMessage(err) });
-    return NextResponse.json(
+    return NextResponse.json<CitySearchResponse>(
       { status: false, data: [] },
       { status: 502, headers: { "Cache-Control": NO_STORE } }
     );

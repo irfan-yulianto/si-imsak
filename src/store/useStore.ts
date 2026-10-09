@@ -1,19 +1,14 @@
 "use client";
 
 import { create } from "zustand";
-import { Location, ScheduleDay, TimezoneLabel } from "@/types";
+import { Location, LocationState, ScheduleDay, TimezoneLabel } from "@/types";
 import { DEFAULT_LOCATION, SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
 import { BUILD_DATE, cityDate, daysInMonth } from "@/lib/city-time";
 import { getSchedule } from "@/lib/api";
 import { getTimezone } from "@/lib/timezone";
 
 /** Read the cached location from localStorage (client only, after mount) */
-function readCachedLocation(): {
-  cityId: string;
-  cityName: string;
-  province: string;
-  timezone: TimezoneLabel;
-} | null {
+function readCachedLocation(): LocationState | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem("selectedLocation");
@@ -49,13 +44,6 @@ function readCachedSchedule(cityId: string, year: number, month: number): Schedu
     console.warn("Failed to get initial schedule from localStorage:", e);
     return [];
   }
-}
-
-interface LocationState {
-  cityId: string;
-  cityName: string;
-  province: string;
-  timezone: TimezoneLabel;
 }
 
 interface ScheduleState {

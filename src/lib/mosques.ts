@@ -1,12 +1,4 @@
-export interface Mosque {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  distance: number;
-  address?: string;
-  type?: "masjid" | "musholla";
-}
+import type { Mosque } from "@/types";
 
 interface OverpassElement {
   type: "node" | "way" | "relation";

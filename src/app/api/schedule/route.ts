@@ -2,7 +2,7 @@ import { CDN_CACHE_DAY, NO_STORE, getScheduleYearRange } from "@/lib/constants";
 import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { log, errorMessage } from "@/lib/log";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
-import { PRAYER_KEYS, type ScheduleDay } from "@/types";
+import { PRAYER_KEYS, type PrayerTimes, type ScheduleDay, type ScheduleResponse } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 // The whole request, including retries, finishes within DEADLINE_MS
@@ -131,7 +131,7 @@ function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
   if (!raw || typeof raw !== "object") return null;
   const day = raw as Record<string, unknown>;
   if (typeof day.tanggal !== "string" || !day.tanggal) return null;
-  const times = {} as Record<(typeof PRAYER_KEYS)[number], string>;
+  const times = {} as PrayerTimes;
   for (const key of PRAYER_KEYS) {
     const value = day[key];
     if (typeof value !== "string" || !HHMM.test(value)) return null;
@@ -141,7 +141,7 @@ function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
 }
 
 function unavailable(retryAfterS: number) {
-  return NextResponse.json(
+  return NextResponse.json<ScheduleResponse>(
     { status: false, error: "Upstream unavailable" },
     {
       status: 502,
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
   const started = Date.now();
   const ip = extractClientIp(request);
   if (isRateLimited(ip)) {
-    return NextResponse.json(
+    return NextResponse.json<ScheduleResponse>(
       { status: false, error: "Too many requests" },
       { status: 429 }
     );
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
   const month = request.nextUrl.searchParams.get("month");
 
   if (!cityId || !year || !month) {
-    return NextResponse.json(
+    return NextResponse.json<ScheduleResponse>(
       { status: false, error: "Missing parameters" },
       { status: 400 }
     );
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
 
   // Validate city_id: MD5 hash (32 hex chars)
   if (!/^[a-f0-9]{32}$/.test(cityId)) {
-    return NextResponse.json(
+    return NextResponse.json<ScheduleResponse>(
       { status: false, error: "Invalid city_id" },
       { status: 400 }
     );
@@ -184,13 +184,13 @@ export async function GET(request: NextRequest) {
   const monthNum = Number(month);
   const yearRange = getScheduleYearRange();
   if (!Number.isInteger(yearNum) || yearNum < yearRange.min || yearNum > yearRange.max) {
-    return NextResponse.json(
+    return NextResponse.json<ScheduleResponse>(
       { status: false, error: "Invalid year" },
       { status: 400 }
     );
   }
   if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
-    return NextResponse.json(
+    return NextResponse.json<ScheduleResponse>(
       { status: false, error: "Invalid month" },
       { status: 400 }
     );
@@ -252,11 +252,11 @@ export async function GET(request: NextRequest) {
         // city has no schedule
         return finish(
           probe.kind === "ok"
-            ? NextResponse.json(
+            ? NextResponse.json<ScheduleResponse>(
                 { status: false, error: "Upstream API error" },
                 { status: 502, headers: { "Cache-Control": NO_STORE } }
               )
-            : NextResponse.json(
+            : NextResponse.json<ScheduleResponse>(
                 { status: false, error: "Schedule not found" },
                 { status: 404, headers: { "Cache-Control": NOT_FOUND_CACHE } }
               )
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
     const partial = jadwal.length < dates.length;
 
     return finish(
-      NextResponse.json(
+      NextResponse.json<ScheduleResponse>(
         {
           status: true,
           ...(partial && { partial: true }),
@@ -299,7 +299,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     log("error", { route: "schedule", error: errorMessage(err) });
     return finish(
-      NextResponse.json(
+      NextResponse.json<ScheduleResponse>(
         { status: false, error: "Failed to fetch schedule" },
         { status: 500, headers: { "Cache-Control": NO_STORE } }
       )

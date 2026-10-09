@@ -3,12 +3,13 @@ import { extractCityFromNominatim, normalizeToMyquranName } from "@/lib/geocode"
 import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
 import { NOMINATIM_REVERSE_URL, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { log, errorMessage } from "@/lib/log";
+import type { GeocodeResponse } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const ip = extractClientIp(request);
   if (isRateLimited(ip, 10)) {
-    return NextResponse.json(
+    return NextResponse.json<GeocodeResponse>(
       { status: false, city: "" },
       { status: 429 }
     );
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   const lng = request.nextUrl.searchParams.get("lng");
 
   if (!lat || !lng) {
-    return NextResponse.json(
+    return NextResponse.json<GeocodeResponse>(
       { status: false, city: "" },
       { status: 400 }
     );
@@ -28,13 +29,13 @@ export async function GET(request: NextRequest) {
   const lngNum = parseFloat(lng);
 
   if (isNaN(latNum) || latNum < INDONESIA_BOUNDS.latMin || latNum > INDONESIA_BOUNDS.latMax) {
-    return NextResponse.json(
+    return NextResponse.json<GeocodeResponse>(
       { status: false, city: "" },
       { status: 400 }
     );
   }
   if (isNaN(lngNum) || lngNum < INDONESIA_BOUNDS.lngMin || lngNum > INDONESIA_BOUNDS.lngMax) {
-    return NextResponse.json(
+    return NextResponse.json<GeocodeResponse>(
       { status: false, city: "" },
       { status: 400 }
     );
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       log("error", { route: "geocode", upstreamStatus: res.status });
-      return NextResponse.json(
+      return NextResponse.json<GeocodeResponse>(
         { status: false, city: "" },
         { status: 502, headers: { "Cache-Control": NO_STORE } }
       );
@@ -66,14 +67,14 @@ export async function GET(request: NextRequest) {
 
     // "No city here" is a real answer, so it is cached like a hit
     const city = rawCity ? normalizeToMyquranName(rawCity) : "";
-    return NextResponse.json(
+    return NextResponse.json<GeocodeResponse>(
       { status: !!city, city },
       { headers: { "Cache-Control": CDN_CACHE_DAY } }
     );
   } catch (err) {
     clearTimeout(timeout);
     log("error", { route: "geocode", error: errorMessage(err) });
-    return NextResponse.json(
+    return NextResponse.json<GeocodeResponse>(
       { status: false, city: "" },
       { status: 502, headers: { "Cache-Control": NO_STORE } }
     );

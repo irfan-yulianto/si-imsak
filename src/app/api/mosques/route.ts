@@ -3,6 +3,7 @@ import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
 import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, roundCoord } from "@/lib/constants";
 import { OVERPASS_ENDPOINTS, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { log } from "@/lib/log";
+import type { MosqueSearchResponse } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 25;
@@ -67,7 +68,7 @@ async function fetchOverpass(query: string): Promise<unknown> {
 export async function GET(request: NextRequest) {
   const ip = extractClientIp(request);
   if (isRateLimited(ip, 10)) {
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: false, error: "Too many requests" },
       { status: 429 }
     );
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
   const radius = request.nextUrl.searchParams.get("radius") || "2000";
 
   if (!lat || !lng) {
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: false, error: "Missing lat/lng parameters" },
       { status: 400 }
     );
@@ -89,19 +90,19 @@ export async function GET(request: NextRequest) {
   const radiusNum = parseInt(radius, 10);
 
   if (isNaN(latNum) || latNum < INDONESIA_BOUNDS.latMin || latNum > INDONESIA_BOUNDS.latMax) {
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: false, error: "Invalid latitude" },
       { status: 400 }
     );
   }
   if (isNaN(lngNum) || lngNum < INDONESIA_BOUNDS.lngMin || lngNum > INDONESIA_BOUNDS.lngMax) {
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: false, error: "Invalid longitude" },
       { status: 400 }
     );
   }
   if (isNaN(radiusNum) || radiusNum < 100 || radiusNum > 10000) {
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: false, error: "Invalid radius (100-10000m)" },
       { status: 400 }
     );
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
     const data = await fetchOverpass(query);
     const mosques = parseOverpassResponse(data as Parameters<typeof parseOverpassResponse>[0], qLat, qLng);
 
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: true, data: mosques },
       {
         headers: {
@@ -129,7 +130,7 @@ export async function GET(request: NextRequest) {
     log("error", { route: "mosques", error: message });
 
     const isUpstream = message.includes("Overpass endpoints failed");
-    return NextResponse.json(
+    return NextResponse.json<MosqueSearchResponse>(
       { status: false, error: isUpstream ? "Upstream mosque service unavailable" : "Failed to fetch mosques", retryable: isUpstream },
       { status: isUpstream ? 502 : 500 }
     );

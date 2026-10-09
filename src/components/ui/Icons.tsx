@@ -1,4 +1,5 @@
-import { SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
+import type { PrayerKey } from "@/types";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
@@ -255,7 +256,7 @@ export function RefreshIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
-export const PRAYER_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
+export const PRAYER_ICON_MAP: Record<PrayerKey, ComponentType<IconProps>> = {
   imsak: ImsakIcon,
   subuh: SubuhIcon,
   terbit: TerbitIcon,

@@ -1,8 +1,8 @@
-import { ScheduleDay, PrayerName, PRAYER_NAMES, PRAYER_KEYS } from "@/types";
+import { ScheduleDay, PrayerKey, PrayerName, PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 
 export interface NextPrayer {
   name: PrayerName;
-  key: string;
+  key: PrayerKey;
   time: string;
   remainingMs: number;
   isTomorrow?: boolean;

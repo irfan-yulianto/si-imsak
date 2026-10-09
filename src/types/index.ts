@@ -1,31 +1,49 @@
+export type TimezoneLabel = "WIB" | "WITA" | "WIT";
+
+/** A city as MyQuran lists it */
 export interface Location {
   id: string;
   lokasi: string; // city name from API
   daerah?: string; // province name from API
 }
 
-export interface PrayerTimes {
-  imsak: string;
-  subuh: string;
-  terbit: string;
-  dhuha: string;
-  dzuhur: string;
-  ashar: string;
-  maghrib: string;
-  isya: string;
+/** The selected city in the store */
+export interface LocationState {
+  cityId: string;
+  cityName: string;
+  province: string;
+  timezone: TimezoneLabel;
 }
 
-export interface ScheduleDay {
+/** The day's times, in the order they occur */
+export const PRAYER_KEYS = ["imsak", "subuh", "terbit", "dhuha", "dzuhur", "ashar", "maghrib", "isya"] as const;
+export type PrayerKey = (typeof PRAYER_KEYS)[number];
+
+export type PrayerName = "Imsak" | "Subuh" | "Terbit" | "Dhuha" | "Dzuhur" | "Ashar" | "Maghrib" | "Isya";
+
+/** Display names, index for index with PRAYER_KEYS */
+export const PRAYER_NAMES: readonly PrayerName[] = [
+  "Imsak",
+  "Subuh",
+  "Terbit",
+  "Dhuha",
+  "Dzuhur",
+  "Ashar",
+  "Maghrib",
+  "Isya",
+];
+
+/** Each time as HH:MM */
+export type PrayerTimes = Record<PrayerKey, string>;
+
+/** A day as MyQuran returns it */
+export interface UpstreamDay extends PrayerTimes {
   tanggal: string; // "Rabu, 18/02/2026"
+}
+
+/** A day as /api/schedule returns it */
+export interface ScheduleDay extends UpstreamDay {
   date: string; // "2026-02-18"
-  imsak: string;
-  subuh: string;
-  terbit: string;
-  dhuha: string;
-  dzuhur: string;
-  ashar: string;
-  maghrib: string;
-  isya: string;
 }
 
 export interface ScheduleResponse {
@@ -44,38 +62,34 @@ export interface ScheduleResponse {
 export interface CitySearchResponse {
   status: boolean;
   data: Location[];
+  error?: string;
 }
 
-export type TimezoneLabel = "WIB" | "WITA" | "WIT";
+export interface GeocodeResponse {
+  status: boolean;
+  /** City name in MyQuran's spelling, e.g. "KOTA BANDUNG"; empty when none was found */
+  city: string;
+}
 
-export type PrayerName =
-  | "Imsak"
-  | "Subuh"
-  | "Terbit"
-  | "Dhuha"
-  | "Dzuhur"
-  | "Ashar"
-  | "Maghrib"
-  | "Isya";
+export interface Mosque {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Meters from the searched position */
+  distance: number;
+  address?: string;
+  type?: "masjid" | "musholla";
+}
 
-export const PRAYER_NAMES: PrayerName[] = [
-  "Imsak",
-  "Subuh",
-  "Terbit",
-  "Dhuha",
-  "Dzuhur",
-  "Ashar",
-  "Maghrib",
-  "Isya",
-];
+export interface MosqueSearchResponse {
+  status: boolean;
+  data?: Mosque[];
+  error?: string;
+  /** The failure was upstream's; trying again later may work */
+  retryable?: boolean;
+}
 
-export const PRAYER_KEYS: (keyof PrayerTimes)[] = [
-  "imsak",
-  "subuh",
-  "terbit",
-  "dhuha",
-  "dzuhur",
-  "ashar",
-  "maghrib",
-  "isya",
-];
+export interface TimeResponse {
+  now: number;
+}
