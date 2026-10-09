@@ -93,6 +93,8 @@ export interface Place {
   street?: string;
   /** Of two entries for one place, the higher ranks first: completeness() or Overture's confidence */
   rank: number;
+  /** OpenStreetMap links it to Wikidata or Wikipedia: a mosque known well beyond its street */
+  notable?: boolean;
 }
 
 type Position = readonly number[];
@@ -154,6 +156,7 @@ export function placeFromFeature(feature: {
     sourceName: osmName(tags) || undefined,
     street: tags["addr:street"] || tags["addr:full"] || undefined,
     rank: completeness(tags),
+    ...((tags.wikidata || tags.wikipedia) && { notable: true }),
   };
 }
 
@@ -314,6 +317,13 @@ const NAMED_ALIKE_M = 300;
 const SAME_NAME_FAR_M = 2000;
 /** How many places in the country may carry a name that SAME_NAME_FAR_M is for */
 const RARE_NAME_COUNT = 10;
+/**
+ * ...and up to this far, named as a well-known mosque is (see Place.notable): pages for it
+ * are pinned all over its town ("Masjid Istiqlal Jakarta Pusat", 1.3 km off)
+ */
+const NOTABLE_REACH_M = 10_000;
+/** ...unless more places than this carry its name, which then says little ("Al-Azhar") */
+const NOTABLE_NAME_MAX = 50;
 /** Grid cells (degrees): ~330 m for NAMED_ALIKE_M, ~2.2 km for SAME_NAME_FAR_M */
 const NEAR_CELL_DEG = 0.003;
 const FAR_CELL_DEG = 0.02;
@@ -321,6 +331,8 @@ const FAR_CELL_DEG = 0.02;
 const KIND_WORDS = /^(?:masjid|musholla|langgar|surau|meunasah|tajug)(?: (?:jami|jamik|jamie|raya|agung|besar))?(?: |$)/;
 /** Where a name goes on to say where the place is: "Masjid Istiqlal - Jakarta", "…, Lampung Selatan" */
 const NAME_TAIL = /\s[-–|]\s|\s*[,(]/;
+/** The word a name opens with to say what the place is, alone */
+const KIND_WORD = /^(?:masjid|musholla|langgar|surau|meunasah|tajug) /;
 
 /**
  * How far apart two places of the same kind and name may be one mosque: a page for a
@@ -339,16 +351,19 @@ interface Listed<T> {
   name: string;
   /** What names the place, without its kind words or where it is ("Masjid Jami' Al-Ikhlas - Depok" → "al ikhlas"); "" when too short to tell */
   core: string;
+  /** Its name but for the word saying what it is ("Masjid Raya Baiturrahman" → "raya baiturrahman"), for a well-known mosque's pages */
+  title: string;
 }
 
 /**
  * The places of `others` (another source) that `listed` lacks, to add to it: those with
- * no listed place within 60 m, none named alike within 300 m, and none of the same kind
- * and name within sameNameReach(). `others` comes in order of preference, and each one
- * added counts as listed for the next: a place the other source has twice is added once.
- * `nameOf` gives each place's own name (none: "" or undefined).
+ * no listed place within 60 m, none named alike within 300 m, none of the same kind and
+ * name within sameNameReach(), and none named after a well-known listed mosque of their
+ * kind within 10 km. `others` comes in order of preference, and each one added counts as
+ * listed for the next: a place the other source has twice is added once. `nameOf` gives
+ * each place's own name (none: "" or undefined).
  */
-export function addMissing<T extends { lat: number; lng: number; type: MosqueType }>(
+export function addMissing<T extends { lat: number; lng: number; type: MosqueType; notable?: boolean }>(
   listed: readonly T[],
   others: readonly T[],
   nameOf: (place: T) => string | undefined
@@ -357,13 +372,24 @@ export function addMissing<T extends { lat: number; lng: number; type: MosqueTyp
     const own = nameOf(place) ?? "";
     const name = normalizeName(own);
     const core = normalizeName(own.split(NAME_TAIL)[0]).replace(KIND_WORDS, "") || name.replace(KIND_WORDS, "");
-    return { place, name: core ? name : "", core: core.length >= 4 ? core : "" };
+    const title = name.replace(KIND_WORD, "");
+    return { place, name: core ? name : "", core: core.length >= 4 ? core : "", title: core && title.length >= 4 ? title : "" };
   };
   const listedEntries = listed.map(entry);
   const otherEntries = others.map(entry);
   // How many places, of either source, carry each name
   const carrying = new Map<string, number>();
-  for (const { core } of [...listedEntries, ...otherEntries]) if (core) carrying.set(core, (carrying.get(core) ?? 0) + 1);
+  const titled = new Map<string, number>();
+  for (const { core, title } of [...listedEntries, ...otherEntries]) {
+    if (core) carrying.set(core, (carrying.get(core) ?? 0) + 1);
+    if (title) titled.set(title, (titled.get(title) ?? 0) + 1);
+  }
+  // The well-known mosques, by their names, when few places share those
+  const notables = new Map<string, Listed<T>[]>();
+  for (const item of listedEntries) {
+    if (!item.place.notable || !item.title || (titled.get(item.title) ?? 0) > NOTABLE_NAME_MAX) continue;
+    notables.set(item.title, [...(notables.get(item.title) ?? []), item]);
+  }
 
   // Entries by ~330 m cell, and by name and ~2.2 km cell
   const near = new Map<string, Listed<T>[]>();
@@ -409,7 +435,16 @@ export function addMissing<T extends { lat: number; lng: number; type: MosqueTyp
     const namesake =
       Boolean(core) &&
       anyAround(far, place, FAR_CELL_DEG, (row, col) => `${core}|${row}:${col}`, (other) => other.place.type === place.type && meters(other) <= reach);
-    if (nearby || namesake) continue;
+    // A well-known mosque's name, alone or followed by more: "Istiqlal", "Istiqlal Jakarta Pusat"
+    const words = item.title.split(" ");
+    const page =
+      Boolean(item.title) &&
+      words.some((_, i) =>
+        (notables.get(words.slice(0, i + 1).join(" ")) ?? []).some(
+          (well) => well.place.type === place.type && meters(well) <= NOTABLE_REACH_M
+        )
+      );
+    if (nearby || namesake || page) continue;
     added.push(place);
     list(item);
   }

@@ -73,7 +73,7 @@ const meta = {
 };
 fs.writeFileSync(path.join(outDir, "mosques.meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
 
-console.log(`OpenStreetMap: ${features} candidates, ${byId.size} mosques, ${osm.length} after duplicates`);
+console.log(`OpenStreetMap: ${features} candidates, ${byId.size} mosques, ${osm.length} after duplicates, ${osm.filter((place) => place.notable).length} well-known`);
 if (overtureInput) {
   console.log(`Overture ${overtureRelease}: ${overtureRecords} records, ${candidates.length} named like a mosque and sure enough, ${overture.length} not yet listed`);
 }
