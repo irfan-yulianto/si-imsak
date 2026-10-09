@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/store/useStore";
 import { MapPinIcon, RefreshIcon } from "@/components/ui/Icons";
+import Spinner from "@/components/ui/Spinner";
 
 /** How long a failed refresh explains itself */
 const ERROR_MS = 4_000;
@@ -43,29 +44,29 @@ export default function LocationBadge() {
         onClick={refresh}
         disabled={refreshing}
         aria-label={`${location.cityName}, ${location.province}. Perbarui lokasi dengan GPS`}
-        className="focus-ring group mb-3 flex min-h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2 text-left transition-all hover:bg-white/[0.12] active:scale-[0.98] disabled:opacity-60"
+        className="focus-ring group mb-3 flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-tile bg-white/[0.07] px-3 py-2 text-left transition-colors hover:bg-white/[0.12] disabled:opacity-60"
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/20">
-          <MapPinIcon size={16} className="text-green-300" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-white/10">
+          <MapPinIcon size={16} className="text-on-hero-muted" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-xs font-semibold text-green-100">
+            <p className="truncate text-sm font-semibold">
               {location.cityName}
             </p>
-            <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-bold leading-none text-green-200">
+            <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-2xs font-bold leading-none text-on-hero-muted">
               {location.timezone}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-green-200/90">
+          <p className="mt-0.5 truncate text-2xs text-on-hero-muted">
             {location.province}
           </p>
         </div>
         <div className="flex shrink-0 items-center">
           {refreshing ? (
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-green-300 border-t-transparent" />
+            <Spinner size="sm" className="text-on-hero-muted" />
           ) : (
-            <RefreshIcon size={14} className="text-green-300/60 transition-colors group-hover:text-green-200" />
+            <RefreshIcon size={16} className="text-on-hero-muted/70 transition-colors group-hover:text-on-hero" />
           )}
         </div>
       </button>
