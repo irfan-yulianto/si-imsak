@@ -38,6 +38,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Shell scripts
+        run: shellcheck scripts/*.sh
+
       - name: Typecheck
         run: npm run typecheck
 

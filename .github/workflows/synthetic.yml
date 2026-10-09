@@ -1,0 +1,162 @@
+name: Synthetic
+
+# Production as a visitor gets it, and the upstream APIs it relies on
+# (scripts/synthetic.sh). Failing checks open an issue labelled synthetic-failure,
+# which closes itself once they pass again (scripts/synthetic-report.sh).
+# GitHub pauses scheduled workflows after 60 days without repository activity;
+# re-enable this one from the Actions tab if that happens.
+on:
+  schedule:
+    # Hourly; the 03:17 UTC run (10:17 WIB) also runs the daily checks
+    - cron: "17 0-2,4-23 * * *"
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: synthetic
+  cancel-in-progress: false
+
+# Nothing by default; each job asks for what it needs
+permissions: {}
+
+env:
+  SITE_URL: https://si-imsak.vercel.app
+
+jobs:
+  hourly:
+    name: hourly checks
+    # Not in forks: they would watch this production site too
+    if: github.repository == 'irfan-yulianto/si-imsak'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      failures: ${{ steps.checks.outputs.failures }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Site and MyQuran
+        id: checks
+        run: |
+          status=0
+          FAILURES_FILE="$RUNNER_TEMP/failures.md" scripts/synthetic.sh hourly || status=$?
+          {
+            echo "failures<<EOF_FAILURES"
+            cat "$RUNNER_TEMP/failures.md" 2>/dev/null || true
+            echo "EOF_FAILURES"
+          } >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+  daily:
+    name: daily checks
+    if: >-
+      github.repository == 'irfan-yulianto/si-imsak' &&
+      (github.event_name == 'workflow_dispatch' || github.event.schedule == '17 3 * * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      failures: ${{ steps.result.outputs.failures }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Nominatim, Overpass and MyQuran's Hijri dates
+        id: upstream
+        continue-on-error: true
+        run: FAILURES_FILE="$RUNNER_TEMP/failures.md" scripts/synthetic.sh daily
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Chromium system libraries
+        if: steps.browsers.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # The live site with its real Clarity and Vercel scripts: catches CSP violations
+      # and console errors that the mocked end-to-end tests can't see
+      - name: Browser smoke test
+        id: smoke
+        continue-on-error: true
+        run: npx playwright test --project=prod
+        env:
+          E2E_BASE_URL: ${{ env.SITE_URL }}
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.smoke.outcome == 'failure'
+        with:
+          name: prod-smoke-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+      - name: Result
+        id: result
+        env:
+          UPSTREAM: ${{ steps.upstream.outcome }}
+          SMOKE: ${{ steps.smoke.outcome }}
+        run: |
+          if [[ $SMOKE != success ]]; then
+            echo "- **browser smoke test**: console errors or CSP violations on the live site (Playwright report in the run's artifacts)" >> "$RUNNER_TEMP/failures.md"
+          fi
+          {
+            echo "failures<<EOF_FAILURES"
+            cat "$RUNNER_TEMP/failures.md" 2>/dev/null || true
+            echo "EOF_FAILURES"
+          } >> "$GITHUB_OUTPUT"
+          [[ $UPSTREAM == success && $SMOKE == success ]]
+
+  report:
+    name: report
+    needs: [hourly, daily]
+    if: always() && github.repository == 'irfan-yulianto/si-imsak'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write # opens, comments on and closes the synthetic-failure issues
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Issue for the hourly checks
+        env:
+          RESULT: ${{ needs.hourly.result }}
+          FAILURES: ${{ needs.hourly.outputs.failures }}
+        run: scripts/synthetic-report.sh hourly "$RESULT"
+
+      - name: Issue for the daily checks
+        if: ${{ !cancelled() }}
+        env:
+          RESULT: ${{ needs.daily.result }}
+          FAILURES: ${{ needs.daily.outputs.failures }}
+        run: scripts/synthetic-report.sh daily "$RESULT"

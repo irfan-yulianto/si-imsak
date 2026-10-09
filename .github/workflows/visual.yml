@@ -81,7 +81,7 @@ jobs:
           (cd head && nohup npx next start -p 3100 > ../head.log 2>&1 &)
           (cd base && nohup npx next start -p 3200 > ../base.log 2>&1 &)
           for port in 3100 3200; do
-            for i in $(seq 1 60); do
+            for _ in $(seq 1 60); do
               curl -sf -o /dev/null "http://127.0.0.1:$port/" && break
               sleep 1
             done

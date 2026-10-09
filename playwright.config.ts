@@ -6,7 +6,8 @@ const PORT = 3100;
 const MOCK_PORT = 3101;
 const MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 
-// The screenshot comparison (visual.yml) serves the base and head builds itself
+// The screenshot comparison (visual.yml) serves the base and head builds itself, and
+// the synthetic monitor (synthetic.yml) points at production
 const externalBaseUrl = process.env.E2E_BASE_URL;
 // A Chromium that is already installed (e.g. in a sandbox without browser downloads)
 const chromiumPath = process.env.PW_CHROMIUM_PATH;
@@ -28,15 +29,17 @@ export default defineConfig({
     launchOptions: chromiumPath ? { executablePath: chromiumPath } : {},
   },
   projects: [
-    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: [/offline-sw/, /visual/] },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, testIgnore: [/offline-sw/, /visual/, /prod-smoke/] },
     {
       name: "desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } },
       grep: /@desktop/,
-      testIgnore: [/offline-sw/, /visual/],
+      testIgnore: [/offline-sw/, /visual/, /prod-smoke/],
     },
     { name: "sw", use: { ...devices["Pixel 7"], serviceWorkers: "allow" }, testMatch: /offline-sw/ },
     { name: "visual", testMatch: /visual\.spec/, retries: 0 },
+    // The live site (synthetic.yml), with E2E_BASE_URL set
+    { name: "prod", use: { ...devices["Pixel 7"] }, testMatch: /prod-smoke/ },
   ],
   webServer: externalBaseUrl
     ? undefined
