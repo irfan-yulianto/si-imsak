@@ -45,14 +45,13 @@ export const metadata: Metadata = {
       "Jadwal Imsakiyah dan waktu sholat real-time untuk seluruh kota di Indonesia. Countdown dan pencari masjid terdekat.",
     type: "website",
     url: "https://si-imsak.vercel.app",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    // The image comes from app/opengraph-image.tsx
   },
   twitter: {
     card: "summary_large_image",
     title: "Si-Imsak — Jadwal Imsakiyah & Waktu Sholat",
     description:
       "Jadwal Imsakiyah real-time untuk seluruh kota di Indonesia.",
-    images: ["/og-image.png"],
   },
   alternates: { canonical: "https://si-imsak.vercel.app" },
   applicationName: "Si-Imsak",
@@ -60,9 +59,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Si-Imsak",
-  },
-  other: {
-    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -76,7 +72,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    // The font variables live on <html>: --font-sans is resolved on :root, where a
+    // variable defined only on <body> would be missing
+    <html lang="id" className={`${jakarta.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#064E3B" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
@@ -88,7 +86,7 @@ export default function RootLayout({
           </Script>
         )}
       </head>
-      <body className={`${jakarta.variable} ${jetbrains.variable} antialiased`}>
+      <body className="antialiased">
         <Script id="theme-init" strategy="beforeInteractive">
           {`(function(){try{var t=localStorage.getItem('theme');if(t!=='light'){document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`}
         </Script>

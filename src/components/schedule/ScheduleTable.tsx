@@ -450,7 +450,7 @@ export default function ScheduleTable() {
             type="button"
             onClick={scrollToToday}
             aria-label="Gulir ke jadwal hari ini"
-            className="focus-ring fixed bottom-20 right-4 z-40 flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-700 active:scale-95"
+            className="focus-ring fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-800 active:scale-95"
           >
             <CalendarIcon size={14} />
             Hari Ini

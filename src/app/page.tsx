@@ -108,7 +108,7 @@ export default function Home() {
       <Header />
 
       {/* Spacer for fixed header */}
-      <div className="h-16" />
+      <div className="h-[calc(4rem+env(safe-area-inset-top))]" />
 
       <main id="konten" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 focus:outline-none">
         {/* Hero + Schedule — a tab on mobile, always visible on desktop */}

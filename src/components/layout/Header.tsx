@@ -27,7 +27,7 @@ export default function Header() {
   }, [viewYear, viewMonth]);
 
   return (
-    <header className="fixed top-3 left-4 right-4 z-50 mx-auto max-w-5xl">
+    <header className="fixed top-[calc(0.75rem+env(safe-area-inset-top))] left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] z-50 mx-auto max-w-5xl">
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/80 px-3 py-2 sm:px-4 shadow-lg shadow-black/[0.03] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/80 dark:shadow-black/20">
         {/* Logo */}
         <div className="flex shrink-0 items-center gap-2.5">

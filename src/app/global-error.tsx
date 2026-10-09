@@ -1,5 +1,8 @@
 "use client";
 
+// This page replaces the root layout, so it brings the app's styles itself
+import "./globals.css";
+
 export default function GlobalError({
   reset,
 }: {
