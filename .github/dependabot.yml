@@ -1,0 +1,52 @@
+# Weekly dependency updates, grouped so related packages arrive in one PR.
+# A dependency belongs to the first group that matches it.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Asia/Jakarta
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      next:
+        patterns: ["next", "eslint-config-next", "@next/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      # On its own: a new Playwright brings a new Chromium. CI downloads the matching
+      # one; a machine with a preinstalled browser points PW_CHROMIUM_PATH at it.
+      playwright:
+        patterns: ["@playwright/test", "playwright", "playwright-core"]
+      test:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "@testing-library/*"
+          - "happy-dom"
+          - "@axe-core/playwright"
+          - "pixelmatch"
+          - "pngjs"
+      dev-minor:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Matches the Node.js version in package.json "engines" and .nvmrc
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Asia/Jakarta
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
