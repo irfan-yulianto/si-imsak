@@ -87,11 +87,33 @@ describe("GET /api/cities", () => {
     expect(res.status).toBe(502);
   });
 
-  it("returns 500 on fetch exception", async () => {
+  it("returns an uncached 502 when upstream can't be reached", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
 
     const res = await GET(makeRequest("jakarta"));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(502);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("asks upstream without the data cache, with a User-Agent and a time limit", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ status: true, data: [] }) });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await GET(makeRequest("jakarta"));
+    const init = mockFetch.mock.calls[0][1];
+    expect(init.cache).toBe("no-store");
+    expect(init.next).toBeUndefined();
+    expect(init.headers["User-Agent"]).toMatch(/^Si-Imsak\//);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("doesn't cache an upstream answer without status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ status: false, data: [] }) })
+    );
+    const res = await GET(makeRequest("jakarta"));
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
   it("filters upstream data to only include id, lokasi, daerah", async () => {

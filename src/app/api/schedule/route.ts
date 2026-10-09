@@ -1,10 +1,32 @@
-import { CDN_CACHE_DAY, MYQURAN_API_BASE, NO_STORE, getScheduleYearRange } from "@/lib/constants";
+import {
+  CDN_CACHE_DAY,
+  MYQURAN_API_BASE,
+  NO_STORE,
+  UPSTREAM_USER_AGENT,
+  getScheduleYearRange,
+} from "@/lib/constants";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
+import { PRAYER_KEYS, type ScheduleDay } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
+
+// The whole request, including retries, finishes within DEADLINE_MS
+export const maxDuration = 10;
+
+const DEADLINE_MS = 8_000;
+const CALL_TIMEOUT_MS = 2_500;
+const RETRY_PAUSE_MS = 200;
+const DAY_CONCURRENCY = 6;
+// After upstream was found down, answer straight away for this long instead of piling on
+const BREAKER_MS = 15_000;
+const RETRY_AFTER_S = 30;
+const UNAVAILABLE_CACHE = "public, s-maxage=30";
+const NOT_FOUND_CACHE = "public, s-maxage=300";
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Get number of days in a month
 function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate();
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 // Format date as YYYY-MM-DD
@@ -36,52 +58,104 @@ async function withConcurrency<T>(
   return results;
 }
 
-interface UpstreamDay {
-  tanggal: string; imsak: string; subuh: string;
-  terbit: string; dhuha: string; dzuhur: string;
-  ashar: string; maghrib: string; isya: string;
-}
-
-interface UpstreamResponse {
-  status: boolean;
-  data?: {
-    kabko: string;
-    prov: string;
-    jadwal: Record<string, UpstreamDay>;
-  };
+interface UpstreamData {
+  kabko?: unknown;
+  prov?: unknown;
+  jadwal: Record<string, unknown>;
 }
 
 /**
- * Fetch one upstream period (a day "YYYY-MM-DD" or a month "YYYY-MM") with retry
- * and per-request timeout. Returns null when the upstream has no usable data.
- * 4xx responses are not retried — they won't succeed on a second attempt.
+ * What one upstream call came back with:
+ * - ok: data for the period (individual days are validated separately)
+ * - empty: a 200 without data (unknown city, or a day upstream doesn't have)
+ * - client: a 4xx other than 429 — e.g. a period format upstream doesn't support
+ * - unavailable: 5xx, 429, timeout, network error or a body that isn't JSON
  */
-async function fetchPeriod(cityId: string, period: string, retries: number): Promise<UpstreamResponse | null> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    try {
-      const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
-        next: { revalidate: 86400 },
-        signal: controller.signal,
-      });
-      if (res.ok) {
-        const data: UpstreamResponse = await res.json();
-        if (data?.status && data.data?.jadwal) return data;
-      } else if (res.status >= 400 && res.status < 500) {
-        return null;
-      }
-    } catch {
-      // retry on timeout, network error or malformed JSON
-    } finally {
-      clearTimeout(timeout);
-    }
-    if (attempt < retries) await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+type Outcome =
+  | { kind: "ok"; data: UpstreamData }
+  | { kind: "empty" | "client" | "unavailable" };
+
+interface RequestLog {
+  route: "schedule";
+  city: string;
+  month: string;
+  monthly: string;
+  calls: number;
+  days: number;
+  of: number;
+  status: number;
+  ms: number;
+}
+
+// Per instance: set when a request found upstream down
+let breakerOpenUntil = 0;
+
+async function fetchPeriod(
+  cityId: string,
+  period: string,
+  deadline: AbortSignal,
+  log: RequestLog
+): Promise<Outcome> {
+  if (deadline.aborted) return { kind: "unavailable" };
+  log.calls++;
+  try {
+    // No Next.js data cache: a cached `{status:false}` body would outlive an upstream
+    // hiccup by a day. The CDN caches our own response instead.
+    const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
+      cache: "no-store",
+      headers: { "User-Agent": UPSTREAM_USER_AGENT, Accept: "application/json" },
+      signal: AbortSignal.any([deadline, AbortSignal.timeout(CALL_TIMEOUT_MS)]),
+    });
+    if (res.status === 429 || res.status >= 500) return { kind: "unavailable" };
+    if (!res.ok) return { kind: "client" };
+    const body = await res.json();
+    const data = body?.status ? body.data : null;
+    if (data?.jadwal && typeof data.jadwal === "object") return { kind: "ok", data };
+    return { kind: "empty" };
+  } catch {
+    return { kind: "unavailable" };
   }
-  return null;
+}
+
+/** fetchPeriod with one more try after a transient failure, if time allows */
+async function fetchPeriodRetrying(
+  cityId: string,
+  period: string,
+  deadline: AbortSignal,
+  log: RequestLog
+): Promise<Outcome> {
+  const first = await fetchPeriod(cityId, period, deadline, log);
+  if (first.kind !== "unavailable" || deadline.aborted) return first;
+  await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+  return fetchPeriod(cityId, period, deadline, log);
+}
+
+/** An upstream day with all eight times as HH:MM, in our format — or null */
+function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
+  if (!raw || typeof raw !== "object") return null;
+  const day = raw as Record<string, unknown>;
+  if (typeof day.tanggal !== "string" || !day.tanggal) return null;
+  const times = {} as Record<(typeof PRAYER_KEYS)[number], string>;
+  for (const key of PRAYER_KEYS) {
+    const value = day[key];
+    if (typeof value !== "string" || !HHMM.test(value)) return null;
+    times[key] = value;
+  }
+  return { tanggal: day.tanggal, date, ...times };
+}
+
+function unavailable(retryAfterS: number) {
+  return NextResponse.json(
+    { status: false, error: "Upstream unavailable" },
+    {
+      status: 502,
+      headers: { "Retry-After": String(Math.max(1, retryAfterS)), "Cache-Control": UNAVAILABLE_CACHE },
+    }
+  );
 }
 
 export async function GET(request: NextRequest) {
+  const started = Date.now();
   const ip = extractClientIp(request);
   if (isRateLimited(ip)) {
     return NextResponse.json(
@@ -126,80 +200,113 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const monthPeriod = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
+  const dates = Array.from({ length: getDaysInMonth(yearNum, monthNum) }, (_, i) =>
+    formatDate(yearNum, monthNum, i + 1)
+  );
+  const log: RequestLog = {
+    route: "schedule", city: cityId, month: monthPeriod, monthly: "", calls: 0,
+    days: 0, of: dates.length, status: 0, ms: 0,
+  };
+  // One structured line per request — searchable in the Vercel logs
+  const finish = (res: NextResponse) => {
+    log.status = res.status;
+    log.ms = Date.now() - started;
+    console.log(JSON.stringify(log));
+    return res;
+  };
+
+  if (Date.now() < breakerOpenUntil) {
+    log.monthly = "breaker";
+    return finish(unavailable(Math.ceil((breakerOpenUntil - Date.now()) / 1000)));
+  }
+
   try {
-    const daysInMonth = getDaysInMonth(yearNum, monthNum);
-    const dates = Array.from({ length: daysInMonth }, (_, i) =>
-      formatDate(yearNum, monthNum, i + 1)
-    );
+    const deadline = AbortSignal.any([request.signal, AbortSignal.timeout(DEADLINE_MS)]);
+    const days = new Map<string, ScheduleDay>();
+    let meta: UpstreamData | undefined;
+    const take = (outcome: Outcome, wanted: string[]) => {
+      if (outcome.kind !== "ok") return;
+      for (const date of wanted) {
+        const day = toScheduleDay(date, outcome.data.jadwal[date]);
+        if (day) days.set(date, day);
+      }
+      meta ??= outcome.data;
+    };
+    const missingDates = () => dates.filter((date) => !days.has(date));
 
-    // Try the whole month in one upstream call first; fill any missing days per-day.
-    const monthPeriod = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
-    const monthly = await fetchPeriod(cityId, monthPeriod, 1);
+    // The whole month in one upstream call
+    const monthly = await fetchPeriodRetrying(cityId, monthPeriod, deadline, log);
+    take(monthly, dates);
+    log.monthly = monthly.kind === "ok" ? (days.size === dates.length ? "ok" : "incomplete") : monthly.kind;
 
-    const days: Record<string, UpstreamDay> = { ...monthly?.data?.jadwal };
-    let meta = monthly?.data;
-
-    const missing = dates.filter((date) => !days[date]);
-    if (missing.length > 0) {
-      // Concurrency 10: fast enough (~3 waves for a full month) without hammering upstream.
-      const tasks = missing.map((date) => () => fetchPeriod(cityId, date, 2));
-      const responses = await withConcurrency(tasks, 10);
-      responses.forEach((res, i) => {
-        const day = res?.data?.jadwal?.[missing[i]];
-        if (day) days[missing[i]] = day;
-        if (!meta && res?.data) meta = res.data;
-      });
+    if (days.size === 0) {
+      // Nothing usable for the month: check that upstream answers for a single day
+      // before asking it for every day of the month
+      const probeDate = dates[0];
+      const probe = await fetchPeriod(cityId, probeDate, deadline, log);
+      take(probe, [probeDate]);
+      if (probe.kind === "unavailable") {
+        // A visitor who gave up waiting says nothing about upstream
+        if (!request.signal.aborted) breakerOpenUntil = Date.now() + BREAKER_MS;
+        return finish(unavailable(RETRY_AFTER_S));
+      }
+      if (days.size === 0) {
+        // A 200 with malformed times is upstream's fault; no data at all means this
+        // city has no schedule
+        return finish(
+          probe.kind === "ok"
+            ? NextResponse.json(
+                { status: false, error: "Upstream API error" },
+                { status: 502, headers: { "Cache-Control": NO_STORE } }
+              )
+            : NextResponse.json(
+                { status: false, error: "Schedule not found" },
+                { status: 404, headers: { "Cache-Control": NOT_FOUND_CACHE } }
+              )
+        );
+      }
     }
 
-    // Transform v3 responses to v2-compatible format
-    const jadwal = dates
-      .map((date) => {
-        const day = days[date];
-        if (!day?.tanggal || !day.imsak || !day.subuh) return null;
-        return {
-          tanggal: day.tanggal,
-          date,
-          imsak: day.imsak,
-          subuh: day.subuh,
-          terbit: day.terbit,
-          dhuha: day.dhuha,
-          dzuhur: day.dzuhur,
-          ashar: day.ashar,
-          maghrib: day.maghrib,
-          isya: day.isya,
-        };
-      })
-      .filter(Boolean);
-
-    if (!meta || jadwal.length === 0) {
-      return NextResponse.json(
-        { status: false, error: "Upstream API error" },
-        { status: 502, headers: { "Cache-Control": NO_STORE } }
+    // Fill the gaps day by day, as far as the deadline allows
+    const missing = missingDates();
+    if (missing.length > 0) {
+      await withConcurrency(
+        missing.map((date) => async () => {
+          take(await fetchPeriodRetrying(cityId, date, deadline, log), [date]);
+        }),
+        DAY_CONCURRENCY
       );
     }
 
+    const jadwal = dates.flatMap((date) => days.get(date) ?? []);
+    log.days = jadwal.length;
     // A month with gaps must not be cached (CDN, service worker or localStorage),
     // otherwise the gaps stick around long after upstream recovers.
     const partial = jadwal.length < dates.length;
 
-    return NextResponse.json(
-      {
-        status: true,
-        ...(partial && { partial: true }),
-        data: {
-          id: cityId,
-          lokasi: meta.kabko,
-          daerah: meta.prov,
-          jadwal,
+    return finish(
+      NextResponse.json(
+        {
+          status: true,
+          ...(partial && { partial: true }),
+          data: {
+            id: cityId,
+            lokasi: typeof meta?.kabko === "string" ? meta.kabko : "",
+            daerah: typeof meta?.prov === "string" ? meta.prov : "",
+            jadwal,
+          },
         },
-      },
-      { headers: { "Cache-Control": partial ? NO_STORE : CDN_CACHE_DAY } }
+        { headers: { "Cache-Control": partial ? NO_STORE : CDN_CACHE_DAY } }
+      )
     );
   } catch (err) {
     console.error("[schedule] Failed:", err instanceof Error ? err.message : err);
-    return NextResponse.json(
-      { status: false, error: "Failed to fetch schedule" },
-      { status: 500 }
+    return finish(
+      NextResponse.json(
+        { status: false, error: "Failed to fetch schedule" },
+        { status: 500, headers: { "Cache-Control": NO_STORE } }
+      )
     );
   }
 }
