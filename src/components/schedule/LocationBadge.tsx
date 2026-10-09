@@ -44,9 +44,9 @@ export default function LocationBadge() {
         onClick={refresh}
         disabled={refreshing}
         aria-label={`${location.cityName}, ${location.province}. Perbarui lokasi dengan GPS`}
-        className="focus-ring group mb-3 flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-tile bg-white/[0.07] px-3 py-2 text-left transition-colors hover:bg-white/[0.12] disabled:opacity-60"
+        className="focus-ring group mb-3 flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-tile bg-on-hero/[0.07] px-3 py-2 text-left transition-colors hover:bg-on-hero/[0.12] disabled:opacity-60"
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-white/10">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-on-hero/10">
           <MapPinIcon size={16} className="text-on-hero-muted" />
         </div>
         <div className="min-w-0 flex-1">
@@ -54,7 +54,7 @@ export default function LocationBadge() {
             <p className="truncate text-sm font-semibold">
               {location.cityName}
             </p>
-            <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-2xs font-bold leading-none text-on-hero-muted">
+            <span className="shrink-0 rounded bg-on-hero/10 px-1.5 py-0.5 text-2xs font-bold leading-none text-on-hero-muted">
               {location.timezone}
             </span>
           </div>
@@ -71,7 +71,7 @@ export default function LocationBadge() {
         </div>
       </button>
       {error && (
-        <p role="alert" className="-mt-1.5 mb-2 text-center text-xs font-medium text-red-200">
+        <p role="alert" className="-mt-1.5 mb-2 text-center text-xs font-medium text-on-hero-danger">
           {error}
         </p>
       )}

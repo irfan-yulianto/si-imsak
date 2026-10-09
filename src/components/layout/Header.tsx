@@ -16,7 +16,7 @@ export default function Header() {
       {/* Phones: the city search on a row of its own, so it has room for a name */}
       <div className="flex h-[var(--header-h)] flex-wrap content-center items-center gap-x-2 gap-y-2 rounded-card border border-border bg-surface/90 px-3 shadow-card backdrop-blur-xl sm:flex-nowrap sm:px-4">
         <div className="mr-auto flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-tile bg-brand text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-tile bg-brand text-on-accent">
             <CrescentIcon size={20} />
           </div>
           <div>

@@ -98,7 +98,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <a
         href="#konten"
-        className="sr-only z-[70] rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-[70] rounded-control bg-accent px-4 py-2 text-sm font-semibold text-on-accent focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
         Lewati ke konten
       </a>
@@ -175,7 +175,7 @@ export default function Home() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => selectTab(id)}
                 onKeyDown={onTabKeyDown}
-                className={`flex h-[var(--nav-h)] flex-1 cursor-pointer flex-col items-center justify-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                className={`flex h-[var(--nav-h)] flex-1 cursor-pointer flex-col items-center justify-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${
                   selected ? "text-accent-fg" : "text-fg-subtle"
                 }`}
               >

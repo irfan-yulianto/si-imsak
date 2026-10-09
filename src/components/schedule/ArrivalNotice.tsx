@@ -24,9 +24,9 @@ export default function ArrivalNotice({ arrival }: { arrival: Arrival }) {
     <div className="text-center">
       {/* The one animation of the countdown: while a time arrives */}
       <span className="mx-auto mb-3 flex w-fit animate-pulse-glow rounded-full p-2">
-        <Icon size={24} className="text-amber-300" />
+        <Icon size={24} className="text-on-hero-gold" />
       </span>
-      <h2 className="text-lg font-extrabold text-amber-300 md:text-xl">{title}</h2>
+      <h2 className="text-lg font-extrabold text-on-hero-gold md:text-xl">{title}</h2>
       <p className="mt-1 text-xs font-medium text-on-hero-muted">{subtitle}</p>
     </div>
   );

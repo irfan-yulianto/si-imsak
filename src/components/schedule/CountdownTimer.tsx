@@ -16,7 +16,7 @@ const targetLabel = (next: NextPrayer) => (next.isTomorrow ? "Menuju Imsak Besok
 /** Hours, minutes or seconds; the digits are written by useCountdownTicker */
 function Unit({ ref, label }: { ref: Ref<HTMLSpanElement>; label: string }) {
   return (
-    <div className="min-w-[4.5rem] rounded-tile bg-white/10 px-3 py-2 md:min-w-24 md:px-5 md:py-3">
+    <div className="min-w-[4.5rem] rounded-tile bg-on-hero/10 px-3 py-2 md:min-w-24 md:px-5 md:py-3">
       <span ref={ref} className="block font-mono text-3xl font-extrabold tabular-nums tracking-tight md:text-5xl">
         --
       </span>
@@ -35,9 +35,9 @@ function Countdown({ next, timezone, onDue }: { next: NextPrayer; timezone: stri
   return (
     <div className="text-center">
       <div className="mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-        <Icon size={20} className="text-amber-300" />
+        <Icon size={20} className="text-on-hero-gold" />
         <h2 className="text-base font-bold md:text-lg">{label}</h2>
-        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-sm font-bold tabular-nums text-amber-300">
+        <span className="rounded-full bg-on-hero/10 px-2.5 py-0.5 text-sm font-bold tabular-nums text-on-hero-gold">
           {next.time} {timezone}
         </span>
       </div>
@@ -71,7 +71,7 @@ export default function CountdownTimer() {
   return (
     <section
       aria-label="Hitung mundur waktu sholat"
-      className="relative h-full overflow-hidden rounded-card bg-gradient-to-br from-hero-from via-hero-via to-hero-to p-4 text-on-hero shadow-card md:p-6"
+      className="relative h-full overflow-hidden rounded-card bg-gradient-to-br from-hero-from via-hero-via to-hero-to p-4 text-on-hero shadow-card [--focus:var(--on-hero)] md:p-6"
     >
       {/* Geometric pattern overlay */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={{

@@ -146,7 +146,7 @@ export default function CityCombobox<T>({
         placeholder={placeholder}
         // 16px on phones so iOS Safari doesn't zoom in on focus
         className={cx(
-          "min-h-11 w-full rounded-control border border-border bg-surface-2 pl-9 pr-11 text-base font-medium text-fg placeholder:text-fg-subtle transition-colors focus:border-accent focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/30 sm:text-sm",
+          "min-h-11 w-full rounded-control border border-border bg-surface-2 pl-9 pr-11 text-base font-medium text-fg placeholder:text-fg-subtle transition-colors focus:border-focus focus:bg-surface focus:outline-none focus:ring-2 focus:ring-focus/30 sm:text-sm",
           compact ? "py-2" : "py-2.5"
         )}
       />
