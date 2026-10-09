@@ -3,11 +3,12 @@
     overturemaps download --bbox=95,-11,141,6 -f geoparquet --type=place -o places.parquet
     python3 scripts/mosque-data/overture.py places.parquet overture.jsonl
 
-Writes one JSON object per line: id, lat, lng, name, street, confidence. Keeps the places
-whose address is in Indonesia (the box also holds Malaysia, Singapore, Brunei, ...), whose
-every source is under CDLA-Permissive-2.0, and whose name opens like a mosque's. Loose on
-purpose: build.mjs applies the app's own rules (placeFromOverture and addMissing in
-src/lib/mosque-osm.ts). Needs pyarrow, which the overturemaps client installs.
+Writes one JSON object per line: id, lat, lng, name, street, confidence, and sharing: how
+many places of the download, of any kind, share its point (to 1e-5 degrees). Keeps the
+places whose address is in Indonesia (the box also holds Malaysia, Singapore, Brunei,
+...), whose every source is under CDLA-Permissive-2.0, and whose name opens like a
+mosque's. Loose on purpose: build.mjs applies the app's own rules (placeFromOverture and
+addMissing in src/lib/mosque-osm.ts). Needs pyarrow, which the overturemaps client installs.
 """
 
 import json
@@ -23,6 +24,14 @@ NAME = r"(?i)^\W*(m[ae]sjid|mu[sš]|langgar|surau|meunasah|tajug|مسجد|مصل
 
 def main(places_path, out_path):
     table = pq.read_table(places_path, columns=["id", "names", "confidence", "bbox", "sources", "addresses"])
+    # Where each place is, to 1e-5 degrees, and how many places share each point
+    bounds = table["bbox"]
+    table = table.append_column("lat5", pc.round(pc.divide(pc.add(pc.struct_field(bounds, "ymin"), pc.struct_field(bounds, "ymax")), 2), 5))
+    table = table.append_column("lng5", pc.round(pc.divide(pc.add(pc.struct_field(bounds, "xmin"), pc.struct_field(bounds, "xmax")), 2), 5))
+    points = table.select(["lat5", "lng5"]).group_by(["lat5", "lng5"]).aggregate([([], "count_all")])
+    points = points.filter(pc.greater(points["count_all"], 1))
+    sharing = dict(zip(zip(points["lat5"].to_pylist(), points["lng5"].to_pylist()), points["count_all"].to_pylist()))
+
     # Places without an address can't be told to be in Indonesia
     table = table.filter(pc.fill_null(pc.greater(pc.list_value_length(table["addresses"]), 0), False))
     name = pc.fill_null(pc.struct_field(table["names"], "primary"), "")
@@ -45,6 +54,7 @@ def main(places_path, out_path):
                         "name": row["names"]["primary"],
                         "street": row["addresses"][0].get("freeform") or "",
                         "confidence": row["confidence"],
+                        "sharing": sharing.get((row["lat5"], row["lng5"]), 1),
                     },
                     ensure_ascii=False,
                 )
