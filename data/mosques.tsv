@@ -660,7 +660,7 @@ n1825112141	-866064	11632937	masjid	Masjid
 n1825209591	-850100	11606684	masjid	Masjid Dusun Duduk Bawah	
 n1825422447	-865559	11634455	masjid	Masjid Kopok Kenawa	
 n1826033015	-864689	11631549	musholla	Musalla Sumbek	
-n1826033016	-864575	11631715	masjid	Muslla Sumbek1	
+n1826033016	-864575	11631715	musholla	Muslla Sumbek1	
 n1826371831	-779908	11048476	masjid	Masjid Nurul Huda	
 n1827176120	-869350	11622503	masjid	Masjid Sukarara	
 n1827176121	-869391	11622509	masjid	Masjid Asasudtaqwa Sukarara	
@@ -5369,7 +5369,6 @@ n4198382731	100748	10271998	musholla	Surau Al-Ikhlas
 n4198405994	101318	10270840	masjid	Masjid Darul Ulum	
 n4198415731	-252691	11296541	musholla	Langgar Nurul Hikam	
 n4199709470	-34472	10232986	musholla	Mushalah Khairun Nashihin	Jln Khairun Nashihin
-n4199858029	-759594	11027445	musholla	musholla al-amin mutihan tengah	
 n4199879227	52311	10142392	masjid	Al Mujahidin	
 n4200042496	56522	10142333	masjid	Mushollla al-Furqon	Jl. Sayur Sari
 n4201253366	57414	10141856	masjid	mesjid Al-muhajirin	Jl. Umban Sari
@@ -8481,7 +8480,6 @@ n6679495427	-626179	10647067	masjid	Masjid Al Muhajirin	Jl. Sudirman Indah
 n6679495432	-626113	10647314	musholla	Musholla Al Iklas	Jl. Sudirman Indah
 n6679496801	-764567	11082795	masjid	Masjid Ciptoning Al-Mukmin	Jalan Teratai
 n6679961358	-616633	10654166	masjid	Masjid Al Istieqlaliyyah Cilongok	
-n6679961367	-616613	10654248	masjid	Masjid Al Istieqlaliyyah	
 n6679961372	-616530	10654358	masjid	Pengajian Kh Uci Turtusi	
 n6685828219	-392235	10527544	masjid	Masjid Baiturrohman	
 n6685882488	-624025	10647703	masjid	Masjid Al Ikhlas	Perumahan Mustika
@@ -8555,7 +8553,6 @@ n6865447648	104697	10394483	masjid	Masjid Al Barokah
 n6865451467	94624	10376493	masjid	Masjid Al-kautsar	
 n6865473445	113588	10403018	masjid	Mesjid Al Istiqomah	
 n6865476555	94731	10376548	musholla	SURAU AN-NUR	
-n6865476840	104297	10393901	masjid	Masjid Al Hidayah	
 n6865477327	103661	10397255	masjid	Masjid Al Muslimin	
 n6865553589	104227	10405440	masjid	Masjid Al Jatsiyah	Jl.S.Parman
 n6865553606	102971	10405004	masjid	Masjid Agung Lintas Mangsang	
@@ -8592,7 +8589,6 @@ n6875004803	103445	10405330	masjid	Masjid At Taubah	Jl.S.Parman
 n6875738761	103679	10394217	musholla	Musholla Miftahhul Jannah	
 n6877013363	-724687	11193696	masjid	MASJID ATTAQWA Dusun Kedungdowo	
 n6877957561	114871	10403650	masjid	Masjid Al-Madinah	
-n6878156879	104506	10394308	masjid	Masjid Al Quba	
 n6878235688	104611	10394638	masjid	Masjid Baiturrahman	
 n6880559267	104942	10394763	masjid	Masjid Besar Darul Ghufron	
 n6880602499	104318	10394687	masjid	Masjid Babussalam	
@@ -9724,7 +9720,6 @@ n8928462603	-345451	10263280	masjid	Masjid Nurul Huda Sumberbening
 n8928462604	-349414	10252313	masjid	Masjid Syahidul Ikhlas Tempelrejo	
 n8928462605	-340202	10258760	masjid	Masjid Nurul Iman Cawangla	
 n8928462606	-342013	10257413	masjid	Masjid Nurul Iman Cawangla	
-n8928462607	-347215	10264608	masjid	Masjid Al.Muhajirin Sumberurip	
 n8928462608	-345108	10264309	masjid	Masjid Miftahul Janah	
 n8928462609	-345773	10265087	musholla	Mushola Hidayatul Solihin	
 n8928462610	-344539	10264151	musholla	Mushola Al.Huda Dusun Objek	
@@ -10349,12 +10344,10 @@ n9766025437	-753541	11065942	masjid	Masjid
 n9766099112	-704024	11047999	masjid	Masjid Alhuda Klipang Green	
 n9766109688	-704315	11048287	masjid	Masjid Baiturrahim	
 n9766109695	-703673	11048986	masjid	Masjid Jami Nurul Ulum	
-n9766306664	-752780	11073344	masjid	Masjid Al-Huda Gatak	
 n9766306665	-752685	11073892	masjid	Masjid Al-Mu'min Padas	
 n9766306666	-752479	11074111	masjid	Masjid At-Taqwa	
 n9766306669	-752142	11074708	masjid	Masjid Ar-Rahman	
 n9766306679	-752189	11073107	masjid	Masjid Baitur-Rohman	
-n9766306685	-751955	11072354	masjid	Masjid Al-Mabrur, Ngargorejo	
 n9766306687	-751614	11072186	masjid	Masjid Al-Iman	
 n9766306690	-751354	11071822	masjid	Masjid Al-Huda	
 n9766306691	-751173	11071281	masjid	Masjid Nurul Huda Sembung Canden	
@@ -15927,7 +15920,6 @@ n9801320715	-753431	11029646	masjid	Masjid Al-Ikhlas
 n9801320716	-753659	11029546	masjid	Masjid Al-Huda	
 n9801335417	-756733	11027881	musholla	Musholla Al-Ikhlas	
 n9801335418	-756776	11027803	masjid	Masjid Jami' Al-Huda	
-n9801335419	-756835	11027742	masjid	Masjid Al-Hikmah	
 n9801335420	-757162	11027527	masjid	Muhsolla Al-Huda	
 n9801335421	-757222	11027595	masjid	Muhsolla Al-Hikmah	
 n9801335422	-757107	11027718	musholla	Musholla Nurul Hikmah	
@@ -19335,7 +19327,6 @@ n14128028317	214629	11747957	masjid	Masjid
 n14128028318	213063	11747778	masjid	Masjid	
 n14128028319	212885	11748255	masjid	Masjid	
 n14128028347	213977	11750626	masjid	Masjid	
-n14128300041	-92672	11986809	masjid	Masjid Ar Rahmah	Jalan Kramat Jaya
 n14129100471	520528	9669511	masjid	Masjid	
 n14130394701	-618709	10698093	masjid	Masjid Al-Furqon	
 n14130634670	-628092	10700741	masjid	Masjid Al-Muhajirin	
@@ -19539,7 +19530,6 @@ w120629589	-638065	10684133	masjid	Masjid Jami' Muhammad Yusuf
 w120629594	-637889	10683263	masjid	Masjid	
 w120703749	-620010	10680860	masjid	Masjid Jami' Miftahul Jannah Rusun Benhil	Rusun Benhil
 w120760805	-776940	11037320	masjid	Mardliyah Mosque	
-w120814796	-771504	11024476	masjid	Masjid An-nur Plembon	
 w120840924	-624218	10683067	masjid	Masjid Al Mustaqim	Jalan Al Mustaqim
 w120853067	-778967	11038530	masjid	Masjid Sultan Agung	
 w120882287	-623944	10684112	masjid	Masjid Al Hidayah	Jalan Tabanas
@@ -24943,7 +24933,7 @@ w246322789	-542770	12001662	masjid	Masjid
 w246388081	-513640	11951508	masjid	Masjid	
 w246396179	-259321	12026009	masjid	Masji Nurul Ichsan	
 w246396299	-258633	12027100	masjid	Masjid	
-w246399670	-820984	11771066	masjid	Mushla Nurul Iman	
+w246399670	-820984	11771066	musholla	Mushla Nurul Iman	
 w246410991	-821105	11771096	musholla	Mushola Puskesmas	
 w246431537	-821649	11297433	musholla	Musolah	
 w246435388	378390	9680503	masjid	Mesjid Alue Rambot	
@@ -26871,7 +26861,6 @@ w309611345	-640752	10683620	masjid	Masjid
 w309613616	555630	9532070	masjid	Masjid	
 w309625667	-638957	10676042	masjid	Masjid Al Mukhlasin	
 w309625973	-638696	10675972	musholla	Musholla Az-Zurifah	
-w309630438	-639268	10683609	masjid	Masjid Jami' al-ikhlas RW10	
 w309664610	-686466	11081858	masjid	MASJID BAITURRAHMAN	
 w309670502	-638107	10676073	masjid	Masjid Nurul Iman	
 w309671801	-636675	10679032	masjid	Masjid	
@@ -32233,7 +32222,6 @@ w367772034	-761692	11031894	masjid	Masjid	Dusun Krageman
 w367772078	-762343	11031748	masjid	MASJID DARUSALAM	SUCEN KIDUL
 w367846097	-749806	11039147	masjid	MASJID AL MUJAIDIN	JL. MAGELANG BOYOLALI
 w367847496	-749374	11039492	masjid	MASJID IBNU MASUD	JL. MAGELANG BOYOLALI
-w367847560	-749775	11039095	masjid	MASJID AL MUJAIDIN 2	WONOLELO
 w367850709	-749377	11038561	masjid	Masjid Baitul Makmur	Dusun Gondangsari Rw 04
 w367863374	-758184	11025244	masjid	Masjid	Dusun Pabelan III RW 5
 w367863509	-758092	11025479	masjid	Masjid	
@@ -34676,7 +34664,6 @@ w448102529	-724066	11276173	masjid	LDII	Jalan Kapas Jaya No. 7
 w448104065	-728717	11278032	musholla	Musholla Kantor Kelurahan	Jalan Arief Rachman Hakim 103
 w448105390	-726243	11273379	masjid	Masjid At Taqwa	Jalan Kedung Rukem IV Gg. Ikhwan
 w448105658	-724039	11277988	masjid	Masjid Mirah Al Ikhlas	Jalan Lebak jaya V utara no.1
-w448106141	-728755	11277759	masjid	Masjid An-Nur Klampis Aji	
 w448108088	-726373	11273563	masjid	Masjid Nuurussalaam	Jalan Plemahan VII No 14
 w448112079	-730509	11275452	masjid	Masjid Baitul Mahfuudh	Jalan Jagir Sidoresmo VI
 w448112247	-729033	11278154	masjid	Masjid An-Nur	Jalan Deles Gang II
@@ -42701,7 +42688,6 @@ w530222137	-603011	10605436	musholla	Mushola Muhajirin	Jalan Arjuna RW 4
 w530222141	-602817	10605224	musholla	Mushola Andika	Jalan Cendrawasih RW 5
 w530222144	-603045	10604781	masjid	Masjid At Thohirin	Jalan Anggrek RW 6
 w530244106	-777796	11046427	masjid	MASJID GENDINGAN	JARAKAN
-w530271353	-747714	11021704	masjid	Masjid Agung Kauman	
 w530279644	-798485	11031201	masjid	Masjid Al Fatah	
 w530283623	-766825	11042210	masjid	Masjid Rumah Sakit Muhammadiyah Pakem	Jalan Pakem-Kalasan
 w530285101	-778534	11045741	masjid	Masjid Al-Munajjah	
@@ -55181,7 +55167,6 @@ w648365416	-612104	10614423	musholla	Mushola Nurul Iman
 w648374058	-823672	11438261	masjid	Masjid Nurul Huda	Jalan Ikan Paus
 w648405158	-837244	11347302	masjid	Masjid	
 w648407012	-836783	11349245	masjid	Masjid Al Huda	
-w648474802	-624870	10651485	masjid	Masjid Al Muhajirin Graha Indira	Graha Indira
 w648504666	-715858	11270899	masjid	Masjid	
 w648504782	-715504	11270517	masjid	Masjid	
 w648613556	363452	9848856	masjid	Masjid	
@@ -59337,7 +59322,6 @@ w801720467	-708423	10756383	masjid	Masjid
 w802339070	-737785	10853917	masjid	At Taqwa	
 w802719946	-553503	12011558	masjid	Masjid Nurul Falah	
 w802762490	-716338	11201220	masjid	Masjid At-Taqwa	
-w802808162	-683546	10822676	masjid	Masjid Agung Al Imam Kabupaten Majalengka	
 w802815382	-796312	11306979	masjid	Masjid	
 w802868280	-683435	10821985	masjid	masjid jamie kelurahan Munjul	
 w802868299	-683449	10821557	masjid	Masjid Assakinah	
@@ -64147,7 +64131,6 @@ w1038130480	-855304	11607756	masjid	Masjid Darul Ishlah
 w1038136555	-853394	11608311	masjid	Masjid Nurul Falah Dusun Aiq Are	
 w1038141224	-748404	11155829	masjid	Masjid	
 w1038143863	-751223	11152563	masjid	Masjid	
-w1038145511	-854183	11609027	masjid	Masjid Baitul Ibadah Dawung	
 w1038148212	-854144	11608654	masjid	Masjid Al Barkah	Perumahan Bale Pelangi, Jl. Pariwisata, Sandik, Batu Layar
 w1038163371	-199076	10137037	masjid	Masjid	
 w1038164465	-633009	10603418	musholla	MUSOLA SDN KUPAHANDAP	
@@ -64183,7 +64166,6 @@ w1038620736	-339909	11462840	musholla	Langgar Darul Falihin
 w1038620742	-336983	11466774	musholla	Langgar Al-Jihad	
 w1038625701	-651942	10677784	musholla	musola Robbani	
 w1038670150	-670010	10764253	masjid	Masjid	
-w1038694451	-856503	11607356	masjid	Masjid Nurul Bahar	
 w1038916277	-745445	11154869	masjid	Masjid	
 w1038916290	-745551	11154834	masjid	Masjid	
 w1038919482	-856211	11608402	masjid	Masjid At-Taubah	
@@ -64200,7 +64182,6 @@ w1039234950	-857818	11608460	masjid	Masjid Baitussalam
 w1039247854	-633097	10603494	musholla	MUSOLA BABAKAN	
 w1039250084	-198700	10136576	masjid	Raudhatul Jannah	
 w1039264922	-857831	11607351	masjid	Masjid An Nur	
-w1039281066	-857534	11607197	masjid	Masjid Nurul Hadist Banjar	
 w1039284631	-857557	11607550	masjid	Masjid Al-Muttaqien	
 w1039344229	-750722	11056949	masjid	Masjid Al Muayat Paesan	
 w1039359635	-750720	11057131	musholla	Mushola Mojorejo	
@@ -64217,11 +64198,9 @@ w1039753107	-751206	11057375	musholla	Mushola RT 3 Sidodadi
 w1039755029	-751146	11057002	musholla	Mushola RT 2 Sidodadi	
 w1039755634	-751106	11056834	musholla	Mushola RT 1 Sidodadi	
 w1040098795	-857367	11607531	masjid	Masjid Nurul Huda	
-w1040100580	-857550	11607829	masjid	Masjid Al Mujaahidin Lingkungan Tangsi	
 w1040104518	85746	10460940	musholla	Mushola Al Ashar	
 w1040104883	-209774	10224900	masjid	Masjid	
 w1040104930	-857541	11608527	masjid	Masjid Hayatul Abiyan	
-w1040105356	-857235	11608201	masjid	Masjid Al-Ikhlas Lingkungan Sukaraja Perluasan	
 w1040116313	-857178	11608340	masjid	Masjid Awwalul Hidayah	
 w1040120911	-853819	11609017	musholla	Musholla SDN 1 Sandik	
 w1040121565	85772	10460429	musholla	Surau Amalun Shalihen	Jalan Sei Datuk
@@ -64231,8 +64210,6 @@ w1040232537	-642733	10689482	masjid	Masjid At-Thohir
 w1040422678	82930	10460723	masjid	Masjid Al-Muhajirin	
 w1040427190	-853893	11609395	masjid	Masjid AT-Taqwa Puncangsari	
 w1040427629	-853893	11608750	masjid	Masjid Al-Khaer, Sandik	
-w1040427630	-853731	11608938	masjid	Masjid Al Falah Dusun Sandik	
-w1040427631	-853734	11609090	masjid	Masjid Nurul Huda Puncang Lendang	
 w1040427826	85102	10460974	musholla	Surau Al-Ikhlas	
 w1040430608	-853313	11607045	masjid	Masjid Batu Layar	
 w1040436026	-196683	10135427	masjid	Almujahidin	
@@ -65537,7 +65514,6 @@ w1093295907	-296392	10474202	musholla	Musholla Hidayatul Qur'ani	Jalan Jenderal 
 w1093315285	-794530	11058689	masjid	Masjid	
 w1093397120	-294488	10476072	masjid	Masjid Nurqadim	
 w1093697204	-114114	13145727	masjid	Masjid	
-w1093717729	-864807	11514545	masjid	Masjid Al Hasanah	
 w1094006873	-115419	13145261	masjid	Masjid	
 w1094028835	-753965	11084060	masjid	Masjid Baitul Huda	
 w1094038348	-796591	11060389	masjid	Masjid	
@@ -66664,7 +66640,6 @@ w1164842852	-278268	13269968	masjid	Masjid
 w1165001849	-732533	10837754	masjid	Masjid	Jalan Raya Ciamis-Banjar
 w1165106557	-268052	13251486	masjid	Masjid	
 w1165309159	-615980	10676843	masjid	Masjid	
-w1165374335	-364435	13374931	masjid	Masjid At Taqwa Krooy	
 w1165378466	-364443	13374933	masjid	Masjid At-Taqwa	
 w1165524680	-787631	11037786	masjid	Masjid	
 w1165601637	-775768	11217971	masjid	Masjid	
@@ -66998,7 +66973,6 @@ w1180478916	-556429	12015145	masjid	Masjid Nurul Jihad
 w1180479089	-719634	11193278	masjid	masjid Al Muslimun	
 w1180495672	-716924	11193888	musholla	Musholla Al-Muttaqin	
 w1180572434	-443283	12034370	masjid	Masjid	
-w1180606909	-753863	11257739	masjid	Masjid Dusun Jagil Pungging	Jalan Jagil, Dusun Jagil Desa Pungging Kecamatan Pungging Kabupaten Mojokerto Jawa Timur Indonesia
 w1180637907	-580457	12048829	masjid	Masjid	
 w1180651535	-606109	12052188	masjid	Masjid	
 w1180658965	-741904	12175201	masjid	Masjid Nurul Huda	
@@ -67214,7 +67188,6 @@ w1188415799	-770368	11221349	masjid	Masjid
 w1188416148	-770515	11221407	masjid	Masjid	
 w1188427549	-770468	11221080	masjid	Masjid	
 w1188527655	-617198	10658293	masjid	Masjid Jami At-Taubah	
-w1188572005	-726928	10939371	masjid	Masjid Jami' Nurul Hikmah	
 w1188633431	-772197	11220221	masjid	Masjid	
 w1188779827	-436771	10520683	masjid	Masjid	
 w1188779830	-437213	10522678	masjid	Masjid	
@@ -69961,7 +69934,6 @@ w1336402458	57004	12398840	masjid	Masjid
 w1336461564	56494	12398808	masjid	Masjid	
 w1336466190	76451	12426100	masjid	Masjid As-Sallam	
 w1336488259	76288	12425780	masjid	Masjid Lobong	
-w1336501818	83974	12383045	masjid	Masjid An Nuur Maelang	
 w1336818640	54259	12401187	masjid	Masjid besar Al Farida	
 w1336854721	56531	12398685	masjid	Masjid	
 w1337097672	-585148	12051323	masjid	Masjid	
