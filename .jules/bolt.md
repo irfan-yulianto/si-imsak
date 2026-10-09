@@ -20,3 +20,6 @@
 ## 2024-06-15 - Fast Padding Optimization in Countdown Timer Loop
 **Learning:** Found that string allocations via `String().padStart()` create measurable overhead when executed in a hot path like a 1000ms `setInterval` tick loop, leading to more garbage collection.
 **Action:** When formatting basic numbers in a high-frequency loop, use primitive comparisons and string concatenations (`num < 10 ? "0" + num : "" + num`) instead of complex built-in padding functions to drastically reduce execution time overhead.
+## 2024-06-25 - Distance calculation loop optimization
+**Learning:** Found that using `haversineDistance(fixedLat, fixedLng, item.lat, item.lng)` directly inside a `.map()` array loop wastes performance because it continually re-parses and converts the static `fixedLat` into radians on every single list item.
+**Action:** Use a closure factory `createDistanceCalculator(fixedLat, fixedLng)` before the loop to compute and cache the fixed coordinate's radians just once, returning a faster 2-argument function to calculate distances to the changing points.

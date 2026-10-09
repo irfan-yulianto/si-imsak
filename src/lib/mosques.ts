@@ -50,6 +50,33 @@ export function haversineDistance(
 }
 
 /**
+ * Optimization: Pre-calculate constants to avoid re-allocation and re-computation
+ * when calculating distance from a fixed point to many destinations in a loop.
+ */
+export function createDistanceCalculator(
+  lat1: number,
+  lng1: number
+) {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const lat1Rad = toRad(lat1);
+
+  return function calculateDistance(lat2: number, lng2: number): number {
+    const lat2Rad = toRad(lat2);
+    const dLat = lat2Rad - lat1Rad;
+
+    let dLngDeg = lng2 - lng1;
+    if (dLngDeg > 180) dLngDeg -= 360;
+    else if (dLngDeg < -180) dLngDeg += 360;
+    const dLng = toRad(dLngDeg);
+
+    const x = dLng * Math.cos((lat1Rad + lat2Rad) / 2);
+    const y = dLat;
+    return Math.sqrt(x * x + y * y) * R;
+  };
+}
+
+/**
  * Format distance for display: "120 m" or "1.2 km"
  */
 export function formatDistance(meters: number): string {

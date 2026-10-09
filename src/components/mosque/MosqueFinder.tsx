@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useStore } from "@/store/useStore";
-import { Mosque, formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
+import { Mosque, formatDistance, getSearchRadius, haversineDistance, createDistanceCalculator } from "@/lib/mosques";
 import { roundCoord } from "@/lib/constants";
 import { CITIES, CITY_MAP } from "@/lib/cities";
 import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
@@ -278,8 +278,9 @@ export default function MosqueFinder() {
       const cached = getCached(cacheKey);
       if (cached) {
         // The cache is shared by positions up to ~1 km apart: measure from this one
+        const calculateDistance = createDistanceCalculator(targetCoords.lat, targetCoords.lng);
         const results = cached
-          .map((m) => ({ ...m, distance: haversineDistance(targetCoords.lat, targetCoords.lng, m.lat, m.lng) }))
+          .map((m) => ({ ...m, distance: calculateDistance(m.lat, m.lng) }))
           .sort((a, b) => a.distance - b.distance);
         setMosques(results);
         setError(results.length === 0 ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.` : null);
@@ -317,8 +318,9 @@ export default function MosqueFinder() {
 
       if (data.status && data.data) {
         // Server distances use rounded coords — recompute from the exact position
+        const calculateDistance = createDistanceCalculator(targetCoords.lat, targetCoords.lng);
         const results: Mosque[] = (data.data as Mosque[])
-          .map((m) => ({ ...m, distance: haversineDistance(targetCoords.lat, targetCoords.lng, m.lat, m.lng) }))
+          .map((m) => ({ ...m, distance: calculateDistance(m.lat, m.lng) }))
           .sort((a, b) => a.distance - b.distance);
         setMosques(results);
         setCache(cacheKey, results);
