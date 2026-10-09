@@ -17,8 +17,9 @@ const MosqueFinder = dynamic(() => import("@/components/mosque/MosqueFinder"), {
   loading: () => <MosquePlaceholder />,
 });
 
+/** Until the finder loads: as tall as its controls card, so nothing jumps */
 function MosquePlaceholder() {
-  return <div className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+  return <div aria-hidden="true" className="h-60 animate-shimmer rounded-card lg:w-1/3" />;
 }
 
 type ActiveTab = "jadwal" | "masjid";
@@ -150,6 +151,7 @@ export default function Home() {
           update notice, and the "Hari Ini" button (both render into it with a portal) */}
       <div
         id="dock"
+        data-tab={activeTab}
         className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--nav-h)+var(--safe-b)+0.75rem)] z-[60] mx-auto flex max-w-md flex-col items-end gap-2 px-4 md:bottom-[calc(1.5rem+var(--safe-b))]"
       />
       <UpdateToast />

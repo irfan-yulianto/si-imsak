@@ -37,6 +37,6 @@ test("keeps the position and the results out of Clarity recordings", async ({ pa
 
   const masked = '[data-clarity-mask="True"]';
   await expect(page.getByRole("heading", { name: "Masjid Uji 1" }).locator(`xpath=ancestor::*[@data-clarity-mask="True"]`)).toHaveCount(1);
-  await expect(page.getByText(/^Lokasi GPS \(/).locator("xpath=ancestor-or-self::*[@data-clarity-mask='True']")).toHaveCount(1);
+  await expect(page.getByText("Lokasi GPS Anda", { exact: true }).locator("xpath=ancestor-or-self::*[@data-clarity-mask='True']")).toHaveCount(1);
   await expect(page.locator(masked).getByRole("combobox", { name: "Cari kota untuk lokasi masjid" })).toHaveCount(1);
 });

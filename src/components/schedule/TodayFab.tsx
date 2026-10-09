@@ -34,7 +34,8 @@ export default function TodayFab({ todayRef, todayDate, active }: {
       pill
       onClick={() => todayRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
       aria-label="Gulir ke jadwal hari ini"
-      className="pointer-events-auto order-1 shadow-lg md:hidden"
+      // Phones only, and not over the mosque tab (the schedule is hidden there)
+      className="pointer-events-auto order-1 shadow-lg md:hidden in-data-[tab=masjid]:hidden"
     >
       <CalendarIcon size={14} />
       Hari Ini

@@ -60,33 +60,38 @@ export default function MosqueFinder() {
   };
 
   return (
-    <div className="space-y-3">
-      <MosqueControls
-        coords={coords}
-        isGps={isGps}
-        accuracy={accuracy}
-        radius={radius}
-        cityName={location.cityName}
-        loading={loading}
-        watching={gps.watching}
-        gpsError={gps.error}
-        onRefresh={searchAgain}
-        onStartGps={gps.start}
-        onStopGps={gps.stop}
-        onPickCity={pickCity}
-      />
-      <MosqueList
-        mosques={mosques}
-        loading={loading}
-        error={error}
-        coords={coords}
-        radius={radius}
-        onRetry={searchAgain}
-        // The effect above searches the wider radius
-        onWiden={() => {
-          if (coords) setRadiusChoice({ coordsKey, radius: widerRadius(radius) });
-        }}
-      />
+    // Wide screens: the controls stay in view on the left, the results on the right
+    <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
+      <div className="lg:sticky lg:top-[calc(var(--header-h)+var(--safe-t)+0.75rem)] lg:col-span-4">
+        <MosqueControls
+          coords={coords}
+          isGps={isGps}
+          accuracy={accuracy}
+          radius={radius}
+          cityName={location.cityName}
+          loading={loading}
+          watching={gps.watching}
+          gpsError={gps.error}
+          onRefresh={searchAgain}
+          onStartGps={gps.start}
+          onStopGps={gps.stop}
+          onPickCity={pickCity}
+        />
+      </div>
+      <div className="space-y-3 lg:col-span-8">
+        <MosqueList
+          mosques={mosques}
+          loading={loading}
+          error={error}
+          coords={coords}
+          radius={radius}
+          onRetry={searchAgain}
+          // The effect above searches the wider radius
+          onWiden={() => {
+            if (coords) setRadiusChoice({ coordsKey, radius: widerRadius(radius) });
+          }}
+        />
+      </div>
     </div>
   );
 }
