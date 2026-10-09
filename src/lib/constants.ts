@@ -27,10 +27,10 @@ export const NO_STORE = "no-store";
 
 /**
  * Years the schedule API and month navigation accept: previous, current and next year.
- * Keeps the range rolling instead of a hardcoded cutoff.
+ * Keeps the range rolling instead of a hardcoded cutoff. Pass the city's current year
+ * on the client so the range never depends on the device clock or time zone.
  */
-export function getScheduleYearRange(now: Date = new Date()): { min: number; max: number } {
-  const year = now.getFullYear();
+export function getScheduleYearRange(year: number = new Date().getUTCFullYear()): { min: number; max: number } {
   return { min: year - 1, max: year + 1 };
 }
 

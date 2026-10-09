@@ -2,7 +2,8 @@
 
 import { create } from "zustand";
 import { Location, ScheduleDay, TimezoneLabel } from "@/types";
-import { BUILD_TIME, DEFAULT_LOCATION, SCHEDULE_CACHE_MAX_AGE, TIMEZONE_OFFSETS } from "@/lib/constants";
+import { DEFAULT_LOCATION, SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
+import { BUILD_DATE, cityDate, daysInMonth } from "@/lib/city-time";
 import { getSchedule } from "@/lib/api";
 import { getTimezone } from "@/lib/timezone";
 
@@ -116,27 +117,66 @@ interface AppState {
    */
   hydrateFromCache: () => void;
 
+  // Whether to show the "use your location?" prompt (no saved city, not dismissed recently)
+  locationPrompt: boolean;
+  setLocationPrompt: (show: boolean) => void;
+
+  /**
+   * Switch to `city` (or reload the current one) and load its current month for both
+   * the table and the countdown. Every call invalidates older in-flight schedule
+   * requests, so a slow response for a previous city or month can never be applied
+   * under the new city's name.
+   */
+  loadCitySchedule: (city: Location & { daerah?: string }) => Promise<CityLoadResult>;
+
   // Re-fetch countdown schedule for the current month, plus next month on the
   // last day so the countdown can reach tomorrow's Imsak (used by CountdownTimer)
   refetchSchedule: () => Promise<void>;
   // Fetch schedule for a specific month (used by table month navigation)
   fetchScheduleForMonth: (year: number, month: number) => Promise<void>;
-  // Internal: request ID for race-condition protection in fetchScheduleForMonth
+  // Internal: bumped by every table/city schedule request; only the latest may apply its result
   _fetchRequestId: number;
+  // Internal: bumped only when a city load starts, so a slow GPS detection can tell
+  // that the user picked a city in the meantime
+  _cityToken: number;
 }
 
-/** Local calendar date in a WIB/WITA/WIT timezone, as UTC fields of a Date */
-function localDateParts(timeOffset: number, timezone: TimezoneLabel) {
-  const local = new Date(Date.now() + timeOffset + (TIMEZONE_OFFSETS[timezone] ?? 7) * 3600000);
-  return { year: local.getUTCFullYear(), month: local.getUTCMonth() + 1, day: local.getUTCDate() };
+export interface CityLoadResult {
+  ok: boolean;
+  error?: string;
+  /** A newer city or month request started before this one finished; nothing was applied. */
+  superseded?: boolean;
+}
+
+const OFFLINE_MESSAGE = "Anda sedang offline. Periksa koneksi internet Anda.";
+const LOAD_FAILED_MESSAGE = "Gagal memuat jadwal. Coba lagi nanti.";
+const LOCATION_PROMPT_INTERVAL = 7 * 24 * 3600000; // re-ask after 7 days
+
+function loadErrorMessage(): string {
+  return typeof navigator !== "undefined" && !navigator.onLine ? OFFLINE_MESSAGE : LOAD_FAILED_MESSAGE;
+}
+
+/** Show the location prompt when there is no saved city and it wasn't dismissed in the last 7 days. */
+function shouldShowLocationPrompt(hasSavedLocation: boolean): boolean {
+  if (hasSavedLocation) return false;
+  try {
+    const dismissed = Number(localStorage.getItem("locationPermissionDismissed"));
+    if (!dismissed) return true;
+    if (Date.now() - dismissed > LOCATION_PROMPT_INTERVAL) {
+      localStorage.removeItem("locationPermissionDismissed");
+      return true;
+    }
+    return false;
+  } catch {
+    // localStorage unavailable (Safari private mode) — ask every visit
+    return true;
+  }
 }
 
 // Initial state must be identical on the server and on the client's first render
 // (no localStorage, no "now"), otherwise React hydration fails. The page is
-// prerendered at build time, so the build timestamp — inlined into both bundles —
-// stands in for "now" until hydrateFromCache() runs.
-const initialView = new Date(BUILD_TIME);
-
+// prerendered at build time, so the build date in WIB — computed without the device
+// time zone — stands in for "today" until hydrateFromCache() runs.
 export const useStore = create<AppState>((set, get) => ({
   location: {
     cityId: DEFAULT_LOCATION.id,
@@ -174,8 +214,8 @@ export const useStore = create<AppState>((set, get) => ({
   setCountdownSchedule: (data) => set({ countdownSchedule: data }),
 
   // View month
-  viewMonth: initialView.getMonth() + 1,
-  viewYear: initialView.getFullYear(),
+  viewMonth: BUILD_DATE.month,
+  viewYear: BUILD_DATE.year,
   setViewMonth: (month, year) => set({ viewMonth: month, viewYear: year }),
 
   // User coordinates
@@ -207,9 +247,6 @@ export const useStore = create<AppState>((set, get) => ({
 
   hydrateFromCache: () => {
     if (typeof window === "undefined") return;
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
 
     let theme: "light" | "dark" = "dark";
     try {
@@ -219,13 +256,17 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const cachedLocation = readCachedLocation();
-    const cityId = cachedLocation?.cityId ?? get().location.cityId;
-    const cachedSchedule = readCachedSchedule(cityId, year, month);
+    const location = cachedLocation ?? get().location;
+    // "Today" in the city's time zone, not the device's
+    const today = cityDate(Date.now() + get().timeOffset, location.timezone);
+    const cachedSchedule = readCachedSchedule(location.cityId, today.year, today.month);
 
     set({
       theme,
-      viewMonth: month,
-      viewYear: year,
+      viewMonth: today.month,
+      viewYear: today.year,
+      todayDateStr: today.iso,
+      locationPrompt: shouldShowLocationPrompt(cachedLocation !== null),
       ...(cachedLocation && { location: cachedLocation }),
       ...(cachedSchedule.length > 0 && {
         schedule: { data: cachedSchedule, loading: false, error: null },
@@ -238,7 +279,7 @@ export const useStore = create<AppState>((set, get) => ({
   refetchSchedule: async () => {
     const { location, timeOffset } = get();
     const { cityId } = location;
-    const { year, month, day } = localDateParts(timeOffset, location.timezone);
+    const { year, month, day } = cityDate(Date.now() + timeOffset, location.timezone);
     try {
       const res = await getSchedule(cityId, year, month);
       if (!res.status || !res.data?.jadwal) return;
@@ -246,8 +287,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Last day of the month: after Isya the countdown targets tomorrow's Imsak,
       // which lives in next month's data.
-      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-      if (day === daysInMonth) {
+      if (day === daysInMonth(year, month)) {
         const nextYear = month === 12 ? year + 1 : year;
         const nextMonth = month === 12 ? 1 : month + 1;
         try {
@@ -280,16 +320,81 @@ export const useStore = create<AppState>((set, get) => ({
       // Only apply result if this is still the latest request
       if (get()._fetchRequestId !== requestId) return;
       if (res.status && res.data?.jadwal) {
-        set({ schedule: { data: res.data.jadwal, loading: false, error: null } });
+        const jadwal = res.data.jadwal;
+        set((state) => {
+          // "Coba Lagi" on the table also repairs a countdown whose first load failed
+          const today = cityDate(Date.now() + state.timeOffset, state.location.timezone);
+          const isCurrentMonth = today.year === year && today.month === month;
+          return {
+            schedule: { data: jadwal, loading: false, error: null },
+            ...(isCurrentMonth && state.countdownSchedule.length === 0 && { countdownSchedule: jadwal }),
+          };
+        });
       } else {
         set((state) => ({ schedule: { ...state.schedule, loading: false, error: "Data tidak tersedia untuk bulan ini" } }));
       }
     } catch {
       if (get()._fetchRequestId !== requestId) return;
-      const offlineMsg = typeof navigator !== "undefined" && !navigator.onLine
-        ? "Anda sedang offline. Periksa koneksi internet Anda."
-        : "Gagal memuat jadwal. Coba lagi nanti.";
-      set((state) => ({ schedule: { ...state.schedule, loading: false, error: offlineMsg } }));
+      const message = loadErrorMessage();
+      set((state) => ({ schedule: { ...state.schedule, loading: false, error: message } }));
+    }
+  },
+
+  locationPrompt: false,
+  setLocationPrompt: (show) => set({ locationPrompt: show }),
+
+  _cityToken: 0,
+  loadCitySchedule: async (city) => {
+    const state = get();
+    const requestId = state._fetchRequestId + 1;
+    const cityToken = state._cityToken + 1;
+    const daerah = city.daerah || "";
+    const timezone = getTimezone(daerah);
+    const cityChanged = state.location.cityId !== city.id;
+    const today = cityDate(Date.now() + state.timeOffset, timezone);
+    const sameView = !cityChanged && state.viewYear === today.year && state.viewMonth === today.month;
+
+    // Switch immediately: the header, countdown badge and table title show the new city
+    // while it loads, and nothing from the previous city stays on screen.
+    set({
+      _fetchRequestId: requestId,
+      _cityToken: cityToken,
+      location: { cityId: city.id, cityName: city.lokasi, province: daerah, timezone },
+      viewMonth: today.month,
+      viewYear: today.year,
+      // A city in another time zone can already be on a different date
+      todayDateStr: today.iso,
+      schedule: { data: sameView ? state.schedule.data : [], loading: true, error: null },
+      ...(cityChanged && { countdownSchedule: [] }),
+    });
+
+    // Another city was chosen meanwhile: drop everything. Month navigation in this same
+    // city only takes over the table — the countdown still needs this month.
+    const cityStillCurrent = () => get()._cityToken === cityToken;
+    const tableStillCurrent = () => get()._fetchRequestId === requestId;
+
+    try {
+      const res = await getSchedule(city.id, today.year, today.month);
+      if (!cityStillCurrent()) return { ok: false, superseded: true };
+      if (res.status && res.data?.jadwal) {
+        const jadwal = res.data.jadwal;
+        // The response carries the canonical province name — it decides the timezone
+        const province = res.data.daerah || daerah;
+        set({
+          location: { cityId: city.id, cityName: city.lokasi, province, timezone: getTimezone(province) },
+          countdownSchedule: jadwal,
+          ...(tableStillCurrent() && { schedule: { data: jadwal, loading: false, error: null } }),
+        });
+        return { ok: true };
+      }
+      const error = "Data jadwal tidak tersedia";
+      if (tableStillCurrent()) set((s) => ({ schedule: { ...s.schedule, loading: false, error } }));
+      return { ok: false, error };
+    } catch {
+      if (!cityStillCurrent()) return { ok: false, superseded: true };
+      const error = loadErrorMessage();
+      if (tableStillCurrent()) set((s) => ({ schedule: { ...s.schedule, loading: false, error } }));
+      return { ok: false, error };
     }
   },
 }));

@@ -2,9 +2,8 @@
 
 import { useStore } from "@/store/useStore";
 import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
-import { getAdjustedTime } from "@/lib/time";
-import { getUtcOffset } from "@/lib/timezone";
 import { getScheduleYearRange } from "@/lib/constants";
+import { BUILD_DATE } from "@/lib/city-time";
 import { ScheduleDay } from "@/types";
 import React, { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "@/components/ui/Icons";
@@ -212,12 +211,9 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
 
 export default function ScheduleTable() {
   const schedule = useStore((s) => s.schedule);
-  const location = useStore((s) => s.location);
-  const timeOffset = useStore((s) => s.timeOffset);
   const viewMonth = useStore((s) => s.viewMonth);
   const viewYear = useStore((s) => s.viewYear);
   const fetchScheduleForMonth = useStore((s) => s.fetchScheduleForMonth);
-  const utcOffset = getUtcOffset(location.timezone);
   const todayRef = useRef<HTMLDivElement>(null);
   // Skeletons only on a cold load; revalidating cached data keeps it on screen
   const showSkeleton = schedule.loading && schedule.data.length === 0;
@@ -229,12 +225,9 @@ export default function ScheduleTable() {
 
   // todayDateStr is kept current by the countdown, so "today" rolls over at midnight
   const storeTodayDateStr = useStore((s) => s.todayDateStr);
-  const todayDate = useMemo(() => {
-    if (storeTodayDateStr) return storeTodayDateStr;
-    const now = getAdjustedTime(timeOffset);
-    const localTime = new Date(now.getTime() + utcOffset * 3600000);
-    return localTime.toISOString().split("T")[0];
-  }, [storeTodayDateStr, timeOffset, utcOffset]);
+  // Before hydration the store has no "today" yet: use the build date, which the server
+  // render used too, so the first client render matches the HTML.
+  const todayDate = storeTodayDateStr || BUILD_DATE.iso;
 
   const processedSchedule = useMemo(() => {
     return schedule.data.map(day => {
@@ -270,7 +263,7 @@ export default function ScheduleTable() {
     isCurrentMonth && !todayVisible && !showSkeleton && processedSchedule.some((d) => d.date === todayDate);
 
   // Must match the range /api/schedule accepts
-  const yearRange = getScheduleYearRange();
+  const yearRange = getScheduleYearRange(Number(todayDate.slice(0, 4)));
   const canGoPrev = viewYear > yearRange.min || (viewYear === yearRange.min && viewMonth > 1);
   const canGoNext = viewYear < yearRange.max || (viewYear === yearRange.max && viewMonth < 12);
 
@@ -287,9 +280,9 @@ export default function ScheduleTable() {
   }, [viewMonth, viewYear, fetchScheduleForMonth]);
 
   const goToCurrentMonth = useCallback(() => {
-    const n = new Date();
-    fetchScheduleForMonth(n.getFullYear(), n.getMonth() + 1);
-  }, [fetchScheduleForMonth]);
+    // The city's current month, not the device's
+    fetchScheduleForMonth(Number(todayDate.slice(0, 4)), Number(todayDate.slice(5, 7)));
+  }, [fetchScheduleForMonth, todayDate]);
 
   if (schedule.error) {
     return (
