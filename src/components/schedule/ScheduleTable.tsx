@@ -29,7 +29,7 @@ export default function ScheduleTable() {
 
   if (schedule.error) {
     return (
-      <div className="animate-fade-in">
+      <div>
         <MonthNav />
         <div role="alert" className="rounded-2xl border border-red-100 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
           <p className="text-sm text-red-700 dark:text-red-300">{schedule.error}</p>
@@ -57,7 +57,7 @@ export default function ScheduleTable() {
   }
 
   return (
-    <div className="animate-fade-in" aria-busy={showSkeleton}>
+    <div aria-busy={showSkeleton}>
       {showSkeleton && (
         <p role="status" className="sr-only">
           Memuat jadwal...

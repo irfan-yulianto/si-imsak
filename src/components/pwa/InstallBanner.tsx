@@ -83,7 +83,7 @@ export default function InstallBanner() {
       inert={!mode}
       className={cx(
         "relative overflow-hidden rounded-card border border-border bg-surface shadow-card transition-all duration-300",
-        mode ? "max-h-32 px-4 py-3 opacity-100" : "max-h-0 border-0 opacity-0"
+        mode ? "mt-4 max-h-32 px-4 py-3 opacity-100" : "max-h-0 border-0 opacity-0"
       )}
     >
       <div className="flex items-center gap-3">

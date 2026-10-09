@@ -114,25 +114,22 @@ export default function Home() {
           aria-labelledby="tab-jadwal"
           className={activeTab === "masjid" ? "hidden md:block" : "block"}
         >
-          {/* Hero: Full-width countdown */}
-          <div className="animate-fade-in mb-3">
-            <CountdownTimer />
+          {/* Countdown and today's times side by side on wide screens, the same height */}
+          <div className="grid gap-3 lg:grid-cols-12">
+            <div className="lg:col-span-7">
+              <CountdownTimer />
+            </div>
+            <div className="lg:col-span-5">
+              <TodayCard />
+            </div>
           </div>
 
-          {/* Today's prayer times */}
-          <div className="animate-fade-in mb-4" style={{ animationDelay: "100ms" }}>
-            <TodayCard />
-          </div>
-
-          {/* PWA install banner */}
-          <div className="animate-fade-in mb-4" style={{ animationDelay: "200ms" }}>
-            <InstallBanner />
-          </div>
-
-          {/* Schedule Table */}
-          <div>
+          <div className="mt-6">
             <ScheduleTable />
           </div>
+
+          {/* Last in the panel: when it appears, nothing above it moves */}
+          <InstallBanner />
         </div>
 
         {/* Mosque Finder — tab on mobile, section on desktop */}
@@ -141,7 +138,7 @@ export default function Home() {
           ref={mosqueSectionRef}
           role="tabpanel"
           aria-labelledby="tab-masjid"
-          className={`${activeTab === "masjid" ? "block" : "hidden"} scroll-mt-24 md:mt-6 md:block`}
+          className={`${activeTab === "masjid" ? "block" : "hidden"} md:mt-10 md:block`}
         >
           {showMosques ? <MosqueFinder /> : <MosquePlaceholder />}
         </div>
