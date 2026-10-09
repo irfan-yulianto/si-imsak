@@ -39,7 +39,7 @@ describe("UpdateToast", () => {
     mockServiceWorker({ waiting, controller: {} });
     render(<UpdateToast />);
 
-    const button = await screen.findByRole("button", { name: "Muat ulang" });
+    const button = await screen.findByRole("button", { name: "Muat Ulang" });
     expect(screen.getByRole("status")).toHaveTextContent("Versi baru Si-Imsak tersedia.");
     fireEvent.click(button);
     expect(waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });

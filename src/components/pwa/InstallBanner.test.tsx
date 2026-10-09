@@ -9,7 +9,9 @@ type InstallPromptEvent = Event & {
 
 // Mock the icon component
 vi.mock("@/components/ui/Icons", () => ({
-  CrescentIcon: () => <div data-testid="crescent-icon" />
+  CrescentIcon: () => <div data-testid="crescent-icon" />,
+  ShareIcon: () => <span data-testid="share-icon" />,
+  XIcon: () => <span data-testid="x-icon" />,
 }));
 
 describe("InstallBanner", () => {
@@ -187,7 +189,7 @@ describe("InstallBanner", () => {
       window.dispatchEvent(event);
     });
 
-    expect(screen.getByText("Pasang Si-Imsak di perangkatmu")).toBeInTheDocument();
+    expect(screen.getByText("Pasang Si-Imsak di perangkat Anda")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pasang" })).toBeInTheDocument();
   });
 
@@ -213,7 +215,7 @@ describe("InstallBanner", () => {
     expect(event.prompt).toHaveBeenCalled();
     // After accepted outcome, the banner should be hidden
     // We can check if the Chromium specific text is no longer present
-    expect(screen.queryByText("Pasang Si-Imsak di perangkatmu")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pasang Si-Imsak di perangkat Anda")).not.toBeInTheDocument();
 
     // We can also verify the outer wrapper has the hidden classes
     // The install button is also gone

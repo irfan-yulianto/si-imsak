@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
-import { CrescentIcon } from "@/components/ui/Icons";
+import { CrescentIcon, ShareIcon, XIcon } from "@/components/ui/Icons";
+import Button from "@/components/ui/Button";
+import { cx } from "@/components/ui/cx";
 import { KEYS, isAvailable, readRaw, writeRaw } from "@/lib/storage";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -27,33 +29,6 @@ function detectBannerMode(): BannerMode {
 
   // Chromium-based browsers will fire beforeinstallprompt
   return "chromium";
-}
-
-// Share/export icon for iOS instructions
-function ShareIcon() {
-  return (
-    <svg role="img" aria-label="Bagikan" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline -mt-0.5">
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-      <polyline points="16 6 12 2 8 6" />
-      <line x1="12" y1="2" x2="12" y2="15" />
-    </svg>
-  );
-}
-
-function CloseButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="focus-ring flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-      aria-label="Tutup"
-    >
-      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
-    </button>
-  );
 }
 
 const noSubscribe = () => () => {};
@@ -104,46 +79,39 @@ export default function InstallBanner() {
 
   return (
     // inert while collapsed: the hidden buttons must not be reachable by Tab or screen readers
-    <div inert={!mode} className={`relative overflow-hidden rounded-2xl border border-emerald-200/50 bg-gradient-to-r from-emerald-50 to-teal-50 transition-all duration-300 dark:border-emerald-800/40 dark:from-emerald-950/40 dark:to-teal-950/30 ${mode ? "max-h-32 px-4 py-3 opacity-100" : "max-h-0 border-0 opacity-0"}`}>
+    <div
+      inert={!mode}
+      className={cx(
+        "relative overflow-hidden rounded-card border border-border bg-surface shadow-card transition-all duration-300",
+        mode ? "max-h-32 px-4 py-3 opacity-100" : "max-h-0 border-0 opacity-0"
+      )}
+    >
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 shadow-md shadow-green-600/25">
-          <CrescentIcon size={20} className="text-white" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-tile bg-brand text-white">
+          <CrescentIcon size={20} />
         </div>
 
         {mode === "chromium" ? (
           <>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Pasang Si-Imsak di perangkatmu
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Sekali klik langsung buka — tanpa ketik alamat di browser.
-              </p>
+              <p className="text-sm font-semibold text-fg">Pasang Si-Imsak di perangkat Anda</p>
+              <p className="text-xs text-fg-subtle">Sekali ketuk langsung terbuka, tanpa mengetik alamat.</p>
             </div>
-            <button
-              type="button"
-              onClick={handleInstall}
-              className="focus-ring min-h-11 shrink-0 cursor-pointer rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 active:bg-emerald-900"
-            >
-              Pasang
-            </button>
+            <Button onClick={handleInstall}>Pasang</Button>
           </>
         ) : (
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Pasang Si-Imsak di Layar Utama
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Ketuk <ShareIcon /> lalu pilih{" "}
-              <span className="font-semibold text-slate-600 dark:text-slate-300">
-                &quot;Tambah ke Layar Utama&quot;
-              </span>{" "}
-              (Add to Home Screen)
+            <p className="text-sm font-semibold text-fg">Pasang Si-Imsak di Layar Utama</p>
+            <p className="text-xs text-fg-subtle">
+              Ketuk <ShareIcon size={14} role="img" aria-hidden={false} aria-label="Bagikan" className="-mt-0.5 inline" /> lalu
+              pilih <span className="font-semibold text-fg-muted">&quot;Tambah ke Layar Utama&quot;</span> (Add to Home Screen)
             </p>
           </div>
         )}
 
-        <CloseButton onClick={handleDismiss} />
+        <Button variant="ghost" size="icon" onClick={handleDismiss} aria-label="Tutup">
+          <XIcon size={16} />
+        </Button>
       </div>
     </div>
   );
