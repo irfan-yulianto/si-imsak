@@ -1,35 +1,130 @@
 @import "tailwindcss";
 
-@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Design tokens. Components use the semantic names (bg-surface, text-fg-muted,
+ * border-border, rounded-card…) instead of palette shades, so each theme is defined
+ * once: light on :root, dark on .dark.
+ */
+:root {
+  --bg: #F8FAF9;
+  --surface: #FFFFFF;
+  /* Insets on a surface: tiles, stripes, inputs */
+  --surface-2: #F8FAFC;
+  --fg: #0F172A;
+  --fg-muted: #475569;
+  --fg-subtle: #64748B;
+  --border: #F1F5F9;
+  /* Solid buttons, with --on-accent text; --accent-fg for accent text and links */
+  --accent: #047857;
+  --accent-hover: #065F46;
+  --on-accent: #FFFFFF;
+  --accent-soft: #ECFDF5;
+  --accent-fg: #047857;
+  /* Hijri dates, Imsak and the time in progress */
+  --gold: #B45309;
+  --gold-soft: #FFFBEB;
+  /* Offline, stale data, hints */
+  --warning: #B45309;
+  --warning-soft: #FFFBEB;
+  --danger: #B91C1C;
+  --danger-soft: #FEF2F2;
+  /* The countdown, in both themes */
+  --hero-from: #064E3B;
+  --hero-via: #166534;
+  --hero-to: #115E59;
+  --on-hero: #FFFFFF;
+  --on-hero-muted: #BBF7D0;
+  --brand: #064E3B;
+  --shimmer-a: #E5E7EB;
+  --shimmer-b: #F3F4F6;
+  --scrollbar: #CBD5E1;
+  --scrollbar-hover: #94A3B8;
+  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+
+  /* Layout */
+  --safe-t: env(safe-area-inset-top);
+  --safe-r: env(safe-area-inset-right);
+  --safe-b: env(safe-area-inset-bottom);
+  --safe-l: env(safe-area-inset-left);
+  --header-h: 3.75rem;
+  --nav-h: 3.5rem;
+  --row-h: 2.5rem;
+}
+
+.dark {
+  --bg: #0F1419;
+  --surface: rgb(30 41 59 / 0.8);
+  --surface-2: rgb(51 65 85 / 0.5);
+  --fg: #E2E8F0;
+  --fg-muted: #CBD5E1;
+  --fg-subtle: #94A3B8;
+  --border: rgb(51 65 85 / 0.5);
+  --accent: #047857;
+  --accent-hover: #065F46;
+  --on-accent: #FFFFFF;
+  --accent-soft: rgb(6 78 59 / 0.3);
+  --accent-fg: #34D399;
+  --gold: #FBBF24;
+  --gold-soft: rgb(120 53 15 / 0.2);
+  --warning: #FBBF24;
+  --warning-soft: rgb(120 53 15 / 0.3);
+  --danger: #FCA5A5;
+  --danger-soft: rgb(69 10 10 / 0.3);
+  --shimmer-a: #1E293B;
+  --shimmer-b: #334155;
+  --scrollbar: #374151;
+  --scrollbar-hover: #4B5563;
+  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* `inline`: the utilities read the variables where they are used, so .dark applies.
+   Resolved on :root instead, they would keep the light values (the bug that once hid
+   the font). */
 @theme inline {
-  --color-background: #F8FAF9;
-  --color-foreground: #0F172A;
-  --color-surface: #FFFFFF;
-  --color-gold: #D4A017;
-  --color-gold-light: #FEF3C7;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-hero-from: var(--hero-from);
+  --color-hero-via: var(--hero-via);
+  --color-hero-to: var(--hero-to);
+  --color-on-hero: var(--on-hero);
+  --color-on-hero-muted: var(--on-hero-muted);
+  --color-brand: var(--brand);
+
+  --radius-control: 0.625rem;
+  --radius-tile: 0.75rem;
+  --radius-card: 1rem;
+  --shadow-card: var(--card-shadow);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
   --font-sans: var(--font-jakarta);
   --font-mono: var(--font-jetbrains);
 }
 
-:root {
-  --gold: #D4A017;
-  --gold-light: #FEF3C7;
-  --emerald-deep: #064E3B;
-  --green-primary: #16A34A;
-}
-
 body {
-  background-color: #F8FAF9;
-  color: #0F172A;
+  background-color: var(--bg);
+  color: var(--fg);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   position: relative;
   transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.dark body {
-  background-color: #0F1419;
-  color: #E2E8F0;
 }
 
 /* Subtle Islamic geometric background pattern */
@@ -73,7 +168,7 @@ body::before {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, var(--shimmer-a) 25%, var(--shimmer-b) 50%, var(--shimmer-a) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -109,24 +204,11 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--scrollbar);
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #374151;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
-}
-
-/* Dark shimmer */
-.dark .animate-shimmer {
-  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: var(--scrollbar-hover);
 }
 
 /* Hide scrollbar for horizontal scroll */
