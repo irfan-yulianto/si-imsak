@@ -8,10 +8,6 @@ import type { ScheduleDay } from "@/types";
 
 // Real store and real time maths; only the network is replaced
 vi.mock("@/lib/api", () => ({ getSchedule: vi.fn() }));
-vi.mock("@/lib/time", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/time")>()),
-  syncServerTime: vi.fn(() => Promise.resolve(0)),
-}));
 
 function day(date: string, overrides: Partial<ScheduleDay> = {}): ScheduleDay {
   return {

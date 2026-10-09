@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Location } from "@/types";
 import { searchCities } from "@/lib/api";
-import { cityDate, monthKey } from "@/lib/city-time";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
 import { KEYS, writeJson, writeRaw } from "@/lib/storage";
@@ -20,20 +19,6 @@ export default function LocationSearch() {
   const showLocationPrompt = useStore((s) => s.locationPrompt);
   const setLocationPrompt = useStore((s) => s.setLocationPrompt);
   const selectCity = useStore((s) => s.selectCity);
-  const setIsOffline = useStore((s) => s.setIsOffline);
-
-  // Online/offline detection
-  useEffect(() => {
-    const goOnline = () => setIsOffline(false);
-    const goOffline = () => setIsOffline(true);
-    setIsOffline(!navigator.onLine);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-  }, [setIsOffline]);
 
   const detectLocation = useCallback(async () => {
     setIsDetecting(true);
@@ -57,43 +42,6 @@ export default function LocationSearch() {
   useEffect(() => {
     if (showLocationPrompt) promptButtonRef.current?.focus();
   }, [showLocationPrompt]);
-
-  // Load the city restored from cache by the page's hydrateFromCache() (or the default
-  // city). Layout effects run before this passive effect, so the store already holds it.
-  const hasInitialized = useRef(false);
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-    const { location: current } = useStore.getState();
-    selectCity({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
-  }, [selectCity]);
-
-  // Reload when the month changes in the city's time zone: checked hourly, and whenever
-  // the app comes back to the foreground (timers are suspended while a phone is locked).
-  useEffect(() => {
-    const currentMonth = () => {
-      const { location: current, timeOffset } = useStore.getState();
-      const today = cityDate(Date.now() + timeOffset, current.timezone);
-      return monthKey(today.year, today.month);
-    };
-    let lastMonth = currentMonth();
-    const checkMonth = () => {
-      const month = currentMonth();
-      if (month === lastMonth) return;
-      lastMonth = month;
-      const { location: current } = useStore.getState();
-      selectCity({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
-    };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") checkMonth();
-    };
-    const interval = setInterval(checkMonth, 3600000); // 1 hour
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [selectCity]);
 
   // Typing updates the "searching" state right away; the debounced request below fills results
   const handleQueryChange = (value: string) => {

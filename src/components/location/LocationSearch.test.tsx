@@ -86,44 +86,6 @@ describe("LocationSearch Component", () => {
     expect(screen.getByRole("button", { name: "Nanti" })).toBeInTheDocument();
   });
 
-  it("fetches schedule on mount if location is saved in localStorage", async () => {
-    const mockLocation = { id: "0123456789abcdef0123456789abcdef", lokasi: "TEST CITY", daerah: "TEST PROV" };
-    localStorage.setItem("selectedLocation", JSON.stringify(mockLocation));
-
-    vi.mocked(getSchedule).mockResolvedValue({
-      status: true,
-      data: {
-        id: "0123456789abcdef0123456789abcdef",
-        lokasi: "TEST CITY",
-        daerah: "TEST PROV",
-        jadwal: [],
-      },
-    });
-
-    renderAfterHydrate();
-
-    // Fast-forward initial useEffects
-    await act(async () => {
-      vi.advanceTimersByTime(100);
-    });
-
-    await waitFor(() => {
-      expect(getSchedule).toHaveBeenCalledWith(
-        "0123456789abcdef0123456789abcdef",
-        expect.any(Number),
-        expect.any(Number)
-      );
-    });
-    // Loaded once on startup, not once per effect run
-    expect(getSchedule).toHaveBeenCalledTimes(1);
-    expect(useStore.getState().location.cityName).toBe("TEST CITY");
-
-    // Prompt should not be shown
-    expect(
-      screen.queryByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
-    ).not.toBeInTheDocument();
-  });
-
   it("handles dismissing the location prompt", async () => {
     renderAfterHydrate();
 
@@ -452,6 +414,10 @@ describe("LocationSearch Component", () => {
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: [{ id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT" }] });
 
     renderAfterHydrate();
+    // The page loads the default city at start-up (useAppBootstrap)
+    act(() => {
+      void useStore.getState().selectCity({ id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE" });
+    });
     await act(async () => {
       vi.advanceTimersByTime(100);
     });

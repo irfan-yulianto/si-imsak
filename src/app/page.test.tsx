@@ -9,7 +9,8 @@ vi.mock("@/components/schedule/ScheduleTable", () => ({ default: () => <div>tabl
 vi.mock("@/components/pwa/InstallBanner", () => ({ default: () => null }));
 vi.mock("@/components/pwa/UpdateToast", () => ({ default: () => null }));
 vi.mock("next/dynamic", () => ({ default: () => () => <div>mosque finder</div> }));
-vi.mock("@/store/useStore", () => ({ useStore: { getState: () => ({ hydrateFromCache: vi.fn() }) } }));
+// Start-up has its own tests (useAppBootstrap.test.tsx)
+vi.mock("@/hooks/useAppBootstrap", () => ({ useAppBootstrap: () => {} }));
 
 import Home from "./page";
 

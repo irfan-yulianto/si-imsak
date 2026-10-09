@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { selectCurrentMonth, useCountdownDays, useCurrentMonth, useStore } from "@/store/useStore";
-import { syncServerTime } from "@/lib/time";
 import { addDays, cityDate } from "@/lib/city-time";
 import { PRAYER_ICON_MAP, MapPinIcon, RefreshIcon } from "@/components/ui/Icons";
 import type { PrayerKey } from "@/types";
@@ -33,7 +32,6 @@ export default function CountdownTimer() {
   const currentFailed = useCurrentMonth()?.status === "error";
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
-  const setTimeOffset = useStore((s) => s.setTimeOffset);
   const loadCountdownMonths = useStore((s) => s.loadCountdownMonths);
   const setTodayDateStr = useStore((s) => s.setTodayDateStr);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
@@ -55,22 +53,16 @@ export default function CountdownTimer() {
   // The latest "recompute next prayer" check, for event handlers and the 1 s tick
   const checkRef = useRef<() => void>(() => {});
 
+  // Back online or in the foreground (phones suspend timers in the background):
+  // recompute at once and retry a failed load without waiting
   useEffect(() => {
-    const sync = () => {
-      syncServerTime(setTimeOffset).then(setTimeOffset).catch(() => {});
-    };
-    sync();
-    // Back online or in the foreground (phones suspend timers in the background):
-    // re-sync the clock, recompute at once and retry a failed load without waiting
     const resume = () => {
       retryRef.current.attempts = 0;
       retryRef.current.nextAt = 0;
       checkRef.current();
     };
     const onVisible = () => {
-      if (document.visibilityState !== "visible") return;
-      sync();
-      resume();
+      if (document.visibilityState === "visible") resume();
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", resume);
@@ -78,7 +70,7 @@ export default function CountdownTimer() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", resume);
     };
-  }, [setTimeOffset]);
+  }, []);
 
   // Timers that outlive a render must not fire after unmount
   useEffect(() => {
