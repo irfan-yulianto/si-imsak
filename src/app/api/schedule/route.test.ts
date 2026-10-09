@@ -379,7 +379,7 @@ describe("GET /api/schedule", () => {
       expect(console.log).toHaveBeenCalledTimes(1);
       const line = JSON.parse(vi.mocked(console.log).mock.calls[0][0] as string);
       expect(line).toMatchObject({
-        route: "schedule", city: validCityId, month: `${YEAR}-03`, monthly: "ok",
+        level: "info", route: "schedule", city: validCityId, month: `${YEAR}-03`, monthly: "ok",
         calls: 1, days: 31, of: 31, status: 200,
       });
       expect(typeof line.ms).toBe("number");

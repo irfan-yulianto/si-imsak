@@ -1,5 +1,6 @@
 import { CDN_CACHE_DAY, NO_STORE } from "@/lib/constants";
 import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
+import { log, errorMessage } from "@/lib/log";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": safeData.status ? CDN_CACHE_DAY : NO_STORE },
     });
   } catch (err) {
-    console.error("[cities] Failed:", err instanceof Error ? err.message : err);
+    log("error", { route: "cities", error: errorMessage(err) });
     return NextResponse.json(
       { status: false, data: [] },
       { status: 502, headers: { "Cache-Control": NO_STORE } }
