@@ -144,7 +144,7 @@ export default function LocationSearch() {
       <CityCombobox
         variant="compact"
         label="Cari kota"
-        placeholder="Cari kota"
+        placeholder="Cari kota…"
         query={query}
         onQueryChange={handleQueryChange}
         results={results}

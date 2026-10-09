@@ -266,9 +266,9 @@ describe("selectCity", () => {
     vi.mocked(getSchedule).mockResolvedValueOnce({ status: false });
     expect(await useStore.getState().selectCity(asCity(BANDUNG))).toEqual({
       ok: false,
-      error: "Data tidak tersedia untuk bulan ini",
+      error: "Data tidak tersedia untuk bulan ini.",
     });
-    expect(monthOf(2026, 9)).toMatchObject({ status: "error", error: "Data tidak tersedia untuk bulan ini" });
+    expect(monthOf(2026, 9)).toMatchObject({ status: "error", error: "Data tidak tersedia untuk bulan ini." });
 
     vi.mocked(getSchedule).mockRejectedValueOnce(new TypeError("Failed to fetch"));
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);

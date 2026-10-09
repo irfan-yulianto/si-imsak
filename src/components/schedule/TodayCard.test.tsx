@@ -35,7 +35,7 @@ describe("TodayCard", () => {
   it("says so when today's schedule isn't available", () => {
     seedMonth(2025, 6, [], { status: "error", error: "Gagal memuat jadwal. Coba lagi nanti." });
     render(<TodayCard />);
-    expect(screen.getByText("Jadwal hari ini belum tersedia")).toBeInTheDocument();
+    expect(screen.getByText("Jadwal hari ini belum tersedia.")).toBeInTheDocument();
   });
 
   it("shows today's date, Hijri date and all eight times", () => {

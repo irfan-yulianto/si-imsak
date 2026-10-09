@@ -42,7 +42,7 @@ beforeEach(() => {
 describe("detectCity", () => {
   it("explains when the browser has no geolocation", async () => {
     vi.stubGlobal("navigator", {});
-    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Geolocation tidak tersedia" });
+    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Perangkat ini tidak mendukung deteksi lokasi." });
   });
 
   it("explains a refused permission and a timeout", async () => {
@@ -51,7 +51,7 @@ describe("detectCity", () => {
     gpsFails(3);
     expect((await useStore.getState().detectCity()).error).toContain("habis");
     gpsFails(2);
-    expect((await useStore.getState().detectCity()).error).toBe("Gagal mendeteksi lokasi");
+    expect((await useStore.getState().detectCity()).error).toBe("Gagal mendeteksi lokasi.");
   });
 
   it("finds, saves and selects the city at the GPS position", async () => {
@@ -93,13 +93,13 @@ describe("detectCity", () => {
   it("explains a city that can't be found, or a failed search", async () => {
     gpsAt(-6.17, 106.85);
     vi.mocked(getCityGuess).mockReturnValueOnce(null);
-    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Tidak dapat mendeteksi kota" });
+    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Tidak dapat mendeteksi kota." });
 
     vi.mocked(searchCities).mockResolvedValueOnce({ status: true, data: [] });
-    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Kota tidak ditemukan dalam database" });
+    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Kota Anda tidak ada dalam daftar." });
 
     vi.mocked(searchCities).mockRejectedValueOnce(new Error("offline"));
-    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Gagal mencari kota. Periksa koneksi internet" });
+    expect(await useStore.getState().detectCity()).toEqual({ success: false, error: "Gagal mencari kota. Periksa koneksi internet Anda." });
     expect(localStorage.getItem("selectedLocation")).toBeNull();
   });
 
