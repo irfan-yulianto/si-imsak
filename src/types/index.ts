@@ -71,6 +71,16 @@ export interface GeocodeResponse {
   city: string;
 }
 
+/** A position from the device's GPS */
+export interface GeoFix {
+  lat: number;
+  lng: number;
+  /** Meters, at 95% confidence */
+  accuracy: number;
+  /** When the position was taken (ms since the epoch) */
+  at: number;
+}
+
 export interface Mosque {
   id: string;
   name: string;

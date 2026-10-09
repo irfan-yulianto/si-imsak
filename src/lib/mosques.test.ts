@@ -2,13 +2,20 @@ import { describe, it, expect } from "vitest";
 import {
   distanceMeters,
   formatDistance,
-  getSearchRadius,
+  DEFAULT_RADIUS,
   widerRadius,
   formatRadius,
   SEARCH_RADII,
+  RESULT_LIMIT,
   buildOverpassQuery,
   parseOverpassResponse,
+  sortByDistance,
+  coverageOf,
+  visibleMosques,
+  needsSearch,
+  type MosqueAnswer,
 } from "./mosques";
+import type { Mosque } from "@/types";
 
 describe("distanceMeters", () => {
   it("returns 0 for identical coordinates", () => {
@@ -80,32 +87,6 @@ describe("formatDistance", () => {
   });
 });
 
-describe("getSearchRadius", () => {
-  it("returns 2000 for null accuracy", () => {
-    expect(getSearchRadius(null)).toBe(2000);
-  });
-
-  it("returns 2000 for 0 accuracy", () => {
-    expect(getSearchRadius(0)).toBe(2000);
-  });
-
-  it("returns 2000 for 100m accuracy", () => {
-    expect(getSearchRadius(100)).toBe(2000);
-  });
-
-  it("returns 3000 for 101m accuracy", () => {
-    expect(getSearchRadius(101)).toBe(3000);
-  });
-
-  it("returns 3000 for 500m accuracy", () => {
-    expect(getSearchRadius(500)).toBe(3000);
-  });
-
-  it("returns 4000 for 501m accuracy", () => {
-    expect(getSearchRadius(501)).toBe(4000);
-  });
-});
-
 describe("widerRadius", () => {
   it("doubles the radius up to 10 km", () => {
     expect(widerRadius(2000)).toBe(4000);
@@ -116,10 +97,11 @@ describe("widerRadius", () => {
 });
 
 describe("SEARCH_RADII", () => {
-  it("holds every radius the finder can ask for", () => {
+  it("holds every radius the finder can ask for, and those earlier versions asked for", () => {
     const asked = new Set<number>();
-    for (const accuracy of [null, 50, 300, 800]) {
-      let radius = getSearchRadius(accuracy);
+    // Earlier versions started at 2, 3 or 4 km, depending on the GPS accuracy
+    for (const start of [DEFAULT_RADIUS, 3000, 4000]) {
+      let radius = start;
       for (let i = 0; i < 5; i++, radius = widerRadius(radius)) asked.add(radius);
     }
     for (const radius of asked) expect(SEARCH_RADII).toContain(radius);
@@ -140,11 +122,14 @@ describe("buildOverpassQuery", () => {
     expect(query).toContain("[out:json][timeout:8]");
   });
 
-  it("contains all 3 tag patterns", () => {
+  it("asks for nodes, ways and relations in every way a mosque or musholla is mapped", () => {
     const query = buildOverpassQuery(-6.17, 106.85, 2000);
-    expect(query).toContain('"amenity"="place_of_worship"');
-    expect(query).toContain('"building"="mosque"');
-    expect(query).toContain('"place_of_worship"="musalla"');
+    expect(query).toContain('nwr["amenity"="place_of_worship"]["religion"~"^(muslim|islam)$"]');
+    // A place of worship without a religion, named like a masjid or a musholla
+    expect(query).toContain('nwr["amenity"="place_of_worship"][!"religion"]["name"~"^(m[ae]sjid|mu(s|sh)[oa]l|langgar|surau|meunasah|tajug)",i]');
+    expect(query).toContain('nwr["building"~"^(mosque|musalla)$"]');
+    expect(query).toContain('nwr["place_of_worship"~"^(musall?a|mushall?a|mush?oll?a)$"]');
+    expect(query).not.toMatch(/\bnw\[/);
   });
 
   it("interpolates coordinates and radius", () => {
@@ -238,8 +223,8 @@ describe("parseOverpassResponse", () => {
     expect(result).toHaveLength(5);
   });
 
-  it("defaults limit to 20", () => {
-    const elements = Array.from({ length: 25 }, (_, i) => ({
+  it("defaults limit to 50", () => {
+    const elements = Array.from({ length: 60 }, (_, i) => ({
       type: "node" as const,
       id: i,
       lat: -6.17 + i * 0.001,
@@ -247,7 +232,38 @@ describe("parseOverpassResponse", () => {
       tags: { name: `Masjid ${i}` },
     }));
     const result = parseOverpassResponse({ elements }, userLat, userLng);
-    expect(result).toHaveLength(20);
+    expect(result).toHaveLength(RESULT_LIMIT);
+    expect(RESULT_LIMIT).toBe(50);
+  });
+
+  it("knows a musholla by its name as well as by its tags", () => {
+    const data: Parameters<typeof parseOverpassResponse>[0] = {
+      elements: [
+        { type: "node" as const, id: 1, lat: -6.171, lon: 106.85, tags: { amenity: "place_of_worship", religion: "muslim", name: "Mushola Al-Ikhlas" } },
+        { type: "node" as const, id: 2, lat: -6.172, lon: 106.85, tags: { amenity: "place_of_worship", name: "Langgar Kidul" } },
+        { type: "node" as const, id: 3, lat: -6.173, lon: 106.85, tags: { amenity: "place_of_worship", religion: "islam", name: "Masjid Al-Amin" } },
+      ],
+    };
+    expect(parseOverpassResponse(data, userLat, userLng).map((m) => m.type)).toEqual(["musholla", "musholla", "masjid"]);
+  });
+
+  it("lists a mosque mapped as a point and as its building once, with the fuller entry", () => {
+    const data: Parameters<typeof parseOverpassResponse>[0] = {
+      elements: [
+        { type: "way" as const, id: 20, center: { lat: -6.1803, lon: 106.8601 }, tags: { building: "mosque" } },
+        { type: "way" as const, id: 21, center: { lat: -6.1801, lon: 106.86 }, tags: { building: "mosque", name: "Masjid Al-Ikhlas" } },
+        {
+          type: "node" as const,
+          id: 10,
+          lat: -6.18,
+          lon: 106.86,
+          tags: { amenity: "place_of_worship", religion: "muslim", name: "Masjid Al-Ikhlas", "addr:street": "Jl. Damai" },
+        },
+      ],
+    };
+    const result = parseOverpassResponse(data, userLat, userLng);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: "node/10", name: "Masjid Al-Ikhlas", address: "Jl. Damai" });
   });
 
   it("uses name fallback chain: name > name:id > name:en > old_name", () => {
@@ -337,5 +353,75 @@ describe("parseOverpassResponse", () => {
     const result = parseOverpassResponse(data, userLat, userLng);
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("Masjid");
+  });
+});
+
+const mosqueAt = (id: string, lat: number, lng: number, distance = 0): Mosque => ({
+  id,
+  name: `Masjid ${id}`,
+  lat,
+  lng,
+  distance,
+  type: "masjid",
+});
+
+describe("sortByDistance", () => {
+  it("measures again from the given place, nearest first", () => {
+    const far = mosqueAt("far", -6.2, 106.81, 5);
+    const near = mosqueAt("near", -6.2, 106.801, 900);
+    const sorted = sortByDistance([far, near], { lat: -6.2, lng: 106.8 });
+    expect(sorted.map((m) => m.id)).toEqual(["near", "far"]);
+    expect(sorted[0].distance).toBeCloseTo(110.6, 0);
+  });
+});
+
+describe("coverageOf", () => {
+  it("is the whole radius unless the list was cut at the limit", () => {
+    const list = [mosqueAt("a", 0, 0, 100), mosqueAt("b", 0, 0, 700)];
+    expect(coverageOf(list, 2000)).toBe(2000);
+    expect(coverageOf(list, 2000, 2)).toBe(700);
+  });
+});
+
+describe("visibleMosques and needsSearch", () => {
+  const center = { lat: -6.2, lng: 106.8 };
+  // Ten mosques due north, every ~111 m from the center
+  const tenNorth = Array.from({ length: 10 }, (_, i) =>
+    mosqueAt(`n${i}`, -6.2 + (i + 1) * 0.001, 106.8, (i + 1) * 111.2)
+  );
+  const answer = (mosques: Mosque[], coverage: number): MosqueAnswer => ({ center, radius: 2000, coverage, mosques });
+  const south = (meters: number) => ({ lat: -6.2 - meters / 111_200, lng: 106.8 });
+
+  it("shows the whole answer from where it searched, nearest first", () => {
+    const shown = visibleMosques(answer(tenNorth, 2000), center);
+    expect(shown.map((m) => m.id)).toEqual(tenNorth.map((m) => m.id));
+    expect(needsSearch(answer(tenNorth, 2000), center)).toBe(false);
+  });
+
+  it("shows only the mosques surely nearest from a position away from the search", () => {
+    // The answer is complete to 1,112 m from the center (cut at the 10th). From 500 m
+    // south, only what lies within 612 m is sure: nearer mosques the search didn't
+    // reach could lie beyond its edge
+    const cut = answer(tenNorth, 1112);
+    const shown = visibleMosques(cut, south(500));
+    expect(shown.map((m) => m.id)).toEqual(["n0"]);
+    expect(needsSearch(cut, south(500))).toBe(true);
+    // From 100 m south, eight are sure: no new search
+    expect(visibleMosques(cut, south(100))).toHaveLength(8);
+    expect(needsSearch(cut, south(100))).toBe(false);
+  });
+
+  it("needs as many sure results as the answer has, up to five", () => {
+    // Both of two found are sure from 100 m south; from 1 km south neither is: a nearer
+    // mosque could lie south, outside the 2 km searched
+    const two = answer(tenNorth.slice(0, 2), 2000);
+    expect(needsSearch(two, south(100))).toBe(false);
+    expect(needsSearch(two, south(1000))).toBe(true);
+  });
+
+  it("searches again where nothing was found only after moving 200 m", () => {
+    const none = answer([], 2000);
+    expect(needsSearch(none, south(150))).toBe(false);
+    expect(needsSearch(none, south(250))).toBe(true);
   });
 });

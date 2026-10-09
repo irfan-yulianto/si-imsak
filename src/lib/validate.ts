@@ -77,8 +77,6 @@ function isMosque(value: unknown): value is Mosque {
   );
 }
 
-export const isMosqueList = (value: unknown): value is Mosque[] => Array.isArray(value) && value.every(isMosque);
-
 /** An upstream (MyQuran) day for `date` in our format, or null unless all eight times are HH:MM */
 export function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
   if (!isObject(raw) || !isNonEmptyString(raw.tanggal)) return null;

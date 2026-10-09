@@ -1,6 +1,6 @@
 import { monthKey } from "@/lib/city-time";
-import { MOSQUE_CACHE_MAX_AGE, SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
-import { isCityId, isMosqueList, isObject, isScheduleDayList, type ScheduleData } from "@/lib/validate";
+import { SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
+import { isCityId, isObject, isScheduleDayList, type ScheduleData } from "@/lib/validate";
 
 // The only module that touches localStorage and sessionStorage (eslint.config.mjs bans
 // them elsewhere). Storage can be missing (server render) or throw (Safari private mode,
@@ -21,9 +21,9 @@ export const KEYS = {
   installDismissed: "pwa-install-dismissed",
   timeOffset: "si:timeOffset",
   schedule: (cityId: string, year: number, month: number) => `si:schedule:${cityId}:${monthKey(year, month)}`,
-  mosques: (lat: number, lng: number, radius: number) => `si:mosques:${lat.toFixed(2)}:${lng.toFixed(2)}:${radius}`,
 } as const;
 
+// Mosque searches were cached up to v2.0.x; the finder no longer keeps them
 const PREFIX = { schedule: "si:schedule:", mosques: "si:mosques:" } as const;
 
 interface Envelope {
@@ -162,7 +162,8 @@ const LEGACY_MOSQUES = /^mosques_(-?\d+\.\d+)_(-?\d+\.\d+)_r(\d+)$/;
 
 /**
  * Move caches written by earlier versions to the current keys, keeping their age.
- * Idempotent; anything that can't be moved is dropped (it's only a cache).
+ * Idempotent; anything that can't be moved is dropped (it's only a cache), and so are
+ * old mosque searches.
  */
 export function migrateLegacy(): void {
   const storage = area("local");
@@ -175,8 +176,7 @@ export function migrateLegacy(): void {
   }
   for (const key of keys) {
     const schedule = LEGACY_SCHEDULE.exec(key);
-    const mosques = LEGACY_MOSQUES.exec(key);
-    if (!schedule && !mosques && key !== "detectedKecamatan") continue;
+    if (!schedule && !LEGACY_MOSQUES.test(key) && key !== "detectedKecamatan") continue;
     try {
       const old: unknown = JSON.parse(storage.getItem(key) ?? "null");
       // Months of old numeric city ids are dropped with the rest
@@ -191,8 +191,6 @@ export function migrateLegacy(): void {
           };
           write(KEYS.schedule(schedule[1], Number(schedule[2]), Number(schedule[3])), data, { ts: old._ts });
         }
-      } else if (mosques && isObject(old) && typeof old.ts === "number" && isMosqueList(old.data)) {
-        write(KEYS.mosques(Number(mosques[1]), Number(mosques[2]), Number(mosques[3])), old.data, { ts: old.ts });
       }
     } catch {
       // Unreadable: just drop it
@@ -207,7 +205,7 @@ export function migrateLegacy(): void {
 export function prepareStorage(): void {
   migrateLegacy();
   evict(PREFIX.schedule, { maxAgeMs: SCHEDULE_CACHE_MAX_AGE, maxEntries: 24 });
-  evict(PREFIX.mosques, { maxAgeMs: MOSQUE_CACHE_MAX_AGE, maxEntries: 20 });
+  evict(PREFIX.mosques, { maxAgeMs: 0, maxEntries: 0 });
 }
 
 /** Whether the storage can be used at all (not in some private modes) */

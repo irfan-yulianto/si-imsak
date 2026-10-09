@@ -167,13 +167,13 @@ describe("simple setters", () => {
 
     useStore.getState().setIsOffline(true);
     useStore.getState().setTimeOffset(1500);
-    useStore.getState().setUserCoords({ lat: -6.17, lng: 106.85 });
+    useStore.getState().setUserCoords({ lat: -6.17, lng: 106.85, accuracy: 20, at: 1 });
     useStore.getState().setLocationPrompt(true);
     expect(useStore.getState()).toMatchObject({
       theme: "dark",
       isOffline: true,
       timeOffset: 1500,
-      userCoords: { lat: -6.17, lng: 106.85 },
+      userCoords: { lat: -6.17, lng: 106.85, accuracy: 20, at: 1 },
       locationPrompt: true,
     });
   });

@@ -2,7 +2,33 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.0.2
+## [Belum dirilis] — v2.1.0
+
+Pencari masjid menemukan masjid dan musholla terdekat dari posisi GPS Anda, dengan urutan yang benar.
+
+### Diubah
+- **GPS otomatis.** Bila izin lokasi sudah diberikan, GPS langsung dipakai saat pencari masjid dibuka, tanpa menekan tombol. Sebelumnya, pada kunjungan ulang, pencarian dilakukan di sekitar pusat kota.
+- **GPS dipertajam.** GPS juga dipertajam lagi saat aplikasi dibuka kembali, bila posisinya sudah lebih dari 2 menit atau kurang akurat.
+- **Posisi dari deteksi kota.** Posisi dari deteksi kota disimpan beserta akurasi dan waktunya. Posisi yang kasar atau lama dipertajam dulu, tidak langsung dianggap "Lokasi GPS Anda".
+- **Hasil lebih cepat.** Hasil muncul dari fix GPS pertama, tidak lagi menunggu sampai 15 detik.
+- **Urutan diperbarui.** Urutan masjid diperbarui saat GPS makin akurat atau saat Anda berpindah. Pencarian diulang hanya bila daftar yang ada tidak lagi menjamin urutan terdekat dari posisi itu.
+- **Pencarian lebih luas.** Masjid dan musholla yang dipetakan sebagai relation, bertag `religion=islam`, atau tempat ibadah tanpa tag agama yang bernama "Masjid …"/"Musholla …" ikut dicari.
+- **Musholla dikenali dari namanya.** Termasuk mushola, musala, langgar, surau, meunasah, dan tajug.
+- **Tanpa duplikat.** Masjid yang dipetakan sebagai titik sekaligus bangunan ditampilkan sekali.
+- **Hasil lebih banyak.** Sampai 50 hasil, 20 di antaranya tampil lebih dulu, dengan tombol "Tampilkan lebih banyak".
+- **Daftar tidak berkedip.** Saat memuat ulang, daftar tetap tampil dengan keterangan "Memperbarui…", bukan kembali ke kerangka kosong.
+- **Label lokasi jelas.** Bila tidak memakai GPS, pencari menulis "Sekitar pusat {kota}, bukan lokasi Anda", atau nama kota yang dipilih di kotak pencarian.
+- **Atribusi dan laporan.** Ada atribusi "© kontributor OpenStreetMap" (wajib menurut lisensi ODbL), keterangan bahwa jarak diukur garis lurus, dan tautan untuk melaporkan masjid atau musholla yang belum tercantum ke OpenStreetMap.
+
+### Diperbaiki
+- **Tautan Google Maps.** "Cari lebih banyak di Google Maps" kini benar-benar mencari di sekitar lokasi yang dipakai. Parameter `center` sebelumnya diabaikan Google Maps.
+- **Pesan bila GPS tidak menemukan posisi.** Bila GPS tidak menemukan posisi, muncul pesan; sebelumnya pencarian lokasi berhenti tanpa keterangan. Yang dipakai juga fix paling akurat, bukan yang terakhir.
+- **Kota yang dipilih.** Memilih kota menghentikan GPS, sehingga fix yang datang belakangan tidak lagi menggantikan kota yang dipilih. Pilihan "Perluas Pencarian" juga tidak lagi hilang setiap kali GPS memberi posisi baru.
+
+### Dihapus
+- **Cache hasil masjid di perangkat.** Cache ini (30 menit) menyimpan 20 masjid terdekat dari titik lama dan dipakai lagi dalam radius ±1 km, sehingga bisa menampilkan "terdekat" yang salah. Cache lamanya dihapus saat aplikasi dibuka.
+
+## [2.0.2] — 2026-10-09 ([#488](https://github.com/irfan-yulianto/si-imsak/pull/488))
 
 ### Diperbaiki
 - Pencari masjid kembali mendapat jawaban.

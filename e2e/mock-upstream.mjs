@@ -57,7 +57,9 @@ function reverseGeocode(res, url) {
   send(res, 200, { address: { ...nearest.address, state: nearest.daerah, country: "Indonesia" } });
 }
 
-// Mosques around the requested point: a few within 2 km, more when the radius grows
+// Mosques around the requested point: a few within 2 km, more when the radius grows.
+// "Masjid Uji 1" is mapped twice, as a point and as its building (the finder lists it
+// once), and the musholla is only known as one by its name.
 function overpass(res, body) {
   const query = decodeURIComponent(new URLSearchParams(body).get("data") ?? "");
   const around = query.match(/around:(\d+),(-?[\d.]+),(-?[\d.]+)/);
@@ -74,10 +76,15 @@ function overpass(res, body) {
       amenity: "place_of_worship",
       religion: "muslim",
       name: i % 3 === 2 ? "Musholla Al-Ikhlas" : `Masjid Uji ${i + 1}`,
-      ...(i % 3 === 2 && { place_of_worship: "musalla" }),
       "addr:street": `Jalan Uji ${i + 1}`,
     },
   }));
+  elements.push({
+    type: "way",
+    id: 2000,
+    center: { lat: lat + 0.0023, lon: lng + 0.0022 },
+    tags: { building: "mosque", name: "Masjid Uji 1" },
+  });
   send(res, 200, { elements });
 }
 
