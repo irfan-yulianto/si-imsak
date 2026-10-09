@@ -2,7 +2,16 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.2.0
+## [Belum dirilis] — v2.2.1
+
+### Diperbaiki
+- **Duplikat dengan nama lebih panjang.** Dataset masjid juga membuang duplikat yang namanya lebih panjang, bila nama yang satu adalah awal nama yang lain. Contohnya "Masjid Baitul Hikmah" dan "Masjid Baitul Hikmah Gondolayu Lor" dalam 100 m. Nama pendeknya harus tiga kata, supaya "Masjid Raya" tidak menelan "Masjid Raya Bintaro".
+- **Salah eja musholla.** Ejaan cepat seperti "Muslla" dikenali sebagai musholla.
+
+### Diubah
+- **Pengukuran Overture** juga tercetak di log job, tidak hanya di ringkasannya.
+
+## [2.2.0] — 2026-10-09 ([#492](https://github.com/irfan-yulianto/si-imsak/pull/492))
 
 Pencarian masjid tidak lagi bergantung pada Overpass publik.
 

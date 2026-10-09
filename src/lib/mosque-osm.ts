@@ -10,10 +10,11 @@ type Tags = Readonly<Record<string, string | undefined>>;
 /** "Masjid …" and "Mesjid …"; "مسجد" in Arabic script */
 const MASJID_NAME = /^(?:m[ae]sjid\b|مسجد)/i;
 /**
- * A musholla by its name: musholla, mushola, musala, musalla, mushalla, … and the
- * regional langgar, surau, meunasah (Aceh) and tajug (Sunda); "مصلى" in Arabic script
+ * A musholla by its name: musholla, mushola, musala, musalla, mushalla, the hurried
+ * "muslla", … and the regional langgar, surau, meunasah (Aceh) and tajug (Sunda);
+ * "مصلى" in Arabic script
  */
-const MUSHOLLA_NAME = /^(?:mu(?:s|sh)[oa]ll?ah?\b|langgar\b|surau\b|meunasah\b|tajug\b|مصل[ىي])/i;
+const MUSHOLLA_NAME = /^(?:mu(?:s|sh)[oa]?ll?ah?\b|langgar\b|surau\b|meunasah\b|tajug\b|مصل[ىي])/i;
 /** place_of_worship=* and building=* values that mean a musholla */
 const MUSHOLLA_TAG = /^(?:musall?a|mushall?a|mush?oll?ah?|prayer_room|langgar|surau)$/i;
 
@@ -49,7 +50,7 @@ export function displayName(tags: Tags | undefined): string {
   const street = tags["addr:street"] || tags["addr:full"];
   if (!name) return classifyType(tags) === "musholla" ? "Musholla" : "Masjid";
   // A bare "Masjid" or "Musholla" says little: the street tells which one
-  if (street && /^(?:m[ae]sjid|mu(?:s|sh)[oa]ll?ah?)$/i.test(plain(name))) return `${name} (${street})`;
+  if (street && /^(?:m[ae]sjid|mu(?:s|sh)[oa]?ll?ah?)$/i.test(plain(name))) return `${name} (${street})`;
   return name;
 }
 
@@ -166,7 +167,7 @@ export function normalizeName(name: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/^m[ae]sjid\b/, "masjid")
-    .replace(/^mu(?:s|sh)[oa]ll?ah?\b/, "musholla");
+    .replace(/^mu(?:s|sh)[oa]?ll?ah?\b/, "musholla");
 }
 
 /**
@@ -199,11 +200,22 @@ const UNNAMED_M = 60;
 const CELL_DEG = 0.001;
 
 /**
+ * Whether two names (normalized) name one place: the same, or one the start of the
+ * other, as "Masjid Baitul Hikmah" and "Masjid Baitul Hikmah Gondolayu Lor". The shorter
+ * needs three words, so that "Masjid Raya" doesn't swallow "Masjid Raya Bintaro".
+ */
+function sameName(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [short, long] = a.length < b.length ? [a, b] : [b, a];
+  return long.startsWith(`${short} `) && short.split(" ").length >= 3;
+}
+
+/**
  * Drops the entries that describe a place already in the list: one with the same name
- * within 100 m (a mosque mapped both as a point and as its building), or one without a
- * name within 60 m of another. `places` comes in order of preference: of duplicates,
- * the first is kept, so put named and more complete entries first. `nameOf` gives each
- * entry's OpenStreetMap name (none: "" or undefined).
+ * (see sameName) within 100 m (a mosque mapped both as a point and as its building), or
+ * one without a name within 60 m of another. `places` comes in order of preference: of
+ * duplicates, the first is kept, so put named and more complete entries first. `nameOf`
+ * gives each entry's OpenStreetMap name (none: "" or undefined).
  */
 export function dedupe<T extends { lat: number; lng: number }>(
   places: readonly T[],
@@ -221,7 +233,7 @@ export function dedupe<T extends { lat: number; lng: number }>(
       for (let dc = -1; dc <= 1 && !duplicate; dc++) {
         duplicate = (grid.get(`${row + dr}:${col + dc}`) ?? []).some((other) => {
           const meters = distanceMeters(place.lat, place.lng, other.place.lat, other.place.lng);
-          return key && other.key ? key === other.key && meters <= SAME_NAME_M : meters <= UNNAMED_M;
+          return key && other.key ? sameName(key, other.key) && meters <= SAME_NAME_M : meters <= UNNAMED_M;
         });
       }
     }

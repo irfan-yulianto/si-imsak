@@ -309,7 +309,7 @@ Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/m
 - PR data juga menunggu pemilik bila ruleset mewajibkan review atau check `screenshots (base vs head)` (check itu tidak jalan untuk PR buatan workflow).
 - Supaya workflow boleh membuka pull request, aktifkan **Allow GitHub Actions to create and approve pull requests** (Settings → Actions → General → Workflow permissions).
 
-**Overture Places.** Dari tab Actions, centang **overture** untuk mengukur tambahan dari Overture Places dibanding OpenStreetMap; hasilnya hanya ditulis di ringkasan job.
+**Overture Places.** Dari tab Actions, centang **overture** untuk mengukur tambahan dari Overture Places dibanding OpenStreetMap. Hasilnya ditulis di ringkasan job dan di log langkah **Measure**. Pengukuran ini tidak mengubah dataset.
 
 **Uji coba perubahan.** Pull request yang mengubah pipeline ini juga menjalankan build dan validasi pada data sungguhan, tanpa membuka PR data. Datasetnya bisa diunduh dari artifact `mosques`.
 
