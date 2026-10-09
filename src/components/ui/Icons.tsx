@@ -246,17 +246,6 @@ export function RefreshIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
-// Something went wrong
-export function AlertIcon({ size = 24, ...props }: IconProps) {
-  return (
-    <svg {...defaultProps(size)} {...props}>
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  );
-}
-
 // iOS share sheet (used in the "Add to Home Screen" instructions)
 export function ShareIcon({ size = 24, ...props }: IconProps) {
   return (
