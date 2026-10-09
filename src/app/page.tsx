@@ -116,7 +116,8 @@ export default function Home() {
           id="panel-jadwal"
           role="tabpanel"
           aria-labelledby="tab-jadwal"
-          className={activeTab === "masjid" ? "hidden md:block" : "block"}
+          tabIndex={-1}
+          className={`focus:outline-none ${activeTab === "masjid" ? "hidden md:block" : "block"}`}
         >
           {/* Hero: Full-width countdown */}
           <div className="animate-fade-in mb-3">
@@ -145,7 +146,8 @@ export default function Home() {
           ref={mosqueSectionRef}
           role="tabpanel"
           aria-labelledby="tab-masjid"
-          className={`${activeTab === "masjid" ? "block" : "hidden"} scroll-mt-24 md:mt-6 md:block`}
+          tabIndex={-1}
+          className={`focus:outline-none ${activeTab === "masjid" ? "block" : "hidden"} scroll-mt-24 md:mt-6 md:block`}
         >
           {showMosques ? <MosqueFinder /> : <MosquePlaceholder />}
         </div>

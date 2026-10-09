@@ -170,6 +170,7 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
         type="button"
         onClick={onPrev}
         disabled={!canGoPrev}
+        title={!canGoPrev ? "Jadwal sebelumnya tidak tersedia" : undefined}
         className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
         aria-label="Bulan sebelumnya"
       >
@@ -200,6 +201,7 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
         type="button"
         onClick={onNext}
         disabled={!canGoNext}
+        title={!canGoNext ? "Jadwal berikutnya tidak tersedia" : undefined}
         className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-30 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
         aria-label="Bulan berikutnya"
       >
