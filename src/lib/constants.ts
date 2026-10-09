@@ -1,3 +1,5 @@
+import type { TimezoneLabel } from "@/types";
+
 // Fallback location (Jakarta)
 export const DEFAULT_LOCATION = {
   id: "58a2fc6ed39fd083f55d4182bf88826d",
@@ -14,21 +16,27 @@ export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 // API base URL (v3 LTS)
 export const MYQURAN_API_BASE = "https://api.myquran.com/v3/sholat";
 
+// Sent with every upstream request (MyQuran, Nominatim, Overpass). Nominatim's usage
+// policy requires an identifying User-Agent with a way to reach the operator.
+export const UPSTREAM_USER_AGENT = "Si-Imsak/1.0 (+https://github.com/irfan-yulianto/si-imsak)";
+
 // Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
 export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
 
 // CDN caching for upstream data that changes rarely (schedules, city search).
-// Vercel's edge serves repeat requests without invoking the function.
-export const CDN_CACHE_DAY = "public, s-maxage=86400, stale-while-revalidate=604800";
+// Vercel's edge serves repeat requests without invoking the function, and keeps
+// serving the last good copy for a week if the function starts failing.
+export const CDN_CACHE_DAY =
+  "public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800";
 export const CDN_CACHE_HOUR = "public, s-maxage=3600, stale-while-revalidate=7200";
 export const NO_STORE = "no-store";
 
 /**
  * Years the schedule API and month navigation accept: previous, current and next year.
- * Keeps the range rolling instead of a hardcoded cutoff.
+ * Keeps the range rolling instead of a hardcoded cutoff. Pass the city's current year
+ * on the client so the range never depends on the device clock or time zone.
  */
-export function getScheduleYearRange(now: Date = new Date()): { min: number; max: number } {
-  const year = now.getFullYear();
+export function getScheduleYearRange(year: number = new Date().getUTCFullYear()): { min: number; max: number } {
   return { min: year - 1, max: year + 1 };
 }
 
@@ -45,9 +53,11 @@ export const INDONESIA_BOUNDS = {
   lngMax: 141,
 } as const;
 
-// Timezone mapping based on province/region
-export const TIMEZONE_MAP: Record<string, string> = {
-  // WIB (UTC+7)
+// Timezone of each of Indonesia's 38 provinces (Permendagri / BIG time-zone division).
+// Keys use MyQuran's spelling; lookups go through normalizeProvince() in timezone.ts,
+// so spelling variants like "KEPULAUAN RIAU" or "D.I. YOGYAKARTA" resolve too.
+export const TIMEZONE_MAP = {
+  // WIB (UTC+7) — Sumatra, Java, West & Central Kalimantan
   "ACEH": "WIB",
   "SUMATERA UTARA": "WIB",
   "SUMATERA BARAT": "WIB",
@@ -65,11 +75,11 @@ export const TIMEZONE_MAP: Record<string, string> = {
   "JAWA TIMUR": "WIB",
   "BANTEN": "WIB",
   "KALIMANTAN BARAT": "WIB",
-  // WITA (UTC+8)
+  "KALIMANTAN TENGAH": "WIB",
+  // WITA (UTC+8) — Bali, Nusa Tenggara, South/East/North Kalimantan, Sulawesi
   "BALI": "WITA",
   "NUSA TENGGARA BARAT": "WITA",
   "NUSA TENGGARA TIMUR": "WITA",
-  "KALIMANTAN TENGAH": "WITA",
   "KALIMANTAN SELATAN": "WITA",
   "KALIMANTAN TIMUR": "WITA",
   "KALIMANTAN UTARA": "WITA",
@@ -79,7 +89,7 @@ export const TIMEZONE_MAP: Record<string, string> = {
   "SULAWESI TENGGARA": "WITA",
   "GORONTALO": "WITA",
   "SULAWESI BARAT": "WITA",
-  // WIT (UTC+9)
+  // WIT (UTC+9) — Maluku, Papua
   "MALUKU": "WIT",
   "MALUKU UTARA": "WIT",
   "PAPUA": "WIT",
@@ -88,7 +98,7 @@ export const TIMEZONE_MAP: Record<string, string> = {
   "PAPUA TENGAH": "WIT",
   "PAPUA PEGUNUNGAN": "WIT",
   "PAPUA SELATAN": "WIT",
-};
+} as const satisfies Record<string, TimezoneLabel>;
 
 export const TIMEZONE_OFFSETS: Record<string, number> = {
   WIB: 7,

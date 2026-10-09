@@ -107,37 +107,39 @@ export default function MosqueFinder() {
   const [mosques, setMosques] = useState<Mosque[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isGps, setIsGps] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [customRadius, setCustomRadius] = useState<number | null>(null);
 
-  // Track the coords, accuracy, and source of the last fetch
+  // Where to search: the GPS position in the store, else the selected city's centre.
+  // A city picked in the search box below wins until either of those changes.
+  const basisKey = `${userCoords ? `${userCoords.lat},${userCoords.lng}` : "-"}|${location.cityName}`;
+  const [pickedCity, setPickedCity] = useState<{ basisKey: string; coords: { lat: number; lng: number } } | null>(null);
+  const picked = pickedCity?.basisKey === basisKey ? pickedCity.coords : null;
+  const coords = useMemo(
+    () => picked ?? userCoords ?? getCoordsFromCityName(location.cityName),
+    [picked, userCoords, location.cityName]
+  );
+  const isGps = !picked && !!userCoords;
+
+  // "Perluas Pencarian" applies to the place it was used for
+  const coordsKey = coords ? `${coords.lat},${coords.lng}` : "";
+  const [radiusChoice, setRadiusChoice] = useState<{ coordsKey: string; radius: number } | null>(null);
+  const customRadius = radiusChoice?.coordsKey === coordsKey ? radiusChoice.radius : null;
+
+  // Track the coords, accuracy, radius, and source of the last fetch
   const lastFetchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastFetchAccuracyRef = useRef<number | null>(null);
+  const lastFetchRadiusRef = useRef<number | null>(null);
   const lastFetchWasGpsRef = useRef(false);
+  // Only the newest search may show its result
+  const fetchIdRef = useRef(0);
   const watchIdRef = useRef<number | null>(null);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settledRef = useRef<boolean>(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Initialize coords from store or city lookup
-  useEffect(() => {
-    if (userCoords) {
-      setCoords(userCoords);
-      setIsGps(true);
-    } else {
-      const cityCoords = getCoordsFromCityName(location.cityName);
-      if (cityCoords) {
-        setCoords(cityCoords);
-        setIsGps(false);
-      }
-    }
-  }, [userCoords, location.cityName]);
 
   // Search the local city table (500+ entries — fast enough to filter on every keystroke)
   const searchResults = useMemo(() => {
@@ -213,8 +215,6 @@ export default function MosqueFinder() {
 
         // Update UI progressively (but don't trigger fetch yet — detecting is true)
         setUserCoords(newCoords);
-        setCoords(newCoords);
-        setIsGps(true);
         setAccuracy(posAccuracy);
         setGpsError(null);
 
@@ -240,10 +240,8 @@ export default function MosqueFinder() {
   }, [setUserCoords, cancelGps]);
 
   const handleSelectCity = (city: (typeof CITIES)[number]) => {
-    setCoords({ lat: city.lat, lng: city.lng });
-    setIsGps(false);
+    setPickedCity({ basisKey, coords: { lat: city.lat, lng: city.lng } });
     setAccuracy(null);
-    setCustomRadius(null);
     setSearchQuery("");
   };
 
@@ -255,7 +253,12 @@ export default function MosqueFinder() {
     gpsSource?: boolean,
     radiusOverride?: number,
   ) => {
+    // Any newer search makes this one's result stale
+    const fetchId = ++fetchIdRef.current;
+    const isCurrent = () => fetchId === fetchIdRef.current;
+
     if (isOffline) {
+      setLoading(false);
       setError("Anda sedang offline. Periksa koneksi internet Anda.");
       return;
     }
@@ -263,16 +266,25 @@ export default function MosqueFinder() {
     const radius = radiusOverride || getSearchRadius(currentAccuracy);
     const cacheKey = getCacheKey(targetCoords.lat, targetCoords.lng, radius);
     const radiusLabel = radius >= 1000 ? `${radius / 1000} km` : `${radius} m`;
+    const remember = () => {
+      lastFetchCoordsRef.current = targetCoords;
+      lastFetchAccuracyRef.current = currentAccuracy;
+      lastFetchRadiusRef.current = radius;
+      lastFetchWasGpsRef.current = !!gpsSource;
+    };
 
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
       const cached = getCached(cacheKey);
       if (cached) {
-        setMosques(cached);
-        setError(cached.length === 0 ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.` : null);
-        lastFetchCoordsRef.current = targetCoords;
-        lastFetchAccuracyRef.current = currentAccuracy;
-        lastFetchWasGpsRef.current = !!gpsSource;
+        // The cache is shared by positions up to ~1 km apart: measure from this one
+        const results = cached
+          .map((m) => ({ ...m, distance: haversineDistance(targetCoords.lat, targetCoords.lng, m.lat, m.lng) }))
+          .sort((a, b) => a.distance - b.distance);
+        setMosques(results);
+        setError(results.length === 0 ? `Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.` : null);
+        setLoading(false);
+        remember();
         return;
       }
     }
@@ -286,8 +298,10 @@ export default function MosqueFinder() {
       let res: Response | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         res = await fetch(url);
+        if (!isCurrent()) return;
         if (res.ok || res.status < 500) break;
         if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        if (!isCurrent()) return;
       }
       if (!res || !res.ok) {
         const status = res?.status ?? 0;
@@ -299,6 +313,7 @@ export default function MosqueFinder() {
         return;
       }
       const data = await res.json();
+      if (!isCurrent()) return;
 
       if (data.status && data.data) {
         // Server distances use rounded coords — recompute from the exact position
@@ -307,9 +322,7 @@ export default function MosqueFinder() {
           .sort((a, b) => a.distance - b.distance);
         setMosques(results);
         setCache(cacheKey, results);
-        lastFetchCoordsRef.current = targetCoords;
-        lastFetchAccuracyRef.current = currentAccuracy;
-        lastFetchWasGpsRef.current = !!gpsSource;
+        remember();
         if (results.length === 0) {
           // Distinct "no results" message
           setError(`Tidak ada masjid ditemukan dalam radius ${radiusLabel}. Coba perbesar radius atau pindah lokasi.`);
@@ -320,11 +333,14 @@ export default function MosqueFinder() {
       }
     } catch {
       // Distinct "network error" message
-      setError("Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.");
+      if (isCurrent()) setError("Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [isOffline]);
+
+  const radius = customRadius || getSearchRadius(accuracy);
+  const MAX_RADIUS = 10000;
 
   // Auto-fetch when coords change, but defer during GPS detection to avoid fetching with inaccurate coords.
   // Refetch if: position moved >200m OR accuracy improved significantly OR switching from city→GPS.
@@ -344,27 +360,28 @@ export default function MosqueFinder() {
       );
       const prevAccuracy = lastFetchAccuracyRef.current;
       const accuracyImproved = prevAccuracy !== null && accuracy !== null && accuracy < prevAccuracy * 0.5;
-      const radiusChanged = getSearchRadius(accuracy) !== getSearchRadius(prevAccuracy);
+      const radiusChanged = radius !== lastFetchRadiusRef.current;
 
       // Skip fetch if position didn't move much AND accuracy didn't improve significantly
       if (dist < 200 && !accuracyImproved && !radiusChanged) return;
     }
 
-    fetchMosques(coords, accuracy, switchingToGps, isGps);
-  }, [coords, accuracy, detecting, isGps, fetchMosques]);
+    fetchMosques(coords, accuracy, switchingToGps, isGps, radius);
+  }, [coords, accuracy, detecting, isGps, radius, fetchMosques]);
 
   const googleMapsSearchUrl = coords
     ? `https://www.google.com/maps/search/?api=1&query=masjid&center=${coords.lat},${coords.lng}`
     : `https://www.google.com/maps/search/?api=1&query=masjid`;
 
-  const radius = customRadius || getSearchRadius(accuracy);
-  const MAX_RADIUS = 10000;
-
+  // Searching the wider radius is left to the effect above
   const handleExpandRadius = () => {
     if (!coords) return;
-    const newRadius = Math.min(radius * 2, MAX_RADIUS);
-    setCustomRadius(newRadius);
-    fetchMosques(coords, accuracy, true, isGps, newRadius);
+    setRadiusChoice({ coordsKey, radius: Math.min(radius * 2, MAX_RADIUS) });
+  };
+
+  // "Muat Ulang" and "Coba Lagi" search again with the radius on screen
+  const refetch = () => {
+    if (coords) fetchMosques(coords, accuracy, true, isGps, radius);
   };
 
   return (
@@ -381,7 +398,7 @@ export default function MosqueFinder() {
           {coords && !loading && (
             <button
               type="button"
-              onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              onClick={refetch}
               aria-label="Muat ulang daftar masjid"
               className="focus-ring min-h-11 cursor-pointer rounded-lg px-3 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
             >
@@ -421,8 +438,8 @@ export default function MosqueFinder() {
           <p role="alert" className="mb-3 text-xs text-red-700 dark:text-red-300">{gpsError}</p>
         )}
 
-        {/* Search input */}
-        <div className="mb-3">
+        {/* Search input — this and the location below are masked in Clarity recordings */}
+        <div data-clarity-mask="True" className="mb-3">
           <CityCombobox
             label="Cari kota untuk lokasi masjid"
             placeholder="Cari kota untuk lokasi masjid..."
@@ -436,7 +453,7 @@ export default function MosqueFinder() {
         </div>
 
         {/* Location info */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <div data-clarity-mask="True" className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <MapPinIcon size={12} />
           <span>
             {isGps ? (
@@ -486,7 +503,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
-              onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              onClick={refetch}
               aria-label="Coba lagi memperbarui daftar masjid"
               className="focus-ring min-h-11 cursor-pointer rounded-lg px-3 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
             >
@@ -504,7 +521,7 @@ export default function MosqueFinder() {
           {coords && (
             <button
               type="button"
-              onClick={() => fetchMosques(coords, accuracy, true, isGps)}
+              onClick={refetch}
               aria-label="Coba lagi mencari masjid"
               className="focus-ring mt-3 min-h-11 cursor-pointer rounded-lg bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
             >
@@ -514,9 +531,9 @@ export default function MosqueFinder() {
         </div>
       )}
 
-      {/* Mosque list */}
+      {/* Mosque list — nearby mosques reveal the user's area, so masked in Clarity recordings */}
       {!loading && mosques.length > 0 && (
-        <div className="space-y-2">
+        <div data-clarity-mask="True" className="space-y-2">
           {mosques.map((mosque, i) => (
             <div
               key={mosque.id}

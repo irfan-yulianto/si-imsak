@@ -1,6 +1,6 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
-import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, roundCoord } from "@/lib/constants";
+import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, UPSTREAM_USER_AGENT, roundCoord } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 25;
@@ -22,7 +22,10 @@ async function fetchSingleEndpoint(endpoint: string, query: string, signal: Abor
     const res = await fetch(endpoint, {
       method: "POST",
       body: `data=${encodeURIComponent(query)}`,
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": UPSTREAM_USER_AGENT,
+      },
       signal: controller.signal,
     });
     if (res.ok) return res;

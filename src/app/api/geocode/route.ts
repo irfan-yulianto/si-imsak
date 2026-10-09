@@ -1,11 +1,9 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { extractCityFromNominatim, normalizeToMyquranName } from "@/lib/geocode";
-import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
+import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, UPSTREAM_USER_AGENT, roundCoord } from "@/lib/constants";
 import { NextRequest, NextResponse } from "next/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
-// Nominatim's usage policy requires an identifying User-Agent with a way to reach the operator.
-const USER_AGENT = "Si-Imsak/1.0 (+https://github.com/irfan-yulianto/si-imsak)";
 
 export async function GET(request: NextRequest) {
   const ip = extractClientIp(request);
@@ -49,7 +47,7 @@ export async function GET(request: NextRequest) {
     // City-level lookup: ~110 m precision is plenty and lets nearby users share cache entries
     const url = `${NOMINATIM_URL}?lat=${roundCoord(latNum)}&lon=${roundCoord(lngNum)}&format=json&zoom=10&addressdetails=1&accept-language=id`;
     const res = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT },
+      headers: { "User-Agent": UPSTREAM_USER_AGENT },
       signal: controller.signal,
       next: { revalidate: 86400 },
     });

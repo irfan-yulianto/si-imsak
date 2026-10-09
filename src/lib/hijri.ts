@@ -13,10 +13,13 @@ const HIJRI_MONTH_NAMES: Record<number, string> = {
   12: "Dzulhijjah",
 };
 
+// Dates are parsed as 12:00 UTC; formatting them in UTC as well keeps devices at
+// UTC+12 and beyond (New Zealand, Kiribati) from landing on the next day
 const hijriFormatter = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
   day: "numeric",
   month: "numeric",
   year: "numeric",
+  timeZone: "UTC",
 });
 
 const hijriCache = new Map<string, { day: number; month: number; year: number }>();

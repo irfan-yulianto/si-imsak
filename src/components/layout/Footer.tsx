@@ -1,8 +1,5 @@
 import { CrescentIcon } from "@/components/ui/Icons";
-import { BUILD_TIME } from "@/lib/constants";
-
-// Year of the deployed build: identical in the server HTML and on the client
-const COPYRIGHT_YEAR = new Date(BUILD_TIME).getFullYear();
+import CurrentYear from "./CurrentYear";
 
 export default function Footer() {
   return (
@@ -26,7 +23,7 @@ export default function Footer() {
             </a>
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            &copy; {COPYRIGHT_YEAR} Created by Irfan Yulianto &middot;{" "}
+            &copy; <CurrentYear /> Created by Irfan Yulianto &middot;{" "}
             <a
               href="https://github.com/irfan-yulianto/si-imsak"
               target="_blank"

@@ -67,7 +67,7 @@ export default function UpdateToast() {
   return (
     <div
       role="status"
-      className="fixed inset-x-4 bottom-20 z-[60] mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-3 shadow-lg md:bottom-6 dark:border-emerald-800 dark:bg-slate-800"
+      className="fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-3 shadow-lg md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] dark:border-emerald-800 dark:bg-slate-800"
     >
       <p className="flex-1 text-sm text-slate-700 dark:text-slate-200">Versi baru Si-Imsak tersedia.</p>
       <button
@@ -80,7 +80,7 @@ export default function UpdateToast() {
       <button
         type="button"
         onClick={applyUpdate}
-        className="min-h-11 cursor-pointer rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
+        className="min-h-11 cursor-pointer rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
       >
         Muat ulang
       </button>

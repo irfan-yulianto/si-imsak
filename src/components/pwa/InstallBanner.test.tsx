@@ -220,7 +220,7 @@ describe("InstallBanner", () => {
     expect(screen.queryByRole("button", { name: "Pasang" })).not.toBeInTheDocument();
   });
 
-  it("should keep banner if installation is dismissed by user", async () => {
+  it("hides the banner once the install prompt was dismissed (it can't be shown twice)", async () => {
     render(<InstallBanner />);
 
     // Create and dispatch the event
@@ -240,9 +240,10 @@ describe("InstallBanner", () => {
     });
 
     expect(event.prompt).toHaveBeenCalled();
-    // Banner should still be visible because outcome was dismissed
-    const banner = screen.getByText("Pasang Si-Imsak di perangkatmu").closest('div.relative');
-    expect(banner).toHaveClass("max-h-32");
+    // "Pasang" would do nothing now, so the banner collapses — without being remembered,
+    // so the browser can offer installing again on a later visit
+    expect(screen.queryByRole("button", { name: "Pasang" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("pwa-install-dismissed")).toBeNull();
   });
 
   it("should dismiss banner when close button is clicked", () => {

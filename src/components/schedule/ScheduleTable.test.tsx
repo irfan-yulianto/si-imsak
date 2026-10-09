@@ -158,10 +158,11 @@ describe("ScheduleTable Component", () => {
     expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(CURRENT_YEAR, 4);
   });
 
-  it("navigates to current month when 'Hari Ini' is clicked", () => {
+  it("navigates to the city's current month when 'Hari Ini' is clicked", () => {
      (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
       selector({
         ...defaultStoreState,
+        todayDateStr: "2024-03-12", // the city's today, kept current by the store
         viewMonth: 2, // Not current month
         schedule: { data: [{
           tanggal: "Selasa, 12/02/2024",
@@ -178,17 +179,15 @@ describe("ScheduleTable Component", () => {
       })
     );
 
-    // Mock Date for stable 'current month' testing
-    const mockDate = new Date("2024-03-12T12:00:00Z");
+    // The device clock is already in April; the city's today decides the month
     vi.useFakeTimers();
-    vi.setSystemTime(mockDate);
+    vi.setSystemTime(new Date("2024-04-01T00:30:00Z"));
 
     render(<ScheduleTable />);
 
     const todayButton = screen.getByRole("button", { name: "Hari Ini" });
     fireEvent.click(todayButton);
 
-    // 2024, month 3 (March is month 2 in zero-index Date, but viewMonth uses 1-12)
     expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(2024, 3);
 
     vi.useRealTimers();

@@ -15,6 +15,12 @@ import {
   formatCountdown,
 } from "@/lib/countdown-helpers";
 
+// Pause between attempts to load missing countdown data: right away, then 3 s, 10 s,
+// 30 s and every minute after that (only while the app is visible)
+const RETRY_DELAYS_MS = [3_000, 10_000, 30_000, 60_000];
+// A time missed by more than this was slept through (phone locked, tab frozen) — not announced
+const STALE_ARRIVAL_MS = 60_000;
+
 /** What to say when a time arrives — Imsak, Terbit and Dhuha aren't obligatory prayers */
 export function arrivalMessage(key: string, name: string): { title: string; subtitle: string } {
   switch (key) {
@@ -31,6 +37,7 @@ export function arrivalMessage(key: string, name: string): { title: string; subt
 
 export default function CountdownTimer() {
   const countdownSchedule = useStore((s) => s.countdownSchedule);
+  const tableError = useStore((s) => s.schedule.error);
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
   const setTimeOffset = useStore((s) => s.setTimeOffset);
@@ -46,23 +53,49 @@ export default function CountdownTimer() {
   const secondsRef = useRef<HTMLSpanElement>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
+  const refreshErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDateRef = useRef<string>("");
   const refetchingRef = useRef(false);
-  const refetchCountRef = useRef(0);
+  // Attempts to load missing data for the current city, and when the next one may start
+  const retryRef = useRef({ cityId: "", attempts: 0, nextAt: 0 });
   const nextPrayerRef = useRef<NextPrayer | null>(null);
+  // The latest "recompute next prayer" check, for event handlers and the 1 s tick
+  const checkRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const sync = () => {
       syncServerTime(setTimeOffset).then(setTimeOffset).catch(() => {});
     };
     sync();
-    // Phones suspend timers in the background — re-sync when the app comes back
+    // Back online or in the foreground (phones suspend timers in the background):
+    // re-sync the clock, recompute at once and retry a failed load without waiting
+    const resume = () => {
+      retryRef.current.attempts = 0;
+      retryRef.current.nextAt = 0;
+      checkRef.current();
+    };
     const onVisible = () => {
-      if (document.visibilityState === "visible") sync();
+      if (document.visibilityState !== "visible") return;
+      sync();
+      resume();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", resume);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", resume);
+    };
   }, [setTimeOffset]);
+
+  // Timers that outlive a render must not fire after unmount
+  useEffect(() => {
+    const arrivedTimer = arrivedTimerRef;
+    const refreshErrorTimer = refreshErrorTimerRef;
+    return () => {
+      if (arrivedTimer.current) clearTimeout(arrivedTimer.current);
+      if (refreshErrorTimer.current) clearTimeout(refreshErrorTimer.current);
+    };
+  }, []);
 
   const utcOffset = getUtcOffset(location.timezone);
 
@@ -74,7 +107,8 @@ export default function CountdownTimer() {
     setIsRefreshing(false);
     if (!result.success && result.error) {
       setRefreshError(result.error);
-      setTimeout(() => setRefreshError(""), 4000);
+      if (refreshErrorTimerRef.current) clearTimeout(refreshErrorTimerRef.current);
+      refreshErrorTimerRef.current = setTimeout(() => setRefreshError(""), 4000);
     }
   }, [isRefreshing]);
 
@@ -82,14 +116,18 @@ export default function CountdownTimer() {
   useEffect(() => {
     // Reset stale ref immediately on schedule change (e.g. city switch)
     nextPrayerRef.current = null;
-    if (countdownSchedule.length === 0) return;
 
     function checkAndRefetch() {
       const now = getAdjustedTime(timeOffset);
       const localTime = getLocalDate(now, utcOffset);
       const currentDateStr = getDateStr(localTime);
 
-      if (lastDateRef.current && lastDateRef.current !== currentDateStr && !refetchingRef.current) {
+      if (
+        countdownSchedule.length > 0 &&
+        lastDateRef.current &&
+        lastDateRef.current !== currentDateStr &&
+        !refetchingRef.current
+      ) {
         const tomorrowSchedule = getTomorrowSchedule(countdownSchedule, now, utcOffset);
         if (!tomorrowSchedule) {
           refetchingRef.current = true;
@@ -101,9 +139,17 @@ export default function CountdownTimer() {
       lastDateRef.current = currentDateStr;
       setTodayDateStr(currentDateStr);
 
+      const { location: current, schedule } = useStore.getState();
+      const retry = retryRef.current;
+      if (retry.cityId !== current.cityId) {
+        retryRef.current = { cityId: current.cityId, attempts: 0, nextAt: 0 };
+        setLoadError(false);
+      }
+
       const next = getNextPrayerCyclic(countdownSchedule, now, utcOffset);
       if (next) {
-        refetchCountRef.current = 0;
+        retryRef.current.attempts = 0;
+        retryRef.current.nextAt = 0;
         setLoadError(false);
         nextPrayerRef.current = next;
         // Only re-render when the target prayer changes, not on every 3s check
@@ -116,17 +162,30 @@ export default function CountdownTimer() {
         if (hoursRef.current) hoursRef.current.textContent = formatted.hours;
         if (minutesRef.current) minutesRef.current.textContent = formatted.minutes;
         if (secondsRef.current) secondsRef.current.textContent = formatted.seconds;
-      } else if (!refetchingRef.current && refetchCountRef.current < 3) {
-        refetchingRef.current = true;
-        refetchCountRef.current += 1;
-        refetchSchedule().finally(() => {
-          refetchingRef.current = false;
-        });
-      } else if (refetchCountRef.current >= 3) {
-        setLoadError(true);
+        return;
       }
+
+      // Nothing to count down to: today's (or tomorrow's) times are missing — the first
+      // load failed, or the month ran out. Keep trying with growing pauses, but leave a
+      // city load that is still running to finish first.
+      nextPrayerRef.current = null;
+      setNextPrayer(null);
+      if (refetchingRef.current || document.visibilityState === "hidden") return;
+      if (countdownSchedule.length === 0 && schedule.loading) return;
+      const nowMs = Date.now();
+      if (nowMs < retryRef.current.nextAt) return;
+      const attempt = retryRef.current.attempts;
+      retryRef.current.attempts = attempt + 1;
+      retryRef.current.nextAt = nowMs + RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+      // An earlier attempt already came back without today's times
+      if (attempt > 0) setLoadError(true);
+      refetchingRef.current = true;
+      refetchSchedule().finally(() => {
+        refetchingRef.current = false;
+      });
     }
 
+    checkRef.current = checkAndRefetch;
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
@@ -142,6 +201,12 @@ export default function CountdownTimer() {
 
       const remainingMs = ref.targetMs - nowMs;
 
+      if (remainingMs < -STALE_ARRIVAL_MS) {
+        // Woke up long after this time passed: move on to the next one silently
+        nextPrayerRef.current = null;
+        checkRef.current();
+        return;
+      }
       if (remainingMs <= 0) {
         if (hoursRef.current) hoursRef.current.textContent = "00";
         if (minutesRef.current) minutesRef.current.textContent = "00";
@@ -164,6 +229,8 @@ export default function CountdownTimer() {
   const PrayerIcon = nextPrayer ? PRAYER_ICON_MAP[nextPrayer.key] : null;
   const ArrivedIcon = prayerArrived ? PRAYER_ICON_MAP[prayerArrived.key] : null;
   const arrived = prayerArrived ? arrivalMessage(prayerArrived.key, prayerArrived.name) : null;
+  // No times to show: the countdown's own retries failed, or the city's first load did
+  const showError = !nextPrayer && (loadError || (countdownSchedule.length === 0 && !!tableError));
   const nextLabel = nextPrayer
     ? nextPrayer.isTomorrow
       ? "Menuju Imsak Besok"
@@ -176,7 +243,7 @@ export default function CountdownTimer() {
     ? `${arrived.title} ${arrived.subtitle}.`
     : nextPrayer
       ? `${nextLabel}, pukul ${nextPrayer.time} ${location.timezone}.`
-      : loadError
+      : showError
         ? "Jadwal tidak tersedia."
         : "";
 
@@ -188,9 +255,10 @@ export default function CountdownTimer() {
       }} />
 
       <div className="relative z-10">
-        {/* Location badge — clickable to refresh GPS */}
+        {/* Location badge — clickable to refresh GPS. Masked in Clarity recordings. */}
         <button
           type="button"
+          data-clarity-mask="True"
           onClick={handleRefreshLocation}
           disabled={isRefreshing}
           aria-label={`${location.cityName}, ${location.province}. Perbarui lokasi dengan GPS`}
@@ -280,11 +348,11 @@ export default function CountdownTimer() {
         ) : (
           <div className="py-3 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-green-200">
-              {loadError ? "Jadwal Tidak Tersedia" : "Memuat Jadwal..."}
+              {showError ? "Jadwal Tidak Tersedia" : "Memuat Jadwal..."}
             </p>
-            {loadError ? (
+            {showError ? (
               <p className="mt-2 text-xs text-green-200">
-                Coba pilih lokasi atau periksa koneksi internet
+                Dicoba lagi otomatis. Periksa koneksi internet atau pilih kota lain.
               </p>
             ) : (
               <div className="mt-3 flex justify-center">

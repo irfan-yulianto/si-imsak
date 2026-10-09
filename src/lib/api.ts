@@ -95,9 +95,11 @@ async function fetchSchedule(
         `${API_BASE}/schedule?city_id=${cityId}&year=${year}&month=${month}`,
         { signal: controller.signal }
       );
-      clearTimeout(timeoutId);
       if (!res.ok) throw new Error("Failed to fetch schedule");
+      // The timeout also covers reading the body, so a stalled response can't leave
+      // the schedule loading forever
       const data: ScheduleResponse = await res.json();
+      clearTimeout(timeoutId);
 
       // Cache to localStorage for offline use (with timestamp for TTL).
       // Partial months (some days missing upstream) are not cached.

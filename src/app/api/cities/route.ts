@@ -1,4 +1,4 @@
-import { CDN_CACHE_DAY, MYQURAN_API_BASE } from "@/lib/constants";
+import { CDN_CACHE_DAY, MYQURAN_API_BASE, NO_STORE, UPSTREAM_USER_AGENT } from "@/lib/constants";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -23,12 +23,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: false, data: [] }, { status: 400 });
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
+    // No Next.js data cache — the CDN caches our response, and a failed upstream
+    // answer must not be kept for a day
     const res = await fetch(`${MYQURAN_API_BASE}/kota/cari/${encodeURIComponent(sanitized)}`, {
-      next: { revalidate: 86400 }, // Cache for 24 hours
-      signal: controller.signal,
+      cache: "no-store",
+      headers: { "User-Agent": UPSTREAM_USER_AGENT, Accept: "application/json" },
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(5000)]),
     });
 
     // v3 API returns 404 for "not found" — treat as empty results, not an error
@@ -40,7 +41,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!res.ok) {
-      return NextResponse.json({ status: false, data: [] }, { status: 502 });
+      return NextResponse.json(
+        { status: false, data: [] },
+        { status: 502, headers: { "Cache-Control": NO_STORE } }
+      );
     }
 
     const data = await res.json();
@@ -56,15 +60,13 @@ export async function GET(request: NextRequest) {
         : [],
     };
     return NextResponse.json(safeData, {
-      headers: safeData.status ? { "Cache-Control": CDN_CACHE_DAY } : undefined,
+      headers: { "Cache-Control": safeData.status ? CDN_CACHE_DAY : NO_STORE },
     });
   } catch (err) {
     console.error("[cities] Failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(
       { status: false, data: [] },
-      { status: 500 }
+      { status: 502, headers: { "Cache-Control": NO_STORE } }
     );
-  } finally {
-    clearTimeout(timeout);
   }
 }

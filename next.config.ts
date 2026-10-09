@@ -10,6 +10,9 @@ const BUILD_TIME = process.env.SI_IMSAK_BUILD_TIME;
 const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA || BUILD_TIME).slice(0, 12);
 
 const nextConfig: NextConfig = {
+  // The app has no next/image usage — turn the on-demand image optimizer
+  // endpoint off instead of leaving it as unused attack surface.
+  images: { unoptimized: true },
   env: {
     NEXT_PUBLIC_BUILD_TIME: BUILD_TIME,
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,

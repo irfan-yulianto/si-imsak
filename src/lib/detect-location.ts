@@ -1,11 +1,12 @@
 import { useStore } from "@/store/useStore";
-import { reverseGeocodeCity, searchCities, getSchedule } from "./api";
-import { getTimezone } from "./timezone";
+import { reverseGeocodeCity, searchCities } from "./api";
 import { Location } from "@/types";
 
 export interface DetectionResult {
   success: boolean;
   error?: string;
+  /** The user picked a city while detection was running; their choice was kept. */
+  superseded?: boolean;
 }
 
 /**
@@ -19,12 +20,14 @@ export function detectAndUpdateLocation(): Promise<DetectionResult> {
       return;
     }
 
+    // A city chosen by hand while GPS is still working wins over the detected one
+    const startCityToken = useStore.getState()._cityToken;
+    const superseded = () => useStore.getState()._cityToken !== startCityToken;
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-        const store = useStore.getState();
-
-        store.setUserCoords({ lat: latitude, lng: longitude });
+        useStore.getState().setUserCoords({ lat: latitude, lng: longitude });
 
         // Try reverse geocoding first, fall back to local centroid database
         let geocodedCity = "";
@@ -39,6 +42,10 @@ export function detectAndUpdateLocation(): Promise<DetectionResult> {
 
         try {
           const searchRes = await searchCities(cityGuess);
+          if (superseded()) {
+            resolve({ success: false, superseded: true });
+            return;
+          }
           if (!searchRes.status || !searchRes.data?.length) {
             resolve({ success: false, error: "Kota tidak ditemukan dalam database" });
             return;
@@ -56,40 +63,19 @@ export function detectAndUpdateLocation(): Promise<DetectionResult> {
             localStorage.setItem("locationPermissionDismissed", String(Date.now()));
           } catch {}
 
-          // Fetch prayer schedule
-          const now = new Date();
-          store.beginScheduleLoad(city.id, now.getFullYear(), now.getMonth() + 1);
-
-          const res = await getSchedule(city.id, now.getFullYear(), now.getMonth() + 1);
-          if (res.status && res.data?.jadwal) {
-            const tz = getTimezone(res.data.daerah || city.daerah || "");
-            store.setLocation(
-              { ...city, daerah: res.data.daerah || city.daerah },
-              tz
-            );
-            store.setSchedule(res.data.jadwal);
-            store.setCountdownSchedule(res.data.jadwal);
-            store.setViewMonth(now.getMonth() + 1, now.getFullYear());
-            resolve({ success: true });
-          } else {
-            store.setScheduleError("Data jadwal tidak tersedia");
-            resolve({ success: false, error: "Data jadwal tidak tersedia" });
-          }
+          const result = await useStore.getState().loadCitySchedule(city);
+          if (result.superseded) resolve({ success: false, superseded: true });
+          else if (result.ok) resolve({ success: true });
+          else resolve({ success: false, error: result.error ?? "Gagal memuat jadwal" });
         } catch {
-          const store = useStore.getState();
-          store.setScheduleError(
-            navigator.onLine
-              ? "Gagal memuat jadwal. Coba lagi nanti."
-              : "Anda sedang offline. Periksa koneksi internet."
-          );
-          resolve({ success: false, error: "Gagal memuat jadwal" });
+          resolve({ success: false, error: "Gagal mencari kota. Periksa koneksi internet" });
         }
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
           resolve({ success: false, error: "Izin lokasi ditolak. Aktifkan GPS dan izinkan akses lokasi." });
         } else if (error.code === error.TIMEOUT) {
-          resolve({ success: false, error: "Waktu deteksi habis. Coba lagi." });
+          resolve({ success: false, error: "Waktu deteksi habis" });
         } else {
           resolve({ success: false, error: "Gagal mendeteksi lokasi" });
         }

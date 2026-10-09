@@ -94,8 +94,10 @@ export default function InstallBanner() {
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setHidden(true);
+    await deferredPrompt.userChoice;
+    // A prompt can be shown only once, so "Pasang" would do nothing from now on. Not
+    // remembered: the browser offers installing again on a later visit.
+    setHidden(true);
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 
@@ -125,7 +127,7 @@ export default function InstallBanner() {
             <button
               type="button"
               onClick={handleInstall}
-              className="focus-ring min-h-11 shrink-0 cursor-pointer rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 active:bg-emerald-800"
+              className="focus-ring min-h-11 shrink-0 cursor-pointer rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 active:bg-emerald-900"
             >
               Pasang
             </button>

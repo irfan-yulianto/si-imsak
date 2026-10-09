@@ -1,5 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { getHijriParts, getHijriDate, getHijriMonthsForGregorianMonth } from "./hijri";
+
+describe("time zone independence", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it.each(["Asia/Jakarta", "Pacific/Auckland", "Pacific/Kiritimati", "America/Los_Angeles"])(
+    "gives the same Hijri date on a device in %s",
+    async (tz) => {
+      process.env.TZ = tz;
+      vi.resetModules();
+      const hijri = await import("./hijri");
+      // 18 February 2026 is 1 Ramadan 1447 (Umm al-Qura)
+      expect(hijri.getHijriParts("2026-02-18")).toEqual({ day: 1, month: 9, monthName: "Ramadan", year: 1447 });
+    }
+  );
+});
 
 describe("getHijriParts", () => {
   it("returns valid parts for a known date", () => {

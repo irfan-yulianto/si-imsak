@@ -4,6 +4,7 @@ import { useStore } from "@/store/useStore";
 import { getHijriDate } from "@/lib/hijri";
 import { getAdjustedTime } from "@/lib/time";
 import { getUtcOffset } from "@/lib/timezone";
+import { BUILD_DATE } from "@/lib/city-time";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -18,13 +19,13 @@ export default function TodayCard() {
   const utcOffset = getUtcOffset(location.timezone);
 
   const { todaySchedule, hijriDate, todayDateStr } = useMemo(() => {
-    const now = getAdjustedTime(timeOffset);
-    const localTime = new Date(now.getTime() + utcOffset * 3600000);
-    const dateStr = storeTodayDateStr || localTime.toISOString().split("T")[0];
+    // Before hydration the store has no "today" yet: the build date keeps the first
+    // client render identical to the server HTML
+    const dateStr = storeTodayDateStr || BUILD_DATE.iso;
     const today = countdownSchedule.find((s) => s.date === dateStr);
     const hijri = getHijriDate(dateStr);
     return { todaySchedule: today, hijriDate: hijri, todayDateStr: dateStr };
-  }, [countdownSchedule, timeOffset, utcOffset, storeTodayDateStr]);
+  }, [countdownSchedule, storeTodayDateStr]);
 
   // Active prayer highlight — only re-renders when prayer actually transitions
   const [currentPrayerIdx, setCurrentPrayerIdx] = useState(-1);

@@ -33,6 +33,13 @@ afterEach(() => {
   cleanup();
 });
 
+// page.tsx restores the saved city and decides on the location prompt (hydrateFromCache)
+// in a layout effect, before LocationSearch's effects run
+function renderAfterHydrate() {
+  act(() => useStore.getState().hydrateFromCache());
+  return render(<LocationSearch />);
+}
+
 describe("LocationSearch Component", () => {
   beforeEach(() => {
     // Reset mocks
@@ -51,6 +58,12 @@ describe("LocationSearch Component", () => {
     store.setCountdownSchedule([]);
     store.setScheduleLoading(false);
     store.setScheduleError(null);
+    useStore.setState({ locationPrompt: false, todayDateStr: "" });
+
+    vi.mocked(getSchedule).mockResolvedValue({
+      status: true,
+      data: { id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE", jadwal: [] },
+    });
 
     vi.useFakeTimers({
       shouldAdvanceTime: true
@@ -64,7 +77,7 @@ describe("LocationSearch Component", () => {
   });
 
   it("renders location permission prompt when no saved location exists", async () => {
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -93,7 +106,7 @@ describe("LocationSearch Component", () => {
       },
     });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -107,6 +120,9 @@ describe("LocationSearch Component", () => {
         expect.any(Number)
       );
     });
+    // Loaded once on startup, not once per effect run
+    expect(getSchedule).toHaveBeenCalledTimes(1);
+    expect(useStore.getState().location.cityName).toBe("TEST CITY");
 
     // Prompt should not be shown
     expect(
@@ -115,7 +131,7 @@ describe("LocationSearch Component", () => {
   });
 
   it("handles dismissing the location prompt", async () => {
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -138,7 +154,7 @@ describe("LocationSearch Component", () => {
   it("calls detectAndUpdateLocation when 'Gunakan Lokasi' is clicked", async () => {
     vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: true });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -165,7 +181,7 @@ describe("LocationSearch Component", () => {
 
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: mockResults });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -196,7 +212,7 @@ describe("LocationSearch Component", () => {
   it("shows empty state when no results found", async () => {
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: [] });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -236,7 +252,7 @@ describe("LocationSearch Component", () => {
       },
     });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -285,7 +301,7 @@ describe("LocationSearch Component", () => {
     const mockResults = [{ id: "1", lokasi: "TEST", daerah: "TEST" }];
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: mockResults });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
 
     // Fast-forward initial useEffects
     await act(async () => {
@@ -329,7 +345,7 @@ describe("LocationSearch Component", () => {
     });
     vi.mocked(getSchedule).mockResolvedValue({ status: true, data: { id: "2", lokasi: "KAB. BOGOR", daerah: "JAWA BARAT", jadwal: [] } });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
     await act(async () => {
       vi.advanceTimersByTime(100);
     });
@@ -360,7 +376,7 @@ describe("LocationSearch Component", () => {
   it("keeps the location prompt open with an explanation when detection fails", async () => {
     vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, error: "Izin lokasi ditolak" });
 
-    render(<LocationSearch />);
+    renderAfterHydrate();
     await act(async () => {
       vi.advanceTimersByTime(100);
     });
@@ -377,5 +393,96 @@ describe("LocationSearch Component", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Izin lokasi ditolak");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tutup" })).toBeInTheDocument();
+  });
+
+  it("explains other detection failures with a single full stop", async () => {
+    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, error: "Gagal mencari kota. Periksa koneksi internet." });
+
+    renderAfterHydrate();
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Gunakan Lokasi" }));
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /^Gagal mencari kota\. Periksa koneksi internet\. Ketik nama kotamu di kolom pencarian\.$/
+    );
+  });
+
+  it("closes the prompt quietly when the user picked a city during detection", async () => {
+    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, superseded: true });
+
+    renderAfterHydrate();
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Gunakan Lokasi" }));
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the city search and the prompt out of Clarity recordings", async () => {
+    renderAfterHydrate();
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByRole("combobox").closest('[data-clarity-mask="True"]')).not.toBeNull();
+    expect(screen.getByRole("dialog").closest('[data-clarity-mask="True"]')).not.toBeNull();
+  });
+
+  it("does not show the prompt again within 7 days of dismissing it", async () => {
+    localStorage.setItem("locationPermissionDismissed", String(Date.now() - 6 * 24 * 3600000));
+
+    renderAfterHydrate();
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows only the newest city when an older city's schedule arrives late", async () => {
+    let resolveFirst!: (v: Awaited<ReturnType<typeof getSchedule>>) => void;
+    vi.mocked(getSchedule)
+      .mockImplementationOnce(() => new Promise((r) => { resolveFirst = r; })) // startup (DEFAULT CITY)
+      .mockResolvedValueOnce({
+        status: true,
+        data: { id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT", jadwal: [{ date: "2024-01-01", tanggal: "Senin, 01/01/2024" } as never] },
+      });
+    vi.mocked(searchCities).mockResolvedValue({ status: true, data: [{ id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT" }] });
+
+    renderAfterHydrate();
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const input = screen.getByPlaceholderText("Cari kota");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "ban" } });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    await waitFor(() => expect(screen.getByRole("option", { name: "BANDUNG" })).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("option", { name: "BANDUNG" }));
+    });
+    await waitFor(() => expect(useStore.getState().schedule.loading).toBe(false));
+
+    // The startup request for the previous city finishes last
+    await act(async () => {
+      resolveFirst({ status: true, data: { id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE", jadwal: [{ date: "1999-01-01" } as never] } });
+    });
+
+    const state = useStore.getState();
+    expect(state.location.cityName).toBe("BANDUNG");
+    expect(state.schedule.data[0].date).toBe("2024-01-01");
+    expect(state.countdownSchedule[0].date).toBe("2024-01-01");
   });
 });

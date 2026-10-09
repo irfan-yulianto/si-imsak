@@ -120,9 +120,34 @@ src/
 - **Security Headers** — X-Frame-Options (DENY), X-Content-Type-Options, Referrer-Policy, Permissions-Policy
 - **Rate Limiting** — Sliding window per IP di memori (30 req/menit untuk jadwal, 10 req/menit untuk masjid & geocode). Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment)
 - **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius 100-10.000m)
-- **Request Timeout** — 5-15 detik timeout pada semua upstream API calls dengan retry logic
+- **Request Timeout** — Setiap panggilan upstream punya batas waktu dan satu retry. `/api/schedule` selesai paling lama 8 detik; saat MyQuran down ia membalas 502 dengan `Retry-After` setelah paling banyak 3 panggilan, lalu menahan panggilan berikutnya selama 15 detik
 - **Service Worker Versioning** — Worker didaftarkan sebagai `/sw.js?v=<build id>`, jadi setiap deploy memasang worker dan cache baru; cache lama dihapus saat aktivasi. Versi baru menunggu sampai pengguna menekan "Muat ulang" pada notifikasi pembaruan
 - **No Personal Data** — Tidak menyimpan data personal pengguna di server
+
+## Privasi
+
+Si-Imsak tidak punya akun maupun database. Data yang dikirim saat aplikasi dipakai:
+
+| Penerima | Data | Kapan |
+|----------|------|-------|
+| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 3 desimal (±110 m) | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid |
+| MyQuran | ID kota dan periode, kata kunci pencarian kota | Diteruskan oleh server, jadi MyQuran melihat server Vercel, bukan IP pengguna |
+| Nominatim (OpenStreetMap) | Koordinat yang dibulatkan | Mendeteksi kota dari GPS, lewat server |
+| Overpass (OpenStreetMap) | Koordinat yang dibulatkan dan radius pencarian | Mencari masjid, lewat server |
+| Vercel Analytics & Speed Insights | Kunjungan halaman dan metrik performa, tanpa cookie | Setiap kunjungan |
+| Microsoft Clarity (hanya jika `NEXT_PUBLIC_CLARITY_ID` diisi) | Rekaman interaksi dan heatmap, memakai cookie. Elemen yang memuat lokasi (pencarian dan prompt kota, nama kota di countdown, koordinat, pencarian dan daftar masjid) ditandai `data-clarity-mask` sehingga isinya tidak terekam | Setiap kunjungan |
+
+Log request Vercel mencatat IP dan URL, termasuk koordinat yang dibulatkan, sesuai kebijakan retensi log Vercel. Koordinat GPS tidak disimpan di server.
+
+Yang disimpan di perangkat (localStorage, bisa dihapus lewat pengaturan browser):
+
+- `selectedLocation` — kota terpilih
+- `schedule_*` — jadwal per bulan, dipakai saat offline, kedaluwarsa setelah 7 hari
+- `mosques_*` — hasil pencarian masjid selama 30 menit; nama kuncinya memuat koordinat yang dibulatkan ke 2 desimal (±1 km)
+- `theme`, `locationPermissionDismissed`, `pwa-install-dismissed` — preferensi tampilan dan prompt
+- `timeOffset` (sessionStorage) — selisih jam perangkat dengan server
+
+Koordinat GPS hanya disimpan di memori selama halaman terbuka. Pemilik deployment sebaiknya memasang masking Clarity ke **Strict** sebagai lapis kedua.
 
 ## Deployment
 

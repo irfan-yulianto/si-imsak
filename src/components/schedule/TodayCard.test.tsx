@@ -2,6 +2,7 @@ import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import TodayCard from "./TodayCard";
 import { getAdjustedTime } from "@/lib/time";
+import { BUILD_DATE } from "@/lib/city-time";
 
 // Mock zustand store
 const mockUseStore = vi.fn();
@@ -48,6 +49,8 @@ describe("TodayCard", () => {
     schedule: { loading: false, data: [] },
     location: { timezone: "WIB" },
     timeOffset: 0,
+    // Set by hydrateFromCache and kept current by the countdown
+    todayDateStr: "2025-06-15",
   };
 
   beforeEach(() => {
@@ -117,6 +120,35 @@ describe("TodayCard", () => {
     expect(screen.getByText("11:45")).toBeInTheDocument();
     expect(screen.getByText("15:05")).toBeInTheDocument();
     expect(screen.getByText("18:55")).toBeInTheDocument();
+  });
+
+  it("shows the store's today, not the device clock's date", () => {
+    // The device clock says 16 June, but the city's today (from the store) is 15 June
+    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-16T05:00:00Z"));
+    mockUseStore.mockReturnValue({
+      ...defaultStoreState,
+      countdownSchedule: [
+        { tanggal: "Ahad, 15/06/2025", date: "2025-06-15", imsak: "04:15", subuh: "04:25", terbit: "05:40", dhuha: "06:05", dzuhur: "11:45", ashar: "15:05", maghrib: "17:40", isya: "18:55" },
+        { tanggal: "Senin, 16/06/2025", date: "2025-06-16", imsak: "04:16", subuh: "04:26", terbit: "05:41", dhuha: "06:06", dzuhur: "11:46", ashar: "15:06", maghrib: "17:41", isya: "18:56" },
+      ],
+    });
+
+    render(<TodayCard />);
+    expect(screen.getByText(/15 Juni 2025/)).toBeInTheDocument();
+    expect(screen.getByText("11:45")).toBeInTheDocument();
+  });
+
+  it("falls back to the build date before the store knows today (matches the server render)", () => {
+    mockUseStore.mockReturnValue({
+      ...defaultStoreState,
+      todayDateStr: "",
+      countdownSchedule: [
+        { tanggal: "Kamis, 01/10/2026", date: BUILD_DATE.iso, imsak: "04:01", subuh: "04:11", terbit: "05:26", dhuha: "05:51", dzuhur: "11:33", ashar: "14:41", maghrib: "17:40", isya: "18:49" },
+      ],
+    });
+
+    render(<TodayCard />);
+    expect(screen.getByText("11:33")).toBeInTheDocument();
   });
 
   it("highlights the currently active prayer (Dzuhur)", () => {
