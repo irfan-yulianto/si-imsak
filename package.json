@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e:build": "SI_IMSAK_BUILD_TIME=$(node scripts/e2e-build-time.cjs) NEXT_PUBLIC_CLARITY_ID=e2e-clarity next build",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
