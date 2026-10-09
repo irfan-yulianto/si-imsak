@@ -1,0 +1,117 @@
+name: Visual
+
+# Screenshots of the PR's head and of its base, taken in the same run and compared pixel
+# by pixel. A PR changes nothing visible unless it carries the `visual-change` label;
+# with the label, the differences are reported (summary + diff images) but don't fail.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: visual-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+  # Same build time for both builds; the screenshots fix the device clock themselves
+  SI_IMSAK_BUILD_TIME: "1773540000000"
+
+jobs:
+  compare:
+    name: screenshots (base vs head)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: head
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: head/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            head/package-lock.json
+            base/package-lock.json
+
+      - name: Install head
+        working-directory: head
+        run: npm ci
+
+      - name: Install base
+        working-directory: base
+        run: npm ci
+
+      - name: Playwright version
+        id: playwright
+        working-directory: head
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Chromium
+        working-directory: head
+        run: npx playwright install --with-deps chromium
+
+      - name: Build head
+        working-directory: head
+        run: npm run build
+
+      - name: Build base
+        working-directory: base
+        run: npm run build
+
+      - name: Start both
+        run: |
+          (cd head && nohup npx next start -p 3100 > ../head.log 2>&1 &)
+          (cd base && nohup npx next start -p 3200 > ../base.log 2>&1 &)
+          for port in 3100 3200; do
+            for i in $(seq 1 60); do
+              curl -sf -o /dev/null "http://127.0.0.1:$port/" && break
+              sleep 1
+            done
+            curl -sf -o /dev/null "http://127.0.0.1:$port/" || { cat head.log base.log; exit 1; }
+          done
+
+      # The head's spec drives both apps: every state comes from storage, URL and mocks
+      - name: Screenshots of head
+        working-directory: head
+        run: npx playwright test --project=visual
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3100
+          SHOTS_DIR: ${{ github.workspace }}/shots/head
+
+      - name: Screenshots of base
+        working-directory: head
+        run: npx playwright test --project=visual
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3200
+          SHOTS_DIR: ${{ github.workspace }}/shots/base
+
+      - name: Compare
+        working-directory: head
+        run: node scripts/visual-diff.mjs "$GITHUB_WORKSPACE/shots/base" "$GITHUB_WORKSPACE/shots/head" "$GITHUB_WORKSPACE/shots/diff"
+        env:
+          ALLOW_VISUAL_CHANGES: ${{ contains(github.event.pull_request.labels.*.name, 'visual-change') && '1' || '0' }}
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: visual-diff
+          path: shots/
+          retention-days: 14
