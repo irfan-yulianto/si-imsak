@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { Mosque } from "@/types";
-import { formatDistance, formatRadius, MAX_SEARCH_RADIUS, widerRadius } from "@/lib/mosques";
+import { formatDistance, formatRadius, widerRadius } from "@/lib/mosques";
+import { roundCoord } from "@/lib/constants";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
 import { MosqueIcon, SearchIcon } from "@/components/ui/Icons";
 import Card from "@/components/ui/Card";
@@ -11,23 +13,36 @@ import Button, { buttonClass } from "@/components/ui/Button";
 import { cx } from "@/components/ui/cx";
 import { ExternalLinkIcon, NavigationIcon } from "./icons";
 
+/** Results shown at first, and added by each "Tampilkan lebih banyak" */
+const PAGE = 20;
+
 /**
  * The search's outcome — loading, a failure, the mosques — and the ways to search further.
  * Rendered as siblings of the controls card (the page spaces them evenly).
  */
-export default function MosqueList({ mosques, loading, error, coords, radius, onRetry, onWiden }: {
+export default function MosqueList({ mosques, loading, error, coords, radius, canWiden, onRetry, onWiden }: {
+  /** Nearest first */
   mosques: Mosque[];
   loading: boolean;
   error: string | null;
   /** Where the search is; null when no place is known yet */
   coords: { lat: number; lng: number } | null;
   radius: number;
+  /** Few results, and the radius can still grow */
+  canWiden: boolean;
   onRetry: () => void;
   onWiden: () => void;
 }) {
-  const mapsUrl = coords
-    ? `https://www.google.com/maps/search/?api=1&query=masjid&center=${coords.lat},${coords.lng}`
-    : `https://www.google.com/maps/search/?api=1&query=masjid`;
+  const [shown, setShown] = useState(PAGE);
+
+  // Links to other sites carry the position rounded to ~110 m, like the search itself
+  const at = coords ? `${roundCoord(coords.lat)},${roundCoord(coords.lng)}` : null;
+  const mapsUrl = at
+    ? `https://www.google.com/maps/search/masjid/@${at},16z`
+    : "https://www.google.com/maps/search/?api=1&query=masjid";
+  const noteUrl = coords
+    ? `https://www.openstreetmap.org/note/new#map=18/${roundCoord(coords.lat)}/${roundCoord(coords.lng)}`
+    : null;
 
   return (
     <>
@@ -72,7 +87,7 @@ export default function MosqueList({ mosques, loading, error, coords, radius, on
       {/* Mosque list — nearby mosques reveal the user's area, so masked in Clarity recordings */}
       {!loading && mosques.length > 0 && (
         <ul data-clarity-mask="True" className="space-y-2">
-          {mosques.map((mosque) => (
+          {mosques.slice(0, shown).map((mosque) => (
             <li key={mosque.id}>
               <Card className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
@@ -105,8 +120,14 @@ export default function MosqueList({ mosques, loading, error, coords, radius, on
         </ul>
       )}
 
+      {!loading && mosques.length > shown && (
+        <Button variant="secondary" onClick={() => setShown(shown + PAGE)} className="w-full">
+          Tampilkan lebih banyak ({mosques.length - shown} lagi)
+        </Button>
+      )}
+
       {/* Few results, and the search can still widen */}
-      {!loading && coords && mosques.length < 5 && radius < MAX_SEARCH_RADIUS && (
+      {!loading && canWiden && (
         <button
           type="button"
           onClick={onWiden}
@@ -117,18 +138,40 @@ export default function MosqueList({ mosques, loading, error, coords, radius, on
         </button>
       )}
 
-      {/* Google Maps fallback */}
       {!loading && (
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="focus-ring flex min-h-11 items-center justify-center gap-2 rounded-card border border-dashed border-border bg-surface py-4 text-sm font-semibold text-fg-muted transition-colors hover:text-accent-fg"
-        >
-          <ExternalLinkIcon size={16} />
-          Cari lebih banyak di Google Maps
-          <span className="sr-only"> (buka di tab baru)</span>
-        </a>
+        // The links carry the area searched: masked in Clarity recordings
+        <div data-clarity-mask="True" className="space-y-3">
+          {/* Google Maps fallback */}
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="focus-ring flex min-h-11 items-center justify-center gap-2 rounded-card border border-dashed border-border bg-surface py-4 text-sm font-semibold text-fg-muted transition-colors hover:text-accent-fg"
+          >
+            <ExternalLinkIcon size={16} />
+            Cari lebih banyak di Google Maps
+            <span className="sr-only"> (buka di tab baru)</span>
+          </a>
+
+          {/* The data's source (its license asks for this), and a way to add what it lacks */}
+          <p className="text-center text-xs leading-relaxed text-fg-subtle">
+            {mosques.length > 0 && "Jarak diukur dalam garis lurus. "}
+            Data ©{" "}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-fg">
+              kontributor OpenStreetMap
+              <span className="sr-only"> (buka di tab baru)</span>
+            </a>
+            {noteUrl && (
+              <>
+                .{" "}Ada yang belum tercantum?{" "}
+                <a href={noteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-fg">
+                  Laporkan di OpenStreetMap
+                  <span className="sr-only"> (buka di tab baru)</span>
+                </a>
+              </>
+            )}
+          </p>
+        </div>
       )}
     </>
   );

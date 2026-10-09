@@ -1,63 +1,115 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useStore } from "@/store/useStore";
-import { getSearchRadius, widerRadius } from "@/lib/mosques";
+import { DEFAULT_RADIUS, MAX_SEARCH_RADIUS, visibleMosques, widerRadius } from "@/lib/mosques";
 import { findCityCoords, type CityCoord } from "@/lib/cities";
-import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
+import { useGeolocationPermission } from "@/hooks/useGeolocationPermission";
+import { SHARP_M, useGeolocationWatch } from "@/hooks/useGeolocationWatch";
 import { useMosqueSearch } from "@/hooks/useMosqueSearch";
 import MosqueControls from "./MosqueControls";
 import MosqueList from "./MosqueList";
 
+/** A GPS fix older than this is sharpened again when the finder opens or comes back (ms) */
+const FRESH_MS = 2 * 60_000;
+/** An answer with fewer mosques than this offers "Perluas Pencarian" */
+const FEW = 5;
+
 export default function MosqueFinder() {
-  const location = useStore((s) => s.location);
-  const userCoords = useStore((s) => s.userCoords);
+  const cityName = useStore((s) => s.location.cityName);
+  const fix = useStore((s) => s.userCoords);
   const setUserCoords = useStore((s) => s.setUserCoords);
-  // The accuracy of the GPS fix in use; null for a city picked by hand
-  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const permission = useGeolocationPermission();
+  const gps = useGeolocationWatch(setUserCoords);
+  const { answer, loading, error, follow, refresh } = useMosqueSearch();
 
-  const onFix = useCallback(
-    (coords: { lat: number; lng: number }, fixAccuracy: number) => {
-      setUserCoords(coords);
-      setAccuracy(fixAccuracy);
-    },
-    [setUserCoords]
-  );
-  const gps = useGeolocationWatch(onFix);
-  const { mosques, loading, error, follow, refresh } = useMosqueSearch();
+  // A city picked in the search box wins until the GPS gives a new fix, or another city
+  // is selected for the schedule
+  const pickKey = `${fix?.at ?? "-"}|${cityName}`;
+  const [pickedCity, setPickedCity] = useState<{ key: string; city: CityCoord } | null>(null);
+  const picked = pickedCity?.key === pickKey ? pickedCity.city : null;
 
-  // Where to search: the GPS position in the store, else the selected city's centre.
-  // A city picked in the search box wins until either of those changes.
-  const basisKey = `${userCoords ? `${userCoords.lat},${userCoords.lng}` : "-"}|${location.cityName}`;
-  const [pickedCity, setPickedCity] = useState<{ basisKey: string; coords: { lat: number; lng: number } } | null>(null);
-  const picked = pickedCity?.basisKey === basisKey ? pickedCity.coords : null;
-  const coords = useMemo(
-    () => picked ?? userCoords ?? findCityCoords(location.cityName),
-    [picked, userCoords, location.cityName]
-  );
-  const isGps = !picked && !!userCoords;
+  // "Batal" before a first fix: the city's centre is searched instead
+  const [gpsCancelled, setGpsCancelled] = useState(false);
+  // While the GPS looks for a first fix, or is about to, the city's centre isn't searched
+  // in the meantime: its results would only be replaced a moment later
+  const awaitingGps =
+    !picked &&
+    !fix &&
+    !gps.error &&
+    !gpsCancelled &&
+    (gps.status !== "idle" || permission === "unknown" || permission === "granted");
+
+  // Where to search: a city picked here, else the GPS position, else the selected city's centre
+  const cityCentre = useMemo(() => findCityCoords(cityName), [cityName]);
+  const fixLat = fix?.lat;
+  const fixLng = fix?.lng;
+  const coords = useMemo(() => {
+    if (picked) return { lat: picked.lat, lng: picked.lng };
+    if (fixLat !== undefined && fixLng !== undefined) return { lat: fixLat, lng: fixLng };
+    return awaitingGps ? null : cityCentre;
+  }, [picked, fixLat, fixLng, awaitingGps, cityCentre]);
+  const mode = picked ? "picked" : fix ? "gps" : "centre";
+  const basis = picked ? `kota:${picked.name}` : fix ? "gps" : `pusat:${cityName}`;
 
   // "Perluas Pencarian" applies to the place it was used for
-  const coordsKey = coords ? `${coords.lat},${coords.lng}` : "";
-  const [radiusChoice, setRadiusChoice] = useState<{ coordsKey: string; radius: number } | null>(null);
-  const radius = (radiusChoice?.coordsKey === coordsKey ? radiusChoice.radius : null) || getSearchRadius(accuracy);
+  const [radiusChoice, setRadiusChoice] = useState<{ basis: string; radius: number } | null>(null);
+  const radius = radiusChoice?.basis === basis ? radiusChoice.radius : DEFAULT_RADIUS;
 
-  // Search when the place, its accuracy or the radius changes — not while the GPS is
-  // still warming up, whose early fixes are rough
+  // Every new position, place or radius: searched again only when the last answer can't
+  // tell the nearest mosques there
   useEffect(() => {
-    if (!coords || gps.watching) return;
-    follow({ coords, radius, accuracy, gps: isGps });
-  }, [coords, accuracy, gps.watching, isGps, radius, follow]);
+    if (coords) follow({ coords, radius, basis });
+  }, [coords, radius, basis, follow]);
 
-  // "Muat Ulang" and "Coba Lagi" search again with the radius on screen
-  const searchAgain = () => {
-    if (coords) refresh({ coords, radius, accuracy, gps: isGps });
+  // Where the site may already read the location, the GPS starts by itself: when the
+  // finder opens and when the app comes back to the foreground, unless the fix in hand
+  // is recent and sharp. Should it fail, a fix in hand stays without a message.
+  const sharpenFix = useEffectEvent(() => {
+    if (permission !== "granted" || picked || gps.status !== "idle") return;
+    if (fix && Date.now() - fix.at < FRESH_MS && fix.accuracy <= SHARP_M) return;
+    gps.start({ quiet: fix !== null });
+  });
+  useEffect(() => {
+    if (permission === "granted") sharpenFix();
+  }, [permission]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sharpenFix();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  const startGps = () => {
+    setPickedCity(null);
+    setGpsCancelled(false);
+    gps.start();
+  };
+
+  const stopGps = () => {
+    gps.stop();
+    setGpsCancelled(true);
   };
 
   const pickCity = (city: CityCoord) => {
-    setPickedCity({ basisKey, coords: { lat: city.lat, lng: city.lng } });
-    setAccuracy(null);
+    // A fix arriving later would take the place of the city
+    gps.stop();
+    setPickedCity({ key: pickKey, city });
   };
+
+  // "Muat Ulang" and "Coba Lagi" search again with the radius on screen
+  const searchAgain = () => {
+    if (coords) refresh({ coords, radius, basis });
+  };
+
+  // The answer for this place, ordered from the position now. Another place's answer
+  // isn't shown while this one's is on its way.
+  const current = answer?.basis === basis ? answer : null;
+  const mosques = useMemo(() => (current && coords ? visibleMosques(current, coords) : []), [current, coords]);
+  const firstLoad = (loading || awaitingGps) && !current;
+  // Nothing to show until the search on its way comes back: the skeleton, not an empty list
+  const showSkeleton = firstLoad || (loading && mosques.length === 0);
 
   return (
     // Wide screens: the controls stay in view on the left, the results on the right.
@@ -66,32 +118,33 @@ export default function MosqueFinder() {
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-start">
       <div className="lg:sticky lg:top-[calc(var(--header-h)+var(--safe-t)+0.75rem)] lg:col-span-4">
         <MosqueControls
-          coords={coords}
-          isGps={isGps}
-          accuracy={accuracy}
+          mode={mode}
+          placeName={picked?.name ?? cityName}
+          accuracy={fix?.accuracy ?? null}
           radius={radius}
-          cityName={location.cityName}
-          loading={loading}
-          watching={gps.watching}
+          canRefresh={coords !== null && !firstLoad}
+          refreshing={loading && current !== null}
+          gpsStatus={gps.status}
           gpsError={gps.error}
           onRefresh={searchAgain}
-          onStartGps={gps.start}
-          onStopGps={gps.stop}
+          onStartGps={startGps}
+          onStopGps={stopGps}
           onPickCity={pickCity}
         />
       </div>
       <div className="space-y-3 lg:col-span-8">
         <MosqueList
+          // Another place starts again from its first results
+          key={basis}
           mosques={mosques}
-          loading={loading}
+          loading={showSkeleton}
           error={error}
           coords={coords}
           radius={radius}
+          canWiden={!loading && current !== null && current.mosques.length < FEW && radius < MAX_SEARCH_RADIUS}
           onRetry={searchAgain}
           // The effect above searches the wider radius
-          onWiden={() => {
-            if (coords) setRadiusChoice({ coordsKey, radius: widerRadius(radius) });
-          }}
+          onWiden={() => setRadiusChoice({ basis, radius: widerRadius(radius) })}
         />
       </div>
     </div>

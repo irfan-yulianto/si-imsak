@@ -8,7 +8,10 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **Jadwal Hari Ini** — Kartu waktu sholat hari ini dengan highlight otomatis waktu sholat yang sedang berlaku
 - **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, dalam satu tabel ringkas untuk semua layar: di HP tabelnya bisa digeser ke dua arah dengan kolom tanggal dan judul kolom tetap terlihat, dan dibuka di baris hari ini
 - **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`), dihitung di perangkat sehingga tetap jalan offline. Tanggal resmi di Indonesia mengikuti sidang isbat Kemenag, jadi di sekitar awal bulan Hijriyah tanggalnya bisa berbeda satu hari. Endpoint kalender MyQuran v3 sudah dicek sebagai alternatif: metodenya perhitungan "standar", bukan hasil isbat, jadi tidak lebih akurat
-- **Pencari Masjid Terdekat** — Cari masjid di sekitar lokasi GPS atau kota pilihan via OpenStreetMap Overpass API, dengan navigasi langsung ke Google Maps
+- **Pencari Masjid Terdekat** — Masjid dan musholla terdekat dari posisi GPS, atau di sekitar pusat kota pilihan, dari data OpenStreetMap (Overpass API), dengan navigasi langsung ke Google Maps.
+  - Bila izin lokasi sudah diberikan, GPS langsung dipakai tanpa perlu menekan tombol.
+  - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
+  - Titik dan bangunan untuk masjid yang sama ditampilkan sekali, dan musholla dikenali dari namanya.
 - **Deteksi Lokasi** — Geolocation otomatis dengan reverse geocoding sampai tingkat kota/kabupaten, database 514 kota/kabupaten di seluruh Indonesia
 - **Pencarian Kota** — Cari kota/kabupaten dari database Kemenag RI via MyQuran API v3
 - **Tema Gelap & Terang** — Tema gelap secara default, bisa diganti lewat tombol di header; pilihan disimpan di perangkat, dan warna bar browser ikut berganti
@@ -101,8 +104,9 @@ src/
 │   ├── useSchedule.ts           # Bulan untuk tabel dan countdown, dari cache bulan di store
 │   ├── useNextPrayer.ts         # Waktu sholat berikutnya, pengumuman, dan retry data yang hilang
 │   ├── useCountdownTicker.ts    # Digit countdown, ditulis langsung ke DOM tiap detik
-│   ├── useGeolocationWatch.ts   # GPS untuk pencari masjid (berhenti di akurasi 100 m atau 15 detik)
-│   └── useMosqueSearch.ts       # Pencarian masjid (cache, retry, pembatalan)
+│   ├── useGeolocationPermission.ts # Izin lokasi (Permissions API): GPS dimulai sendiri bila sudah diizinkan
+│   ├── useGeolocationWatch.ts   # GPS untuk pencari masjid (fix terbaik; berhenti di akurasi 50 m atau 20 detik setelah fix pertama)
+│   └── useMosqueSearch.ts       # Pencarian masjid (aturan cakupan: kapan perlu bertanya lagi, retry, pembatalan)
 ├── lib/
 │   ├── api.ts                   # Client API (fetch + timeout + offline cache)
 │   ├── city-time.ts             # Satu-satunya tempat untuk tanggal dan jam kota (aman untuk prerender)
@@ -115,7 +119,8 @@ src/
 │   ├── http.ts                  # Jawaban JSON, panggilan upstream, gerbang 1 req/detik untuk Nominatim
 │   ├── log.ts                   # Log JSON satu baris untuk route API
 │   ├── messages.ts              # Pesan error dan status untuk pengguna (pencari masjid: mosque-messages.ts)
-│   ├── mosques.ts               # Overpass query builder + response parser, radius pencarian
+│   ├── mosque-osm.ts            # Nama, jenis (masjid/musholla), dan duplikat dari tag OpenStreetMap; tanpa import
+│   ├── mosques.ts               # Overpass query builder + response parser, radius pencarian, aturan cakupan
 │   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window per route)
 │   ├── report-error.ts          # Laporan error dari halaman error
 │   ├── storage.ts               # Satu-satunya akses localStorage/sessionStorage (envelope, migrasi, eviction)
@@ -163,6 +168,7 @@ Si-Imsak tidak punya akun maupun database. Data yang dikirim saat aplikasi dipak
 | MyQuran | ID kota dan periode, kata kunci pencarian kota | Diteruskan oleh server, jadi MyQuran melihat server Vercel, bukan IP pengguna |
 | Nominatim (OpenStreetMap) | Koordinat yang dibulatkan ke 2 desimal (±1 km) | Mendeteksi kota dari GPS, lewat server |
 | Overpass (OpenStreetMap): `overpass.private.coffee` dan `overpass-api.de` | Koordinat yang dibulatkan ke 3 desimal (±110 m) dan radius pencarian | Mencari masjid, lewat server |
+| Google Maps dan OpenStreetMap, hanya bila tautannya dibuka | Koordinat masjid yang dituju (Navigasi), atau area pencarian yang dibulatkan ke 3 desimal (±110 m: "Cari lebih banyak di Google Maps", "Laporkan di OpenStreetMap") | Membuka tab baru di situs mereka |
 | Vercel Analytics & Speed Insights | Kunjungan halaman dan metrik performa, tanpa cookie | Setiap kunjungan |
 | Microsoft Clarity (hanya jika `NEXT_PUBLIC_CLARITY_ID` diisi) | Rekaman interaksi dan heatmap, memakai cookie. Elemen yang memuat lokasi (pencarian dan prompt kota, nama kota di countdown, koordinat, pencarian dan daftar masjid) ditandai `data-clarity-mask` sehingga isinya tidak terekam. Saat halaman error tampil, sesinya diberi tanda `app_error` beserta digest error (kode acak tanpa data pribadi) | Setiap kunjungan |
 
@@ -172,11 +178,12 @@ Yang disimpan di perangkat (localStorage, bisa dihapus lewat pengaturan browser)
 
 - `selectedLocation` — kota terpilih
 - `si:schedule:*` — jadwal per bulan, dipakai saat offline, kedaluwarsa setelah 7 hari (paling banyak 24 bulan)
-- `si:mosques:*` — hasil pencarian masjid selama 30 menit; nama kuncinya memuat koordinat yang dibulatkan ke 2 desimal (±1 km)
 - `theme`, `locationPermissionDismissed`, `pwa-install-dismissed` — preferensi tampilan dan prompt
 - `si:timeOffset` (sessionStorage) — selisih jam perangkat dengan server
 
-Semua akses ke storage lewat `src/lib/storage.ts`. Cache dari versi lama (`schedule_*`, `mosques_*`) dipindah ke kunci baru saat aplikasi dibuka, dan yang kedaluwarsa dibersihkan.
+Semua akses ke storage lewat `src/lib/storage.ts`.
+- Cache jadwal dari versi lama (`schedule_*`) dipindah ke kunci baru saat aplikasi dibuka, dan yang kedaluwarsa dibersihkan.
+- Hasil pencarian masjid tidak lagi disimpan di perangkat. Cache-nya dari versi sebelumnya (`mosques_*`, `si:mosques:*`) dihapus.
 
 Koordinat GPS hanya disimpan di memori selama halaman terbuka. Pemilik deployment sebaiknya memasang masking Clarity ke **Strict** sebagai lapis kedua.
 

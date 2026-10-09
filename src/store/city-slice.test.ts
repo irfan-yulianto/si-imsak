@@ -17,8 +17,9 @@ function gpsAt(latitude: number, longitude: number) {
   vi.stubGlobal("navigator", {
     onLine: true,
     geolocation: {
-      getCurrentPosition: (ok: (pos: { coords: { latitude: number; longitude: number } }) => void) =>
-        ok({ coords: { latitude, longitude } }),
+      getCurrentPosition: (
+        ok: (pos: { coords: { latitude: number; longitude: number; accuracy: number }; timestamp: number }) => void
+      ) => ok({ coords: { latitude, longitude, accuracy: 35 }, timestamp: 1_760_000_000_000 }),
     },
   });
 }
@@ -59,7 +60,8 @@ describe("detectCity", () => {
     expect(await useStore.getState().detectCity()).toEqual({ success: true });
 
     const state = useStore.getState();
-    expect(state.userCoords).toEqual({ lat: -6.17, lng: 106.85 });
+    // With its accuracy and age: the mosque finder sharpens a rough or old one
+    expect(state.userCoords).toEqual({ lat: -6.17, lng: 106.85, accuracy: 35, at: 1_760_000_000_000 });
     expect(state.location).toEqual(JAKARTA);
     expect(JSON.parse(localStorage.getItem("selectedLocation")!)).toEqual(asCity(JAKARTA));
     expect(Number(localStorage.getItem("locationPermissionDismissed"))).toBeGreaterThan(0);

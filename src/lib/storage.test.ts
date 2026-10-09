@@ -150,7 +150,7 @@ describe("without storage", () => {
 });
 
 describe("migrateLegacy", () => {
-  it("moves cached months and mosque searches to the new keys, keeping their age", () => {
+  it("moves cached months to the new keys, keeping their age, and drops mosque searches", () => {
     const ts = Date.now() - DAY_MS;
     localStorage.setItem(`schedule_${ID}_2026_3`, JSON.stringify({ _ts: ts, status: true, data: MONTH }));
     const mosques = [{ id: "node/1", name: "Masjid", lat: -6.2, lng: 106.8, distance: 120, type: "masjid" }];
@@ -160,8 +160,8 @@ describe("migrateLegacy", () => {
 
     expect(localStorage.getItem(`schedule_${ID}_2026_3`)).toBeNull();
     expect(JSON.parse(localStorage.getItem(`si:schedule:${ID}:2026-03`)!)).toEqual({ v: 1, ts, data: MONTH });
-    expect(localStorage.getItem("mosques_-6.20_106.80_r2000")).toBeNull();
-    expect(JSON.parse(localStorage.getItem("si:mosques:-6.20:106.80:2000")!)).toEqual({ v: 1, ts, data: mosques });
+    // The finder no longer keeps searches on the device
+    expect(Object.keys(localStorage)).toEqual([`si:schedule:${ID}:2026-03`]);
   });
 
   it("drops what can't be moved and the keys nothing reads any more", () => {
@@ -188,10 +188,11 @@ describe("migrateLegacy", () => {
 });
 
 describe("prepareStorage", () => {
-  it("migrates, then sweeps out expired caches", () => {
+  it("migrates, then sweeps out expired caches and the mosque searches of earlier versions", () => {
     vi.useFakeTimers({ now: new Date("2026-03-20T00:00:00Z"), toFake: ["Date"] });
     localStorage.setItem(`schedule_${ID}_2026_3`, JSON.stringify({ _ts: Date.now() - 8 * DAY_MS, data: MONTH }));
     localStorage.setItem("si:mosques:-6.20:106.80:2000", entry([], Date.now() - 3600000));
+    localStorage.setItem("si:mosques:-6.21:106.80:2000", entry([], Date.now() - 1000));
     localStorage.setItem(`si:schedule:${ID}:2026-02`, entry(MONTH, Date.now() - DAY_MS));
 
     prepareStorage();

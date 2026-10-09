@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand";
-import type { Location, LocationState } from "@/types";
+import type { GeoFix, Location, LocationState } from "@/types";
 import type { AppState } from "./useStore";
 import { DEFAULT_LOCATION } from "@/lib/constants";
 import { cityDate } from "@/lib/city-time";
@@ -33,9 +33,9 @@ export interface CitySlice {
   selectCity: (city: Location) => Promise<CityLoadResult>;
   /** Find the user's city from the GPS position, save it and select it */
   detectCity: () => Promise<DetectionResult>;
-  /** The GPS position, once known (the mosque finder searches around it) */
-  userCoords: { lat: number; lng: number } | null;
-  setUserCoords: (coords: { lat: number; lng: number }) => void;
+  /** The GPS position, once known (the mosque finder searches around it), with its accuracy and age */
+  userCoords: GeoFix | null;
+  setUserCoords: (fix: GeoFix) => void;
   /** Whether to ask for the location (no saved city, not dismissed recently) */
   locationPrompt: boolean;
   setLocationPrompt: (show: boolean) => void;
@@ -85,8 +85,8 @@ export const createCitySlice: StateCreator<AppState, [], [], CitySlice> = (set, 
 
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          get().setUserCoords({ lat: latitude, lng: longitude });
+          const { latitude, longitude, accuracy } = pos.coords;
+          get().setUserCoords({ lat: latitude, lng: longitude, accuracy, at: pos.timestamp || Date.now() });
 
           // Reverse geocoding first, then the local table of city centres
           let geocodedCity = "";
@@ -134,7 +134,7 @@ export const createCitySlice: StateCreator<AppState, [], [], CitySlice> = (set, 
     }),
 
   userCoords: null,
-  setUserCoords: (coords) => set({ userCoords: coords }),
+  setUserCoords: (fix) => set({ userCoords: fix }),
 
   locationPrompt: false,
   setLocationPrompt: (show) => set({ locationPrompt: show }),

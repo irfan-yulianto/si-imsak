@@ -15,7 +15,6 @@ export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 
 // How long cached data stays usable on the device
 export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
-export const MOSQUE_CACHE_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 
 // CDN caching for upstream data that changes rarely (schedules, city search, mosques).
 // Vercel's edge serves repeat requests without invoking the function, and keeps

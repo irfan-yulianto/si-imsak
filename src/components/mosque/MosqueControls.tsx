@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { formatRadius } from "@/lib/mosques";
+import { cityCentreLabel } from "@/lib/mosque-messages";
 import { CITIES, type CityCoord } from "@/lib/cities";
+import type { GpsStatus } from "@/hooks/useGeolocationWatch";
 import { MapPinIcon, MosqueIcon } from "@/components/ui/Icons";
 import { CrosshairIcon } from "./icons";
 import Card from "@/components/ui/Card";
@@ -34,18 +36,19 @@ function searchCityTable(query: string): CityCoord[] {
 
 /** The mosque finder's card: where it searches, and the ways to change that */
 export default function MosqueControls({
-  coords, isGps, accuracy, radius, cityName, loading, watching, gpsError, onRefresh, onStartGps, onStopGps, onPickCity,
+  mode, placeName, accuracy, radius, canRefresh, refreshing, gpsStatus, gpsError, onRefresh, onStartGps, onStopGps, onPickCity,
 }: {
-  coords: { lat: number; lng: number } | null;
-  /** The search is around the GPS position (not a city's centre) */
-  isGps: boolean;
+  /** Around the GPS position, a city picked here, or the selected city's centre */
+  mode: "gps" | "picked" | "centre";
+  /** The picked or selected city */
+  placeName: string;
+  /** The GPS fix's accuracy (m), when there is one */
   accuracy: number | null;
   radius: number;
-  /** The selected city, whose centre is the fallback */
-  cityName: string;
-  loading: boolean;
-  /** The GPS is being read */
-  watching: boolean;
+  canRefresh: boolean;
+  /** A search is on its way while results are shown */
+  refreshing: boolean;
+  gpsStatus: GpsStatus;
   gpsError: string | null;
   onRefresh: () => void;
   onStartGps: () => void;
@@ -54,18 +57,27 @@ export default function MosqueControls({
 }) {
   const [query, setQuery] = useState("");
   const results = useMemo(() => searchCityTable(query), [query]);
+  const watching = gpsStatus !== "idle";
 
   return (
     <Card className="p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex min-h-11 items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <MosqueIcon size={20} className="text-accent-fg" />
           <h2 className="text-base font-bold text-fg">Masjid Terdekat</h2>
         </div>
-        {coords && !loading && (
-          <Button variant="soft" onClick={onRefresh} aria-label="Muat ulang daftar masjid">
-            Muat Ulang
-          </Button>
+        {/* The same height either way, so the results below don't move */}
+        {refreshing ? (
+          <span role="status" className="flex items-center gap-2 px-2 text-xs text-fg-subtle">
+            <Spinner size="sm" />
+            Memperbarui…
+          </span>
+        ) : (
+          canRefresh && (
+            <Button variant="soft" onClick={onRefresh} aria-label="Muat ulang daftar masjid">
+              Muat Ulang
+            </Button>
+          )
         )}
       </div>
 
@@ -74,7 +86,7 @@ export default function MosqueControls({
         <div className="mb-3 flex gap-2">
           <div role="status" className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-control bg-accent px-4 text-sm font-semibold text-on-accent">
             <Spinner size="sm" />
-            Mendeteksi lokasi…
+            {gpsStatus === "locating" ? "Mendeteksi lokasi…" : "Mempertajam lokasi…"}
           </div>
           <Button variant="secondary" onClick={onStopGps} aria-label="Batal mendeteksi lokasi">
             Batal
@@ -83,7 +95,7 @@ export default function MosqueControls({
       ) : (
         <Button onClick={onStartGps} className="mb-3 w-full">
           <CrosshairIcon size={16} />
-          {isGps ? "Perbarui Lokasi GPS" : "Gunakan Lokasi GPS"}
+          {mode === "gps" ? "Perbarui Lokasi GPS" : "Gunakan Lokasi GPS"}
         </Button>
       )}
 
@@ -109,20 +121,19 @@ export default function MosqueControls({
       </div>
 
       {/* Where the search is; the coordinates themselves aren't worth showing */}
-      <p data-clarity-mask="True" className="flex items-center gap-1.5 text-xs text-fg-subtle">
-        <MapPinIcon size={14} />
-        {isGps ? "Lokasi GPS Anda" : `Perkiraan lokasi: ${cityName}`}
+      <p
+        data-clarity-mask="True"
+        className={`flex items-center gap-1.5 text-xs ${mode === "centre" ? "text-warning" : "text-fg-subtle"}`}
+      >
+        <MapPinIcon size={14} className="shrink-0" />
+        {mode === "gps" ? "Lokasi GPS Anda" : cityCentreLabel(placeName, mode === "picked")}
       </p>
 
-      {isGps && accuracy !== null && (
+      {mode === "gps" && accuracy !== null && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <AccuracyBadge accuracy={accuracy} />
           <span className="text-xs text-fg-subtle">Radius: {formatRadius(radius)}</span>
         </div>
-      )}
-
-      {!isGps && coords && (
-        <p className="mt-2 text-xs text-warning">Aktifkan GPS untuk hasil yang lebih akurat.</p>
       )}
     </Card>
   );

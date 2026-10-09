@@ -12,15 +12,17 @@ test.skip(!SHOTS, "Only runs for the screenshot comparison (SHOTS_DIR)");
 // 15 March 2026, 10:00:00 WIB
 const NOW = Date.UTC(2026, 2, 15, 3, 0, 0);
 
-const mosques = Array.from({ length: 3 }, (_, i) => ({
-  id: `node/${1000 + i}`,
-  name: i === 2 ? "Musholla Al-Ikhlas" : `Masjid Uji ${i + 1}`,
-  lat: -6.17 + (i + 1) * 0.0022,
-  lng: 106.85 + (i + 1) * 0.0022,
-  distance: (i + 1) * 340,
-  address: `Jalan Uji ${i + 1}`,
-  type: i === 2 ? "musholla" : "masjid",
-}));
+/** Three mosques north-east of the point searched, ~340 m apart */
+const mosquesAround = (lat: number, lng: number) =>
+  Array.from({ length: 3 }, (_, i) => ({
+    id: `node/${1000 + i}`,
+    name: i === 2 ? "Musholla Al-Ikhlas" : `Masjid Uji ${i + 1}`,
+    lat: lat + (i + 1) * 0.0022,
+    lng: lng + (i + 1) * 0.0022,
+    distance: (i + 1) * 340,
+    address: `Jalan Uji ${i + 1}`,
+    type: i === 2 ? "musholla" : "masjid",
+  }));
 
 async function prepare(page: Page, { scheduleStatus = 200 }: { scheduleStatus?: number } = {}) {
   await page.clock.setFixedTime(NOW);
@@ -29,7 +31,11 @@ async function prepare(page: Page, { scheduleStatus = 200 }: { scheduleStatus?: 
     const url = new URL(route.request().url());
     return route.fulfill({ json: scheduleResponse(JAKARTA, Number(url.searchParams.get("year")), Number(url.searchParams.get("month"))) });
   });
-  await page.route("**/api/mosques**", (route) => route.fulfill({ json: { status: true, data: mosques } }));
+  await page.route("**/api/mosques**", (route) => {
+    const url = new URL(route.request().url());
+    const data = mosquesAround(Number(url.searchParams.get("lat")), Number(url.searchParams.get("lng")));
+    return route.fulfill({ json: { status: true, data } });
+  });
   await page.route("**/api/cities**", (route) => route.fulfill({ json: { status: true, data: [] } }));
 }
 
