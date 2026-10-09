@@ -10,6 +10,7 @@ import {
   normalizeName,
   osmIdOf,
   OVERTURE_MIN_CONFIDENCE,
+  OVERTURE_SHARED_POINT,
   placeFromFeature,
   placeFromOverture,
 } from "./mosque-osm";
@@ -224,13 +225,21 @@ describe("placeFromFeature", () => {
 });
 
 describe("placeFromOverture", () => {
-  const record = { id: "E46A95AF-60b4-4e83-8418-7ca17f1f7349", lat: -6.2, lng: 106.8, name: " Mushola  Al-Amin ", street: "Jl. Damai,", confidence: 0.8 };
+  const record = {
+    id: "E46A95AF-60b4-4e83-8418-7ca17f1f7349",
+    lat: -6.20123,
+    lng: 106.80456,
+    name: " Mushola  Al-Amin ",
+    street: "Jl. Damai,",
+    confidence: 0.8,
+    sharing: 1,
+  };
 
   it("takes a place named like a mosque that Overture is sure enough of", () => {
     expect(placeFromOverture(record)).toEqual({
       id: "oe46a95af60b44e8384187ca17f1f7349",
-      lat: -6.2,
-      lng: 106.8,
+      lat: -6.20123,
+      lng: 106.80456,
       type: "musholla",
       name: "Mushola Al-Amin",
       sourceName: "Mushola Al-Amin",
@@ -244,6 +253,9 @@ describe("placeFromOverture", () => {
       street: "Jl. Kenanga",
     });
     expect(placeFromOverture({ ...record, street: "Unnamed Road" })?.street).toBeUndefined();
+    // A few places on one point, as in a mosque's own grounds; one coordinate that happens to be round
+    expect(placeFromOverture({ ...record, sharing: OVERTURE_SHARED_POINT - 1 })).not.toBeNull();
+    expect(placeFromOverture({ ...record, lat: -6.2 })).not.toBeNull();
   });
 
   it.each([
@@ -252,6 +264,8 @@ describe("placeFromOverture", () => {
     ["a name that isn't a mosque's", { name: "Jembatan Sirotol Mustaqim" }],
     ["a place Overture isn't sure of", { confidence: OVERTURE_MIN_CONFIDENCE - 0.01 }],
     ["no confidence", { confidence: undefined }],
+    ["a point many places share: a town's, not the mosque's", { sharing: OVERTURE_SHARED_POINT }],
+    ["a position rounded to three decimals", { lat: -3.65, lng: 103.8 }],
     ["an id that isn't Overture's", { id: "n123" }],
     ["no position", { lat: undefined }],
   ])("leaves out %s", (_what, overrides) => {
@@ -275,17 +289,30 @@ describe("addMissing", () => {
   });
 
   it("leaves out what is named alike within 300 m: the same mosque, placed elsewhere", () => {
-    const listed = [at("Al-Ikhlas", 0)];
     // The same name, its longer form, and the same but for "Masjid Jami'"
     expect(add([at("Masjid Al-Ikhlas", 0)], [at("MASJID AL IKHLAS", 0.002)])).toEqual([]);
     expect(add([at("Masjid Baitul Hikmah", 0)], [at("Masjid Baitul Hikmah Gondolayu", 0.002)])).toEqual([]);
-    expect(add(listed, [at("Masjid Jami' Al-Ikhlas", 0.002)])).toEqual([]);
-    // Further, it is another one
-    expect(add(listed, [at("Masjid Al-Ikhlas", 0.004)])).toHaveLength(1);
+    expect(add([at("Al-Ikhlas", 0)], [at("Masjid Jami' Al-Ikhlas", 0.002)])).toEqual([]);
     // A musholla of the same name is another place
-    expect(add(listed, [at("Musholla Al-Ikhlas", 0.002, "musholla")])).toHaveLength(1);
+    expect(add([at("Al-Ikhlas", 0)], [at("Musholla Al-Ikhlas", 0.002, "musholla")])).toHaveLength(1);
     // So are two that are only called "Masjid"
     expect(add([at("Masjid", 0)], [at("Masjid", 0.002)])).toHaveLength(1);
+  });
+
+  it("leaves out a rare name's namesake up to 2 km off: a page pinned on the town square", () => {
+    const istiqlal = [at("Masjid Istiqlal", 0)];
+    // ~720 m, and the town after the name
+    expect(add(istiqlal, [at("Masjid Istiqlal - Jakarta", 0.0065)])).toEqual([]);
+    // ~2.1 km: another mosque
+    expect(add(istiqlal, [at("Masjid Istiqlal", 0.019)])).toHaveLength(1);
+  });
+
+  it("reaches less far for a common name, which many mosques nearby may carry", () => {
+    // 41 "Al-Ikhlas" in the country, ~11 km apart, and one more to add: within ~980 m of one, it is that one
+    const elsewhere = Array.from({ length: 40 }, (_, i) => at("Masjid Al-Ikhlas", (i + 1) * 0.1));
+    const listed = [at("Masjid Al-Ikhlas", 0), ...elsewhere];
+    expect(add(listed, [at("Masjid Al-Ikhlas", 0.0063)])).toEqual([]);
+    expect(add(listed, [at("Masjid Al-Ikhlas", -0.0099)])).toHaveLength(1);
   });
 
   it("adds a place the other source has twice once, the first given", () => {

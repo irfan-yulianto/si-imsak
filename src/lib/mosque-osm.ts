@@ -247,7 +247,13 @@ export function dedupe<T extends { lat: number; lng: number }>(
 }
 
 /** Overture's confidence below which its place is left out: a page that may name no mosque there */
-export const OVERTURE_MIN_CONFIDENCE = 0.5;
+export const OVERTURE_MIN_CONFIDENCE = 0.6;
+/**
+ * Overture places sharing one point, from this many up, aren't where the point is: it is
+ * where Overture puts what it only knows the town or village of (hundreds of places sit
+ * on one point in central Jakarta)
+ */
+export const OVERTURE_SHARED_POINT = 5;
 
 /** A line of scripts/mosque-data/overture.py's output: an Overture place in Indonesia */
 export interface OvertureRecord {
@@ -258,14 +264,20 @@ export interface OvertureRecord {
   /** Overture's freeform address */
   street?: unknown;
   confidence?: unknown;
+  /** How many Overture places, of any kind, share its point (to 1e-5°) */
+  sharing?: unknown;
 }
 
 const trimmed = (value: unknown) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
 
+/** Whether a coordinate has three decimals or fewer: typed in, or a town's, not a building's */
+const rounded = (degrees: number) => Math.round(degrees * 1e5) % 100 === 0;
+
 /**
  * An Overture place as a place of the dataset; null unless it is named like a masjid or a
- * musholla (not a shop called "Muslim …", a madrasah or a yayasan) and Overture is sure
- * enough of it. Its id is "o" and Overture's, without the dashes.
+ * musholla (not a shop called "Muslim …", a madrasah or a yayasan), Overture is sure
+ * enough of it, and its position is its own: not a point many places share, nor one
+ * rounded to three decimals. Its id is "o" and Overture's, without the dashes.
  */
 export function placeFromOverture(record: OvertureRecord): Place | null {
   const id = trimmed(record.id).replace(/-/g, "").toLowerCase();
@@ -275,6 +287,8 @@ export function placeFromOverture(record: OvertureRecord): Place | null {
     return null;
   }
   if (typeof confidence !== "number" || !(confidence >= OVERTURE_MIN_CONFIDENCE) || !isIslamicName(name)) return null;
+  const sharing = typeof record.sharing === "number" ? record.sharing : 1;
+  if (sharing >= OVERTURE_SHARED_POINT || (rounded(lat) && rounded(lng))) return null;
   // Overture writes "Unnamed Road" where it knows no street
   const street = trimmed(record.street).replace(/^unnamed road\b,?\s*/i, "").replace(/[\s,]+$/, "") || undefined;
   return {
@@ -292,73 +306,110 @@ export function placeFromOverture(record: OvertureRecord): Place | null {
 /** A place of another source this close to one listed is that one, whatever their names */
 const ANOTHER_SOURCE_M = 60;
 /**
- * ...and this close, when named alike: two sources (or Overture's pages for one mosque)
- * put one mosque up to a few hundred meters apart
+ * ...and this close, when named alike (see sameName): two sources, or Overture's pages for
+ * one mosque, put one mosque up to a few hundred meters apart
  */
 const NAMED_ALIKE_M = 300;
-/** Grid cells (degrees, ~330 m): every pair within 300 m is in neighbouring cells */
-const WIDE_CELL_DEG = 0.003;
+/** ...and up to this far, when of the same kind and name, for a rare name (see sameNameReach) */
+const SAME_NAME_FAR_M = 2000;
+/** How many places in the country may carry a name that SAME_NAME_FAR_M is for */
+const RARE_NAME_COUNT = 10;
+/** Grid cells (degrees): ~330 m for NAMED_ALIKE_M, ~2.2 km for SAME_NAME_FAR_M */
+const NEAR_CELL_DEG = 0.003;
+const FAR_CELL_DEG = 0.02;
 /** The words a name opens with to say what it is, which say nothing of which one it is */
 const KIND_WORDS = /^(?:masjid|musholla|langgar|surau|meunasah|tajug)(?: (?:jami|jamik|jamie|raya|agung|besar))?(?: |$)/;
+/** Where a name goes on to say where the place is: "Masjid Istiqlal - Jakarta", "…, Lampung Selatan" */
+const NAME_TAIL = /\s[-–|]\s|\s*[,(]/;
+
+/**
+ * How far apart two places of the same kind and name may be one mosque: a page for a
+ * mosque is now and then pinned on the town square, a kilometer or two off. Up to 2 km
+ * for a name ten places in the country carry or fewer; less for a commoner one, as the
+ * square root of how many carry it (a thousand "Al-Ikhlas" stand near each other), down
+ * to 300 m.
+ */
+function sameNameReach(count: number): number {
+  return Math.max(NAMED_ALIKE_M, Math.min(SAME_NAME_FAR_M, SAME_NAME_FAR_M * Math.sqrt(RARE_NAME_COUNT / count)));
+}
 
 interface Listed<T> {
   place: T;
   /** normalizeName() of its name; "" for none, or one that only says what it is ("Masjid") */
   name: string;
-  /** The name without its kind words: "Masjid Jami' Al-Ikhlas" → "al ikhlas" */
+  /** What names the place, without its kind words or where it is ("Masjid Jami' Al-Ikhlas - Depok" → "al ikhlas"); "" when too short to tell */
   core: string;
 }
 
 /**
- * Whether two entries carry one name: the same (see sameName), or the same but for the
- * words that say what they are, for the same kind of place ("Al-Ikhlas" and "Masjid Jami'
- * Al-Ikhlas" are one, "Musholla Al-Ikhlas" is another).
- */
-function namedAlike<T extends { type: MosqueType }>(a: Listed<T>, b: Listed<T>): boolean {
-  if (!a.name || !b.name) return false;
-  return sameName(a.name, b.name) || (a.place.type === b.place.type && a.core.length >= 4 && a.core === b.core);
-}
-
-/**
  * The places of `others` (another source) that `listed` lacks, to add to it: those with
- * no listed place within 60 m, nor one named alike within 300 m. `others` comes in order
- * of preference, and each one added counts as listed for the next: a place the other
- * source has twice is added once. `nameOf` gives each place's own name (none: "" or undefined).
+ * no listed place within 60 m, none named alike within 300 m, and none of the same kind
+ * and name within sameNameReach(). `others` comes in order of preference, and each one
+ * added counts as listed for the next: a place the other source has twice is added once.
+ * `nameOf` gives each place's own name (none: "" or undefined).
  */
 export function addMissing<T extends { lat: number; lng: number; type: MosqueType }>(
   listed: readonly T[],
   others: readonly T[],
   nameOf: (place: T) => string | undefined
 ): T[] {
-  const grid = new Map<string, Listed<T>[]>();
-  const cellOf = (place: T) => [Math.floor(place.lat / WIDE_CELL_DEG), Math.floor(place.lng / WIDE_CELL_DEG)];
   const entry = (place: T): Listed<T> => {
-    const name = normalizeName(nameOf(place) ?? "");
-    const core = name.replace(KIND_WORDS, "");
-    return { place, name: core ? name : "", core };
+    const own = nameOf(place) ?? "";
+    const name = normalizeName(own);
+    const core = normalizeName(own.split(NAME_TAIL)[0]).replace(KIND_WORDS, "") || name.replace(KIND_WORDS, "");
+    return { place, name: core ? name : "", core: core.length >= 4 ? core : "" };
+  };
+  const listedEntries = listed.map(entry);
+  const otherEntries = others.map(entry);
+  // How many places, of either source, carry each name
+  const carrying = new Map<string, number>();
+  for (const { core } of [...listedEntries, ...otherEntries]) if (core) carrying.set(core, (carrying.get(core) ?? 0) + 1);
+
+  // Entries by ~330 m cell, and by name and ~2.2 km cell
+  const near = new Map<string, Listed<T>[]>();
+  const far = new Map<string, Listed<T>[]>();
+  const file = (map: Map<string, Listed<T>[]>, key: string, item: Listed<T>) => {
+    const cell = map.get(key);
+    if (cell) cell.push(item);
+    else map.set(key, [item]);
   };
   const list = (item: Listed<T>) => {
-    const [row, col] = cellOf(item.place);
-    const cell = grid.get(`${row}:${col}`);
-    if (cell) cell.push(item);
-    else grid.set(`${row}:${col}`, [item]);
+    const { lat, lng } = item.place;
+    file(near, `${Math.floor(lat / NEAR_CELL_DEG)}:${Math.floor(lng / NEAR_CELL_DEG)}`, item);
+    if (item.core) file(far, `${item.core}|${Math.floor(lat / FAR_CELL_DEG)}:${Math.floor(lng / FAR_CELL_DEG)}`, item);
   };
-  for (const place of listed) list(entry(place));
-
-  const added: T[] = [];
-  for (const place of others) {
-    const item = entry(place);
-    const [row, col] = cellOf(place);
-    let duplicate = false;
-    for (let dr = -1; dr <= 1 && !duplicate; dr++) {
-      for (let dc = -1; dc <= 1 && !duplicate; dc++) {
-        duplicate = (grid.get(`${row + dr}:${col + dc}`) ?? []).some((other) => {
-          const meters = distanceMeters(place.lat, place.lng, other.place.lat, other.place.lng);
-          return meters <= ANOTHER_SOURCE_M || (meters <= NAMED_ALIKE_M && namedAlike(item, other));
-        });
+  /** Whether an entry in the cells around `place` passes `test`; `key` names a cell */
+  const anyAround = (
+    map: Map<string, Listed<T>[]>,
+    place: T,
+    cellDeg: number,
+    key: (row: number, col: number) => string,
+    test: (other: Listed<T>) => boolean
+  ) => {
+    const row = Math.floor(place.lat / cellDeg);
+    const col = Math.floor(place.lng / cellDeg);
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if ((map.get(key(row + dr, col + dc)) ?? []).some(test)) return true;
       }
     }
-    if (duplicate) continue;
+    return false;
+  };
+  listedEntries.forEach(list);
+
+  const added: T[] = [];
+  for (const item of otherEntries) {
+    const { place, name, core } = item;
+    const meters = (other: Listed<T>) => distanceMeters(place.lat, place.lng, other.place.lat, other.place.lng);
+    const nearby = anyAround(near, place, NEAR_CELL_DEG, (row, col) => `${row}:${col}`, (other) => {
+      const distance = meters(other);
+      return distance <= ANOTHER_SOURCE_M || (distance <= NAMED_ALIKE_M && Boolean(name && other.name) && sameName(name, other.name));
+    });
+    const reach = core ? sameNameReach(carrying.get(core) ?? 1) : 0;
+    const namesake =
+      Boolean(core) &&
+      anyAround(far, place, FAR_CELL_DEG, (row, col) => `${core}|${row}:${col}`, (other) => other.place.type === place.type && meters(other) <= reach);
+    if (nearby || namesake) continue;
     added.push(place);
     list(item);
   }

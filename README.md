@@ -301,8 +301,11 @@ Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/m
 4. `build.mjs` memakai aturan yang sama dengan aplikasi (`src/lib/mosque-osm.ts`):
    - tempat ibadah Muslim, bangunan masjid, dan bangunan yang bernama masjid atau musholla ikut;
    - masjid yang dipetakan sebagai titik sekaligus bangunan ditulis sekali;
-   - dari Overture, hanya tempat yang namanya berawalan Masjid, Musholla, Langgar, Surau, Meunasah, atau Tajug, dan yang confidence-nya minimal 0,5 (`OVERTURE_MIN_CONFIDENCE`);
-   - tempat Overture dilewati bila ada tempat lain dalam 60 m, atau tempat bernama mirip dalam 300 m. Dua sumber sering menaruh satu masjid di titik yang berbeda, dan Overture kadang punya beberapa halaman untuk satu masjid.
+   - dari Overture, hanya tempat yang namanya berawalan Masjid, Musholla, Langgar, Surau, Meunasah, atau Tajug, dan yang confidence-nya minimal 0,6 (`OVERTURE_MIN_CONFIDENCE`). Di bawah 0,6, satu dari enam tempat bergeser lebih dari 250 m dari masjid yang sama di OpenStreetMap; di atasnya, satu dari empat belas;
+   - tempat Overture yang posisinya bukan miliknya sendiri dilewati:
+     - titik yang dipakai bersama 5 tempat Overture atau lebih (`OVERTURE_SHARED_POINT`), yaitu titik tempat Overture menaruh apa saja yang hanya ia tahu kota atau desanya;
+     - koordinat yang dibulatkan ke 3 desimal;
+   - tempat Overture juga dilewati bila ada tempat lain dalam 60 m, tempat bernama mirip dalam 300 m, atau tempat sejenis dengan nama yang sama dalam jarak tertentu. Untuk nama langka (paling banyak 10 di Indonesia) jaraknya 2 km, dan untuk nama yang lebih umum makin pendek, sampai 300 m. Nama dibandingkan tanpa keterangan lokasi di belakangnya, misalnya "Masjid Istiqlal - Jakarta". Dua sumber sering menaruh satu masjid di titik yang berbeda, dan Overture kadang punya beberapa halaman untuk satu masjid; sebagian halaman dipasangi pin di alun-alun kota.
 
 ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture berbentuk `o` diikuti ID Overture tanpa tanda hubung.
 

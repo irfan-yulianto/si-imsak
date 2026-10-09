@@ -2,7 +2,18 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.3.0
+## [Belum dirilis] — v2.3.1
+
+Sebelum data gabungan pertama dipakai, pemeriksaan sampel menemukan sebagian tempat dari Overture yang salah posisi. Contohnya halaman "Masjid Istiqlal - Jakarta" yang dipasangi pin di Monas, 700 m dari masjidnya. Aturan penggabungan diperketat.
+
+### Diperbaiki
+- **Confidence minimal 0,6.** Sebelumnya 0,5. Pada rentang 0,5–0,6, satu dari enam tempat bergeser lebih dari 250 m dari masjid yang sama di OpenStreetMap; di atasnya hanya sekitar satu dari empat belas.
+- **Titik bersama.** Titik yang dipakai 5 tempat Overture atau lebih dilewati, karena di situlah Overture menaruh tempat yang hanya ia tahu kota atau desanya. Ratusan tempat bisa berbagi satu titik di Jakarta Pusat.
+- **Koordinat bulat.** Koordinat yang dibulatkan ke 3 desimal juga dilewati.
+- **Nama yang sama di kejauhan.** Tempat sejenis dengan nama yang sama dianggap satu masjid sampai 2 km bila namanya langka, dan makin dekat bila namanya umum. Keterangan lokasi di belakang nama ("- Jakarta", ", Lampung Selatan") diabaikan.
+- **Hasil.** Pada data saat ini, tambahan dari Overture menjadi sekitar 20 ribu tempat (+27%): Jakarta +26%, Bandung +100%, Medan +42%, Yogyakarta +57%, Palembang +79%.
+
+## [2.3.0] — 2026-10-09 ([#495](https://github.com/irfan-yulianto/si-imsak/pull/495))
 
 Pencari masjid kini juga mengenal masjid dan musholla yang belum dipetakan di OpenStreetMap.
 
