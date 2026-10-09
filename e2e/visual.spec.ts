@@ -33,8 +33,9 @@ async function prepare(page: Page, { scheduleStatus = 200 }: { scheduleStatus?: 
   });
   await page.route("**/api/mosques**", (route) => {
     const url = new URL(route.request().url());
-    const data = mosquesAround(Number(url.searchParams.get("lat")), Number(url.searchParams.get("lng")));
-    return route.fulfill({ json: { status: true, data } });
+    const center = { lat: Number(url.searchParams.get("lat")), lng: Number(url.searchParams.get("lng")) };
+    const data = mosquesAround(center.lat, center.lng);
+    return route.fulfill({ json: { status: true, data, meta: { center, coverage: 25_000, dataDate: "2026-10-06" } } });
   });
   await page.route("**/api/cities**", (route) => route.fulfill({ json: { status: true, data: [] } }));
 }

@@ -131,10 +131,22 @@ export function parseCityList(body: unknown): Location[] {
   );
 }
 
-/** The mosques in /api/mosques' answer; null when it isn't a successful one */
-export function parseMosques(body: unknown): Mosque[] | null {
+/**
+ * /api/mosques' answer: its mosques, and where and how far it searched when it says so;
+ * null when it isn't a successful one
+ */
+export function parseMosqueAnswer(
+  body: unknown
+): { mosques: Mosque[]; center?: { lat: number; lng: number }; coverage?: number } | null {
   if (!isObject(body) || body.status !== true || !Array.isArray(body.data)) return null;
-  return body.data.filter(isMosque);
+  const mosques = body.data.filter(isMosque);
+  const meta = isObject(body.meta) ? body.meta : null;
+  const center =
+    meta && isObject(meta.center) && isFiniteNumber(meta.center.lat) && isFiniteNumber(meta.center.lng)
+      ? { lat: meta.center.lat, lng: meta.center.lng }
+      : undefined;
+  const coverage = meta && isFiniteNumber(meta.coverage) && meta.coverage >= 0 ? meta.coverage : undefined;
+  return { mosques, ...(center && { center }), ...(coverage !== undefined && { coverage }) };
 }
 
 /** The server clock in /api/time's answer, or null */

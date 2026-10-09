@@ -57,7 +57,8 @@ export default defineConfig({
           env: {
             MYQURAN_API_BASE: `${MOCK}/myquran`,
             NOMINATIM_REVERSE_URL: `${MOCK}/nominatim/reverse`,
-            OVERPASS_ENDPOINTS: `${MOCK}/overpass/interpreter`,
+            // Seven mosques around the fixtures' Jakarta, instead of the whole country
+            MOSQUE_DATA_PATH: "e2e/mosques.fixture.tsv",
           },
         },
       ],

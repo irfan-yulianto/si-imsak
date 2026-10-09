@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
   // endpoint off instead of leaving it as unused attack surface.
   images: { unoptimized: true },
   poweredByHeader: false,
+  // The mosque dataset, read at run time by /api/mosques (src/lib/mosque-index.ts)
+  outputFileTracingIncludes: {
+    "/api/mosques": ["./data/mosques.tsv", "./data/mosques.meta.json"],
+  },
   env: {
     NEXT_PUBLIC_BUILD_TIME: BUILD_TIME,
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,

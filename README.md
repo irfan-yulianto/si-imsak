@@ -8,7 +8,8 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **Jadwal Hari Ini** — Kartu waktu sholat hari ini dengan highlight otomatis waktu sholat yang sedang berlaku
 - **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, dalam satu tabel ringkas untuk semua layar: di HP tabelnya bisa digeser ke dua arah dengan kolom tanggal dan judul kolom tetap terlihat, dan dibuka di baris hari ini
 - **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`), dihitung di perangkat sehingga tetap jalan offline. Tanggal resmi di Indonesia mengikuti sidang isbat Kemenag, jadi di sekitar awal bulan Hijriyah tanggalnya bisa berbeda satu hari. Endpoint kalender MyQuran v3 sudah dicek sebagai alternatif: metodenya perhitungan "standar", bukan hasil isbat, jadi tidak lebih akurat
-- **Pencari Masjid Terdekat** — Masjid dan musholla terdekat dari posisi GPS, atau di sekitar pusat kota pilihan, dari data OpenStreetMap (Overpass API), dengan navigasi langsung ke Google Maps.
+- **Pencari Masjid Terdekat** — Masjid dan musholla terdekat dari posisi GPS, atau di sekitar pusat kota pilihan, dengan navigasi langsung ke Google Maps.
+  - Datanya dari OpenStreetMap, dibangun ulang setiap minggu menjadi dataset sendiri (lihat "Data masjid"). Dataset ini dibaca oleh server, tanpa layanan pihak ketiga saat pencarian.
   - Bila izin lokasi sudah diberikan, GPS langsung dipakai tanpa perlu menekan tombol.
   - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
   - Titik dan bangunan untuk masjid yang sama ditampilkan sekali, dan musholla dikenali dari namanya.
@@ -38,7 +39,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 | Data | Sumber |
 |------|--------|
 | Jadwal Sholat | [MyQuran API v3](https://api.myquran.com) — data resmi Kemenag RI |
-| Masjid Terdekat | [OpenStreetMap](https://www.openstreetmap.org/copyright) lewat Overpass API: `overpass.private.coffee`, lalu `overpass-api.de`. Mirror berikutnya ikut ditanya bila yang sebelumnya gagal (termasuk query yang kehabisan waktu atau memori) atau belum menjawab dalam 3 detik, dan jawaban pertama yang dipakai |
+| Masjid Terdekat | [OpenStreetMap](https://www.openstreetmap.org/copyright): `data/mosques.tsv`, dibangun setiap minggu dari ekstrak Geofabrik oleh workflow **Mosque data** (ODbL). Server menjawab dari dataset ini di memori |
 | Deteksi Kota | [Nominatim](https://nominatim.org) (OpenStreetMap) — reverse geocoding |
 | Sinkronisasi Waktu | Endpoint `/api/time` (jam server) — fallback ke waktu lokal perangkat |
 
@@ -80,7 +81,7 @@ src/
 │   ├── api/
 │   │   ├── cities/route.ts      # Proxy pencarian kota ke MyQuran API v3
 │   │   ├── geocode/route.ts     # Reverse geocoding: koordinat → kota/kabupaten (Nominatim)
-│   │   ├── mosques/route.ts     # Pencarian masjid via Overpass API (mirror bergantian, dengan hedge 3 detik)
+│   │   ├── mosques/route.ts     # Masjid terdekat dari dataset (posisi dibulatkan ±1 km; meta.coverage), juga format lama ber-radius
 │   │   ├── schedule/route.ts    # Proxy jadwal sholat ke MyQuran API v3 (1 panggilan bulanan + fallback per hari)
 │   │   └── time/route.ts        # Jam server untuk sinkronisasi waktu klien
 │   ├── layout.tsx               # Root layout (font, metadata, analytics, theme init)
@@ -120,7 +121,8 @@ src/
 │   ├── log.ts                   # Log JSON satu baris untuk route API
 │   ├── messages.ts              # Pesan error dan status untuk pengguna (pencari masjid: mosque-messages.ts)
 │   ├── mosque-osm.ts            # Nama, jenis (masjid/musholla), dan duplikat dari tag OpenStreetMap; tanpa import
-│   ├── mosques.ts               # Overpass query builder + response parser, radius pencarian, aturan cakupan
+│   ├── mosque-index.ts          # Dataset di memori: grid 0,01°, masjid terdekat dan cakupannya (server)
+│   ├── mosques.ts               # Aturan cakupan di klien: urutan dari posisi persis, kapan bertanya lagi
 │   ├── mosque-tsv.ts            # Format data/mosques.tsv dan validasinya; tanpa import
 │   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window per route)
 │   ├── report-error.ts          # Laporan error dari halaman error
@@ -128,7 +130,7 @@ src/
 │   ├── theme.ts                 # Tema: kelas .dark dan theme-color, juga lewat script sebelum paint pertama
 │   ├── time.ts                  # Sinkronisasi waktu server (NTP-style)
 │   ├── timezone.ts              # Mapping timezone Indonesia (WIB/WITA/WIT)
-│   ├── upstream.ts              # Alamat MyQuran, Nominatim, Overpass (bisa diganti lewat env)
+│   ├── upstream.ts              # Alamat MyQuran dan Nominatim (bisa diganti lewat env)
 │   └── validate.ts              # Guard untuk semua data dari luar (API, upstream, storage)
 ├── store/
 │   ├── useStore.ts              # Zustand store dari tiga slice
@@ -153,7 +155,7 @@ data/                            # data/mosques.tsv (ODbL, data/LICENSE), diperb
 - **Content Security Policy (CSP)** — Whitelist ketat untuk script, connect, image, dan font sources
 - **HSTS** — Strict-Transport-Security dengan preload (max-age 2 tahun)
 - **Security Headers** — X-Frame-Options (DENY), X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy; route API juga mengirim Cross-Origin-Resource-Policy. Header `X-App-Version` menyebut deploy mana yang menjawab
-- **Rate Limiting** — Sliding window per IP dan per route di memori (30 req/menit untuk jadwal dan pencarian kota, 20 req/menit untuk masjid karena banyak pengguna seluler berbagi satu IP, 10 req/menit untuk geocode). Jawaban 429 menyertakan `Retry-After`. Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment). Panggilan ke Nominatim dibatasi 1 per detik per instance, sesuai kebijakan pemakaiannya
+- **Rate Limiting** — Sliding window per IP dan per route di memori (30 req/menit untuk jadwal dan pencarian kota, 60 req/menit untuk masjid karena banyak pengguna seluler berbagi satu IP dan datanya ada di memori, 10 req/menit untuk geocode). Jawaban 429 menyertakan `Retry-After`. Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment). Panggilan ke Nominatim dibatasi 1 per detik per instance, sesuai kebijakan pemakaiannya
 - **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius hanya 2, 3, 4, 6, 8, atau 10 km)
 - **Request Timeout** — Setiap panggilan upstream punya batas waktu dan satu retry. `/api/schedule` selesai paling lama 8 detik; saat MyQuran down ia membalas 502 dengan `Retry-After` setelah paling banyak 3 panggilan, lalu menahan panggilan berikutnya selama 15 detik
 - **Service Worker Versioning** — Worker didaftarkan sebagai `/sw.js?v=<build id>`, jadi setiap deploy memasang worker dan cache baru; cache lama dihapus saat aktivasi. Versi baru menunggu sampai pengguna menekan "Muat ulang" pada notifikasi pembaruan
@@ -167,10 +169,9 @@ Si-Imsak tidak punya akun maupun database. Data yang dikirim saat aplikasi dipak
 
 | Penerima | Data | Kapan |
 |----------|------|-------|
-| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 2 desimal (±1 km) untuk mendeteksi kota, atau ke 3 desimal (±110 m) untuk mencari masjid | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid |
+| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 2 desimal (±1 km) untuk mendeteksi kota dan mencari masjid | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid |
 | MyQuran | ID kota dan periode, kata kunci pencarian kota | Diteruskan oleh server, jadi MyQuran melihat server Vercel, bukan IP pengguna |
 | Nominatim (OpenStreetMap) | Koordinat yang dibulatkan ke 2 desimal (±1 km) | Mendeteksi kota dari GPS, lewat server |
-| Overpass (OpenStreetMap): `overpass.private.coffee` dan `overpass-api.de` | Koordinat yang dibulatkan ke 3 desimal (±110 m) dan radius pencarian | Mencari masjid, lewat server |
 | Google Maps dan OpenStreetMap, hanya bila tautannya dibuka | Koordinat masjid yang dituju (Navigasi), atau area pencarian yang dibulatkan ke 3 desimal (±110 m: "Cari lebih banyak di Google Maps", "Laporkan di OpenStreetMap") | Membuka tab baru di situs mereka |
 | Vercel Analytics & Speed Insights | Kunjungan halaman dan metrik performa, tanpa cookie | Setiap kunjungan |
 | Microsoft Clarity (hanya jika `NEXT_PUBLIC_CLARITY_ID` diisi) | Rekaman interaksi dan heatmap, memakai cookie. Elemen yang memuat lokasi (pencarian dan prompt kota, nama kota di countdown, koordinat, pencarian dan daftar masjid) ditandai `data-clarity-mask` sehingga isinya tidak terekam. Saat halaman error tampil, sesinya diberi tanda `app_error` beserta digest error (kode acak tanpa data pribadi) | Setiap kunjungan |
@@ -207,7 +208,7 @@ API routes mengirim header `Cache-Control` dengan `s-maxage` supaya CDN Vercel m
 | `/api/schedule` | 24 jam + stale-while-revalidate 7 hari (bulan yang datanya tidak lengkap dikirim `no-store`) |
 | `/api/cities` | 24 jam + stale-while-revalidate 7 hari |
 | `/api/geocode` | 24 jam (koordinat dibulatkan ke 2 desimal) |
-| `/api/mosques` | 24 jam + stale-while-revalidate 7 hari; hasil kosong 10 menit (koordinat dibulatkan ke 3 desimal) |
+| `/api/mosques` | 24 jam + stale-while-revalidate 7 hari (koordinat dibulatkan ke 2 desimal); deploy baru (mis. data mingguan) memulai cache baru |
 | `/api/time` | `no-store` |
 
 ### Rate limit di Vercel Firewall
@@ -249,7 +250,7 @@ node scripts/check-bundle-size.mjs
 
 ### Tes end-to-end
 
-Tes di `e2e/` berjalan terhadap `next start`. MyQuran, Nominatim, dan Overpass diganti `e2e/mock-upstream.mjs` (lewat env `MYQURAN_API_BASE`, `NOMINATIM_REVERSE_URL`, `OVERPASS_ENDPOINTS`), jadi tidak ada request ke internet. Setiap tes gagal bila ada error di console, error halaman, atau pelanggaran CSP.
+Tes di `e2e/` berjalan terhadap `next start`. MyQuran dan Nominatim diganti `e2e/mock-upstream.mjs` (lewat env `MYQURAN_API_BASE`, `NOMINATIM_REVERSE_URL`), dan pencarian masjid membaca `e2e/mosques.fixture.tsv` (lewat `MOSQUE_DATA_PATH`), jadi tidak ada request ke internet. Setiap tes gagal bila ada error di console, error halaman, atau pelanggaran CSP.
 
 ```bash
 npx playwright install chromium   # sekali saja
@@ -274,7 +275,7 @@ node scripts/pwa-screenshots.mjs
 
 ### Synthetic monitoring
 
-Workflow **Synthetic** (`.github/workflows/synthetic.yml`, skrip `scripts/synthetic.sh`) memeriksa production tiap jam di menit ke-17: header keamanan, region function (`sin1`), jadwal bulan berjalan, file statis, dan kontrak API MyQuran. Sekali sehari ia juga memeriksa Nominatim dan Overpass, lalu membuka situs di Chromium dengan skrip Clarity dan Vercel yang asli untuk menangkap pelanggaran CSP. Kegagalan membuka issue berlabel `synthetic-failure`, yang tertutup sendiri saat pemeriksaan kembali lulus. Workflow ini juga bisa dijalankan manual dari tab Actions.
+Workflow **Synthetic** (`.github/workflows/synthetic.yml`, skrip `scripts/synthetic.sh`) memeriksa production tiap jam di menit ke-17: header keamanan, region function (`sin1`), jadwal bulan berjalan, pencarian masjid (minimal 10 di dekat Monas, dari data OpenStreetMap yang umurnya tidak lebih dari 21 hari), file statis, dan kontrak API MyQuran. Sekali sehari ia juga memeriksa Nominatim, lalu membuka situs di Chromium dengan skrip Clarity dan Vercel yang asli untuk menangkap pelanggaran CSP. Kegagalan membuka issue berlabel `synthetic-failure`, yang tertutup sendiri saat pemeriksaan kembali lulus. Workflow ini juga bisa dijalankan manual dari tab Actions.
 
 Runner GitHub berjalan di IP datacenter, sehingga Vercel Firewall bisa menantangnya dengan halaman "Security Checkpoint" (HTTP 429). Monitor melaporkannya sebagai kegagalan tersendiri, dan situs tidak ikut diperiksa. Agar monitor bisa lewat:
 
@@ -282,7 +283,7 @@ Runner GitHub berjalan di IP datacenter, sehingga Vercel Firewall bisa menantang
 2. Simpan sebagai secret repo **`SYNTHETIC_TOKEN`** (Settings → Secrets and variables → Actions).
 3. Di **Vercel → Project → Firewall → Configure → New Rule**, buat aturan: **If** *Request Header* `x-synthetic-monitor` *Equals* token tadi, **Then** *Bypass*.
 
-Monitor hanya mengirim header itu ke situs ini, tidak ke MyQuran, Nominatim, atau Overpass. Bila tantangan datang dari mitigasi DDoS tingkat platform, aturan bypass tidak berlaku; cek tab Firewall dan hubungi dukungan Vercel.
+Monitor hanya mengirim header itu ke situs ini, tidak ke MyQuran atau Nominatim. Bila tantangan datang dari mitigasi DDoS tingkat platform, aturan bypass tidak berlaku; cek tab Firewall dan hubungi dukungan Vercel.
 
 GitHub mematikan workflow terjadwal setelah 60 hari tanpa aktivitas di repo. Bila itu terjadi, aktifkan lagi dari tab Actions.
 

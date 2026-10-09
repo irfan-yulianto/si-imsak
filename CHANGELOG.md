@@ -2,7 +2,22 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.1.1
+## [Belum dirilis] — v2.2.0
+
+Pencarian masjid tidak lagi bergantung pada Overpass publik.
+
+### Diubah
+- **Dataset sendiri.** `/api/mosques` menjawab dari `data/mosques.tsv`: ±75 ribu masjid dan musholla dari OpenStreetMap, diperbarui setiap minggu. Datanya dibaca sekali per instance server ke dalam grid 0,01°, sehingga jawaban datang dalam hitungan milidetik dan tidak gagal saat Overpass sibuk.
+- **Jangkauan ditentukan server.** Server menjawab masjid sampai setidaknya 1,5 km, atau sampai masjid terdekat ke-100 bila itu lebih jauh: paling banyak 300 masjid dan sejauh 25 km. Jawabannya disertai `meta.coverage`, yaitu sejauh mana daftarnya lengkap. Di daerah yang jarang masjidnya, yang terdekat tetap ditemukan walau jaraknya puluhan kilometer; tombol "Perluas Pencarian" dihapus.
+- **Privasi.** Posisi yang dikirim ke server dibulatkan ke ±1 km (sebelumnya ±110 m), dan urutan tetap dihitung di perangkat dari posisi persis. Koordinat tidak lagi diteruskan ke pihak ketiga.
+- **Rate limit** pencarian masjid naik ke 60 per menit.
+- **Monitor sintetis** kini memeriksa `/api/mosques`: minimal 10 masjid dekat Monas, dari data OpenStreetMap yang umurnya tidak lebih dari 21 hari. Pemeriksaan mirror Overpass dihapus.
+- **Klien lama.** Klien versi sebelumnya, yang mengirim `radius`, tetap dijawab dengan cara lama.
+
+### Dihapus
+- Overpass: kode mirror, mock E2E, dan pemeriksaan sintetisnya.
+
+## [2.1.1] — 2026-10-09 ([#490](https://github.com/irfan-yulianto/si-imsak/pull/490))
 
 ### Ditambahkan
 - **Pipeline data masjid mingguan** (workflow **Mosque data**, `scripts/mosque-data`). Pipeline ini membangun `data/mosques.tsv` dari ekstrak OpenStreetMap Indonesia (Geofabrik), dengan aturan yang sama dengan aplikasi. Tambahannya: bangunan yang hanya bernama masjid atau musholla ikut terdata, dan masjid yang dipetakan dua kali ditulis sekali.
@@ -10,7 +25,7 @@ Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](
 - **PR data mingguan.** Perubahan diajukan lewat pull request yang di-merge otomatis setelah CI hijau; dataset pertama diperiksa manual.
 - **Uji coba perubahan pipeline.** Pull request yang mengubah pipeline menjalankannya pada data sungguhan.
 - **Pengukuran Overture Places**, hanya lewat dispatch manual. Hasilnya menentukan apakah sumber itu layak digabung.
-- Data berlisensi ODbL dengan atribusi kontributor OpenStreetMap (`data/LICENSE`). Aplikasi belum memakai dataset ini; `/api/mosques` beralih ke dataset ini di versi berikutnya.
+- Data berlisensi ODbL dengan atribusi kontributor OpenStreetMap (`data/LICENSE`). Uji coba pertama pada data sungguhan menghasilkan 75.049 tempat (62.885 masjid, 12.164 musholla).
 
 ## [2.1.0] — 2026-10-09 ([#489](https://github.com/irfan-yulianto/si-imsak/pull/489))
 

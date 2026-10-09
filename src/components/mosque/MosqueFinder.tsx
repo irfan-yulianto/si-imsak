@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useStore } from "@/store/useStore";
-import { DEFAULT_RADIUS, MAX_SEARCH_RADIUS, visibleMosques, widerRadius } from "@/lib/mosques";
+import { visibleMosques } from "@/lib/mosques";
 import { findCityCoords, type CityCoord } from "@/lib/cities";
 import { useGeolocationPermission } from "@/hooks/useGeolocationPermission";
 import { SHARP_M, useGeolocationWatch } from "@/hooks/useGeolocationWatch";
@@ -12,8 +12,6 @@ import MosqueList from "./MosqueList";
 
 /** A GPS fix older than this is sharpened again when the finder opens or comes back (ms) */
 const FRESH_MS = 2 * 60_000;
-/** An answer with fewer mosques than this offers "Perluas Pencarian" */
-const FEW = 5;
 
 export default function MosqueFinder() {
   const cityName = useStore((s) => s.location.cityName);
@@ -52,15 +50,11 @@ export default function MosqueFinder() {
   const mode = picked ? "picked" : fix ? "gps" : "centre";
   const basis = picked ? `kota:${picked.name}` : fix ? "gps" : `pusat:${cityName}`;
 
-  // "Perluas Pencarian" applies to the place it was used for
-  const [radiusChoice, setRadiusChoice] = useState<{ basis: string; radius: number } | null>(null);
-  const radius = radiusChoice?.basis === basis ? radiusChoice.radius : DEFAULT_RADIUS;
-
-  // Every new position, place or radius: searched again only when the last answer can't
-  // tell the nearest mosques there
+  // Every new position or place: searched again only when the last answer can't tell
+  // the nearest mosques there
   useEffect(() => {
-    if (coords) follow({ coords, radius, basis });
-  }, [coords, radius, basis, follow]);
+    if (coords) follow({ coords, basis });
+  }, [coords, basis, follow]);
 
   // Where the site may already read the location, the GPS starts by itself: when the
   // finder opens and when the app comes back to the foreground, unless the fix in hand
@@ -98,9 +92,9 @@ export default function MosqueFinder() {
     setPickedCity({ key: pickKey, city });
   };
 
-  // "Muat Ulang" and "Coba Lagi" search again with the radius on screen
+  // "Muat Ulang" and "Coba Lagi"
   const searchAgain = () => {
-    if (coords) refresh({ coords, radius, basis });
+    if (coords) refresh({ coords, basis });
   };
 
   // The answer for this place, ordered from the position now. Another place's answer
@@ -121,7 +115,6 @@ export default function MosqueFinder() {
           mode={mode}
           placeName={picked?.name ?? cityName}
           accuracy={fix?.accuracy ?? null}
-          radius={radius}
           canRefresh={coords !== null && !firstLoad}
           refreshing={loading && current !== null}
           gpsStatus={gps.status}
@@ -140,11 +133,7 @@ export default function MosqueFinder() {
           loading={showSkeleton}
           error={error}
           coords={coords}
-          radius={radius}
-          canWiden={!loading && current !== null && current.mosques.length < FEW && radius < MAX_SEARCH_RADIUS}
           onRetry={searchAgain}
-          // The effect above searches the wider radius
-          onWiden={() => setRadiusChoice({ basis, radius: widerRadius(radius) })}
         />
       </div>
     </div>

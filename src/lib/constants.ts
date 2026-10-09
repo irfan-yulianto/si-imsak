@@ -21,8 +21,6 @@ export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
 // serving the last good copy for a week if the function starts failing.
 export const CDN_CACHE_DAY =
   "public, s-maxage=86400, stale-while-revalidate=604800, stale-if-error=604800";
-// For answers worth asking again soon, e.g. a mosque search that found nothing
-export const CDN_CACHE_SHORT = "public, s-maxage=600";
 export const NO_STORE = "no-store";
 
 /**

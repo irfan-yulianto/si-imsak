@@ -2,231 +2,107 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "./route";
 import { NextRequest } from "next/server";
+import { buildIndex, loadMosqueData } from "@/lib/mosque-index";
+import type { DatasetRow } from "@/lib/mosque-tsv";
 
 vi.mock("@/lib/rate-limit", () => ({
   checkRateLimit: vi.fn(() => ({ ok: true })),
 }));
 
-vi.mock("@/lib/mosques", async (importOriginal) => ({
-  SEARCH_RADII: (await importOriginal<typeof import("@/lib/mosques")>()).SEARCH_RADII,
-  buildOverpassQuery: vi.fn(() => "[out:json];"),
-  parseOverpassResponse: vi.fn(() => [
-    { id: "node/1", name: "Masjid Test", lat: -6.18, lng: 106.86, distance: 100 },
-  ]),
+vi.mock("@/lib/mosque-index", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/mosque-index")>()),
+  loadMosqueData: vi.fn(),
 }));
+
+/** Places due north of Monas, every `every` meters */
+const north = (count: number, every: number): DatasetRow[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `n${i + 1}`,
+    lat: -6.1754 + ((i + 1) * every) / 111_195,
+    lng: 106.8272,
+    type: i % 5 === 4 ? "musholla" : "masjid",
+    name: `Masjid ${i + 1}`,
+    ...(i === 0 && { street: "Jl. Medan Merdeka" }),
+  }));
 
 function makeRequest(params: Record<string, string>) {
   const url = new URL("http://localhost/api/mosques");
-  for (const [k, v] of Object.entries(params)) {
-    url.searchParams.set(k, v);
-  }
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return new NextRequest(url);
 }
 
 beforeEach(async () => {
-  vi.restoreAllMocks();
   vi.mocked((await import("@/lib/rate-limit")).checkRateLimit).mockReturnValue({ ok: true });
+  vi.mocked(loadMosqueData).mockResolvedValue({ index: buildIndex(north(400, 50)), dataDate: "2026-10-06" });
 });
 
-describe("GET /api/mosques", () => {
+describe("GET /api/mosques: requests", () => {
   it("returns 429 when rate limited", async () => {
     const { checkRateLimit } = await import("@/lib/rate-limit");
     vi.mocked(checkRateLimit).mockReturnValue({ ok: false, retryAfterS: 42 });
-
     const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
     expect(res.status).toBe(429);
     expect(res.headers.get("Retry-After")).toBe("42");
   });
 
-  it("returns 400 when lat is missing", async () => {
-    const res = await GET(makeRequest({ lng: "106.85" }));
+  it.each<[Record<string, string>, string]>([
+    [{ lng: "106.85" }, "lat missing"],
+    [{ lat: "-6.17" }, "lng missing"],
+    [{ lat: "-12", lng: "106.85" }, "south of Indonesia"],
+    [{ lat: "7", lng: "106.85" }, "north of Indonesia"],
+    [{ lat: "-6.17", lng: "94" }, "west of Indonesia"],
+    [{ lat: "-6.17", lng: "142" }, "east of Indonesia"],
+    [{ lat: "abc", lng: "106.85" }, "not a number"],
+    [{ lat: "-6.17", lng: "106.85", radius: "2500" }, "a radius no version sends"],
+  ])("returns 400 for %o (%s)", async (params) => {
+    const res = await GET(makeRequest(params));
     expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when lng is missing", async () => {
-    const res = await GET(makeRequest({ lat: "-6.17" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when lat is outside Indonesia bounds (< -11)", async () => {
-    const res = await GET(makeRequest({ lat: "-12", lng: "106.85" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when lat is outside Indonesia bounds (> 6)", async () => {
-    const res = await GET(makeRequest({ lat: "7", lng: "106.85" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when lng is outside Indonesia bounds (< 95)", async () => {
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "94" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when lng is outside Indonesia bounds (> 141)", async () => {
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "142" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when lat is NaN", async () => {
-    const res = await GET(makeRequest({ lat: "abc", lng: "106.85" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when radius is below 100", async () => {
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85", radius: "50" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when radius is above 10000", async () => {
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85", radius: "20000" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("defaults radius to 2000 when not provided", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ elements: [] }),
-      })
-    );
-
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(200);
-  });
-
-  it("returns 200 with mosque data on success", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ elements: [] }),
-      })
-    );
-
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.status).toBe(true);
-    expect(json.data).toBeDefined();
-  });
-
-  it("returns 502 when all Overpass endpoints fail", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
-
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(502);
-    const json = await res.json();
-    expect(json.retryable).toBe(true);
-  });
-
-  it("returns 200 when one endpoint succeeds and others fail", async () => {
-    let callCount = 0;
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ elements: [] }),
-        });
-      }
-      return Promise.reject(new Error("timeout"));
-    }));
-
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.status).toBe(true);
-  });
-
-  it("lets the CDN keep mosques for a day, and finding none for 10 minutes", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ elements: [] }),
-      })
-    );
-
-    const found = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(found.headers.get("Cache-Control")).toContain("s-maxage=86400");
-    expect(found.headers.get("Cache-Control")).toContain("stale-if-error");
-
-    const { parseOverpassResponse } = await import("@/lib/mosques");
-    vi.mocked(parseOverpassResponse).mockReturnValueOnce([]);
-    const none = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(none.status).toBe(200);
-    expect(none.headers.get("Cache-Control")).toBe("public, s-maxage=600");
   });
 });
 
-describe("GET /api/mosques: radius and mirrors", () => {
-  const answer = () => ({ ok: true, json: () => Promise.resolve({ elements: [] }) });
-
-  it("accepts only the radii the finder asks for", async () => {
-    for (const radius of ["2500", "100", "5000"]) {
-      const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85", radius }));
-      expect(res.status).toBe(400);
-    }
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(answer()));
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85", radius: "6000" }));
+describe("GET /api/mosques: answers", () => {
+  it("answers the mosques nearest the position rounded to ~1 km, and how far the list is complete", async () => {
+    const res = await GET(makeRequest({ lat: "-6.1754", lng: "106.8272" }));
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=86400");
+    expect(res.headers.get("X-Data-Date")).toBe("2026-10-06");
+
+    const body = await res.json();
+    expect(body.meta.center).toEqual({ lat: -6.18, lng: 106.83 });
+    expect(body.meta.dataDate).toBe("2026-10-06");
+    // Every 50 m: the 100th nearest lies further than 1.5 km, so the answer reaches it
+    expect(body.data).toHaveLength(100);
+    expect(body.meta.coverage).toBeCloseTo(body.data[99].distance, -1);
+    const distances = body.data.map((m: { distance: number }) => m.distance);
+    expect(distances).toEqual([...distances].sort((a, b) => a - b));
+    expect(body.data.find((m: { id: string }) => m.id === "n1")).toMatchObject({ name: "Masjid 1", address: "Jl. Medan Merdeka", type: "masjid" });
   });
 
-  it("asks one mirror first, the next only after 3 s without an answer, and cancels the loser", async () => {
-    vi.useFakeTimers();
-    let answerFirst!: (res: unknown) => void;
-    let calls = 0;
-    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<unknown>>(() =>
-      ++calls === 1 ? new Promise((resolve) => (answerFirst = resolve)) : new Promise(() => {})
-    );
-    vi.stubGlobal("fetch", fetchMock);
+  it("answers earlier versions, which send a radius, the way they expect", async () => {
+    const res = await GET(makeRequest({ lat: "-6.1754", lng: "106.8272", radius: "2000" }));
+    const body = await res.json();
+    expect(body.meta.center).toEqual({ lat: -6.175, lng: 106.827 });
+    // Every 50 m from Monas, ~44 m south of that point: 40 lie within 2 km
+    expect(body.data).toHaveLength(40);
+    expect(body.data.every((m: { distance: number }) => m.distance <= 2000)).toBe(true);
+    expect(body.meta.coverage).toBe(2000);
 
-    const pending = GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    await vi.advanceTimersByTimeAsync(2_900);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(200);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-
-    answerFirst(answer());
-    expect((await pending).status).toBe(200);
-    expect(fetchMock.mock.calls[1][1].signal!.aborted).toBe(true);
-    // No third mirror once there is an answer
-    await vi.advanceTimersByTimeAsync(10_000);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
+    // At most 50, as their list expects
+    vi.mocked(loadMosqueData).mockResolvedValue({ index: buildIndex(north(400, 10)), dataDate: "" });
+    const dense = await (await GET(makeRequest({ lat: "-6.1754", lng: "106.8272", radius: "2000" }))).json();
+    expect(dense.data).toHaveLength(50);
   });
 
-  it("moves on to the next mirror as soon as one fails", async () => {
-    const fetchMock = vi.fn().mockRejectedValueOnce(new Error("HTTP 504")).mockResolvedValueOnce(answer());
-    vi.stubGlobal("fetch", fetchMock);
+  it("says when nothing is near, having looked 25 km around", async () => {
+    const res = await GET(makeRequest({ lat: "-8.65", lng: "115.22" }));
+    const body = await res.json();
+    expect(body).toMatchObject({ status: true, data: [], meta: { coverage: 25_000 } });
+  });
+
+  it("answers 503, retryable and not cached, when the dataset can't be read", async () => {
+    vi.mocked(loadMosqueData).mockResolvedValue(null);
     const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  // Overpass answers such a query with HTTP 200, a remark and no elements
-  const ranOut = (remark: string) => ({ ok: true, json: () => Promise.resolve({ elements: [], remark }) });
-
-  it("moves on to the next mirror when a query ran out of time there", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(ranOut('runtime error: Query timed out in "query" at line 1 after 9 seconds.'))
-      .mockResolvedValueOnce(answer());
-    vi.stubGlobal("fetch", fetchMock);
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("answers 502, not an empty list, when the query ran out of time or memory everywhere", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(ranOut("runtime error: Query run out of memory using about 2048 MB of RAM."))
-    );
-    const res = await GET(makeRequest({ lat: "-6.17", lng: "106.85" }));
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(503);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toMatchObject({ status: false, retryable: true });
   });

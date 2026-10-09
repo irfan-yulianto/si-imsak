@@ -2,19 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/store/useStore";
-import { coverageOf, distanceMeters, formatRadius, needsSearch, type MosqueAnswer } from "@/lib/mosques";
+import { distanceMeters, formatRadius, needsSearch, SEARCH_DECIMALS, type MosqueAnswer } from "@/lib/mosques";
 import { roundCoord } from "@/lib/constants";
-import { isObject, parseMosques } from "@/lib/validate";
+import { isObject, parseMosqueAnswer } from "@/lib/validate";
 import { MESSAGES } from "@/lib/messages";
 import { MOSQUE_MESSAGES, noMosquesMessage } from "@/lib/mosque-messages";
 
 type Coords = { lat: number; lng: number };
 
-/** Where to search, and how */
+/** Where to search */
 export interface SearchArea {
   /** The position the results are for */
   coords: Coords;
-  radius: number;
   /** What the position stands for: the GPS, or a city's centre. Another basis means another search */
   basis: string;
 }
@@ -27,14 +26,17 @@ const PENDING_NEAR_M = 200;
 /** Attempts per search when the server fails (5xx) */
 const ATTEMPTS = 3;
 
-const sameSearch = (a: SearchArea, b: SearchArea) => a.basis === b.basis && a.radius === b.radius;
+const sameSearch = (a: SearchArea, b: SearchArea) => a.basis === b.basis;
 
-/** Where the server searches from: the position rounded to ~110 m, which is all it learns */
-const centerOf = (coords: Coords): Coords => ({ lat: roundCoord(coords.lat), lng: roundCoord(coords.lng) });
+/** Where the server searches from: the position rounded to ~1 km, which is all it learns */
+const centerOf = (coords: Coords): Coords => ({
+  lat: roundCoord(coords.lat, SEARCH_DECIMALS),
+  lng: roundCoord(coords.lng, SEARCH_DECIMALS),
+});
 const sameCenter = (a: Coords, b: Coords) => a.lat === b.lat && a.lng === b.lng;
 
 function statusMessage(status: number | undefined): string {
-  if (status === 502) return MOSQUE_MESSAGES.serviceBusy;
+  if (status === 502 || status === 503) return MOSQUE_MESSAGES.serviceBusy;
   if (status === 429) return MOSQUE_MESSAGES.tooManyRequests;
   return MOSQUE_MESSAGES.serverError;
 }
@@ -100,7 +102,7 @@ export function useMosqueSearch(): {
     // Nearby users share CDN entries too
     const center = centerOf(area.coords);
     try {
-      const url = `/api/mosques?lat=${center.lat}&lng=${center.lng}&radius=${area.radius}`;
+      const url = `/api/mosques?lat=${center.lat}&lng=${center.lng}`;
       let res: Response | null = null;
       for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
         res = await fetch(url, { signal });
@@ -115,17 +117,19 @@ export function useMosqueSearch(): {
       const data: unknown = await res.json();
       if (signal.aborted) return;
 
-      const found = parseMosques(data);
+      const found = parseMosqueAnswer(data);
       if (!found) {
         setError(isObject(data) && typeof data.error === "string" ? data.error : MOSQUE_MESSAGES.failed);
         return;
       }
-      // The server lists them nearest to `center` first
-      const mosques = [...found].sort((a, b) => a.distance - b.distance);
-      const result: MosqueAnswer = { center, radius: area.radius, coverage: coverageOf(mosques, area.radius), mosques };
+      // Nearest to where the server searched first. Without its coverage, the answer is
+      // only sure as far as its farthest mosque
+      const mosques = [...found.mosques].sort((a, b) => a.distance - b.distance);
+      const coverage = found.coverage ?? mosques.at(-1)?.distance ?? 0;
+      const result: MosqueAnswer = { center: found.center ?? center, coverage, mosques };
       answered.current = { area, answer: result };
       setAnswer({ ...result, basis: area.basis });
-      if (mosques.length === 0) setError(noMosquesMessage(formatRadius(area.radius)));
+      if (mosques.length === 0) setError(noMosquesMessage(formatRadius(coverage)));
     } catch {
       if (!signal.aborted) setError(MOSQUE_MESSAGES.connectionFailed);
     } finally {

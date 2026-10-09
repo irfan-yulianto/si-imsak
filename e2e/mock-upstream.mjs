@@ -1,6 +1,7 @@
-// Stand-in for MyQuran, Nominatim and Overpass during the end-to-end tests. The app
-// server is started with MYQURAN_API_BASE, NOMINATIM_REVERSE_URL and OVERPASS_ENDPOINTS
-// pointing here, so no test reaches the internet. Every answer is deterministic.
+// Stand-in for MyQuran and Nominatim during the end-to-end tests. The app server is
+// started with MYQURAN_API_BASE and NOMINATIM_REVERSE_URL pointing here (and the mosque
+// search reads e2e/mosques.fixture.tsv), so no test reaches the internet. Every answer
+// is deterministic.
 import http from "node:http";
 import data from "./data.cjs";
 
@@ -57,37 +58,6 @@ function reverseGeocode(res, url) {
   send(res, 200, { address: { ...nearest.address, state: nearest.daerah, country: "Indonesia" } });
 }
 
-// Mosques around the requested point: a few within 2 km, more when the radius grows.
-// "Masjid Uji 1" is mapped twice, as a point and as its building (the finder lists it
-// once), and the musholla is only known as one by its name.
-function overpass(res, body) {
-  const query = decodeURIComponent(new URLSearchParams(body).get("data") ?? "");
-  const around = query.match(/around:(\d+),(-?[\d.]+),(-?[\d.]+)/);
-  if (!around) return send(res, 400, { error: "bad query" });
-  const [radius, lat, lng] = [Number(around[1]), Number(around[2]), Number(around[3])];
-  const count = radius >= 4000 ? 7 : 3;
-  const elements = Array.from({ length: count }, (_, i) => ({
-    type: "node",
-    id: 1000 + i,
-    // ~350 m apart, heading north-east
-    lat: lat + (i + 1) * 0.0022,
-    lon: lng + (i + 1) * 0.0022,
-    tags: {
-      amenity: "place_of_worship",
-      religion: "muslim",
-      name: i % 3 === 2 ? "Musholla Al-Ikhlas" : `Masjid Uji ${i + 1}`,
-      "addr:street": `Jalan Uji ${i + 1}`,
-    },
-  }));
-  elements.push({
-    type: "way",
-    id: 2000,
-    center: { lat: lat + 0.0023, lon: lng + 0.0022 },
-    tags: { building: "mosque", name: "Masjid Uji 1" },
-  });
-  send(res, 200, { elements });
-}
-
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const parts = url.pathname.split("/").filter(Boolean);
@@ -98,12 +68,6 @@ const server = http.createServer((req, res) => {
     return citySearch(res, parts[3]);
   }
   if (req.method === "GET" && url.pathname === "/nominatim/reverse") return reverseGeocode(res, url);
-  if (req.method === "POST" && url.pathname === "/overpass/interpreter") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => overpass(res, body));
-    return;
-  }
   if (url.pathname === "/health") return send(res, 200, { ok: true });
   send(res, 404, { status: false, message: "Not found" });
 });

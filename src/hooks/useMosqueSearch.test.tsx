@@ -5,21 +5,27 @@ import { resetStore } from "@/__tests__/store";
 import { useStore } from "@/store/useStore";
 
 const MONAS = { lat: -6.1754, lng: 106.8272 };
+/** Monas rounded to ~1 km: where the server searches from */
+const MONAS_CENTER = { lat: -6.18, lng: 106.83 };
 /** `meters` south of Monas */
 const south = (meters: number) => ({ lat: MONAS.lat - meters / 111_200, lng: MONAS.lng });
-const area = (overrides: Partial<SearchArea> = {}): SearchArea => ({ coords: MONAS, radius: 2000, basis: "gps", ...overrides });
-const mosque = { id: "node/1", name: "Masjid Istiqlal", lat: -6.1702, lng: 106.8314, distance: 730, type: "masjid" };
-/** `count` mosques due north of Monas, `every` meters apart, listed as the server would (distance from the center) */
+const area = (overrides: Partial<SearchArea> = {}): SearchArea => ({ coords: MONAS, basis: "gps", ...overrides });
+const mosque = { id: "n1", name: "Masjid Istiqlal", lat: -6.1702, lng: 106.8314, distance: 1120, type: "masjid" };
+/** `count` mosques due north of Monas, `every` meters apart */
 const northOfMonas = (count: number, every = 11.12) =>
   Array.from({ length: count }, (_, i) => ({
-    id: `node/${i}`,
+    id: `n${i}`,
     name: `Masjid ${i}`,
     lat: MONAS.lat + ((i + 1) * every) / 111_200,
     lng: MONAS.lng,
     distance: (i + 1) * every,
     type: "masjid",
   }));
-const ok = (data: object[]) => new Response(JSON.stringify({ status: true, data }), { status: 200 });
+const ok = (data: object[], coverage?: number, center = MONAS_CENTER) =>
+  new Response(
+    JSON.stringify({ status: true, data, ...(coverage !== undefined && { meta: { center, coverage, dataDate: "2026-10-06" } }) }),
+    { status: 200 }
+  );
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -34,37 +40,43 @@ afterEach(() => {
 });
 
 describe("useMosqueSearch", () => {
-  it("asks for the position rounded to ~110 m, and tells where it searched", async () => {
-    fetchMock.mockImplementation(async () => ok([mosque]));
+  it("sends the position rounded to ~1 km, and keeps where and how far the server searched", async () => {
+    fetchMock.mockImplementation(async () => ok([mosque], 1800));
     const { result } = renderHook(() => useMosqueSearch());
     act(() => result.current.follow(area()));
     await waitFor(() => expect(result.current.answer).not.toBeNull());
 
     const url = new URL(String(fetchMock.mock.calls[0][0]), "http://x");
     expect(url.pathname).toBe("/api/mosques");
-    expect(Object.fromEntries(url.searchParams)).toEqual({ lat: "-6.175", lng: "106.827", radius: "2000" });
+    expect(Object.fromEntries(url.searchParams)).toEqual({ lat: "-6.18", lng: "106.83" });
     expect(result.current.answer).toMatchObject({
       basis: "gps",
-      center: { lat: -6.175, lng: 106.827 },
-      radius: 2000,
-      // Fewer than the limit: everything within the radius is there
-      coverage: 2000,
+      center: MONAS_CENTER,
+      coverage: 1800,
       mosques: [expect.objectContaining({ name: "Masjid Istiqlal" })],
     });
+  });
+
+  it("trusts an answer without its coverage only as far as its farthest mosque", async () => {
+    fetchMock.mockImplementation(async () => ok([mosque]));
+    const { result } = renderHook(() => useMosqueSearch());
+    act(() => result.current.follow(area()));
+    await waitFor(() => expect(result.current.answer?.coverage).toBe(1120));
+    expect(result.current.answer?.center).toEqual(MONAS_CENTER);
   });
 
   it("cancels the search before it when a new one starts", async () => {
     const signals: AbortSignal[] = [];
     fetchMock.mockImplementation((_url, init) => {
       signals.push(init!.signal!);
-      return signals.length === 1 ? new Promise(() => {}) : Promise.resolve(ok([mosque]));
+      return signals.length === 1 ? new Promise(() => {}) : Promise.resolve(ok([mosque], 1800));
     });
     const { result } = renderHook(() => useMosqueSearch());
 
     act(() => result.current.refresh(area()));
-    act(() => result.current.refresh(area({ radius: 4000 })));
+    act(() => result.current.refresh(area({ basis: "kota:KOTA BOGOR" })));
     expect(signals[0].aborted).toBe(true);
-    await waitFor(() => expect(result.current.answer?.radius).toBe(4000));
+    await waitFor(() => expect(result.current.answer?.basis).toBe("kota:KOTA BOGOR"));
     expect(result.current.loading).toBe(false);
   });
 
@@ -81,7 +93,7 @@ describe("useMosqueSearch", () => {
   });
 
   it("doesn't search again while the answer still tells the nearest mosques", async () => {
-    fetchMock.mockImplementation(async () => ok([mosque]));
+    fetchMock.mockImplementation(async () => ok([mosque], 1800));
     const { result } = renderHook(() => useMosqueSearch());
     act(() => result.current.follow(area()));
     await waitFor(() => expect(result.current.answer).not.toBeNull());
@@ -91,42 +103,46 @@ describe("useMosqueSearch", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("searches again once the position leaves what the answer covers", async () => {
-    // 50 found (the limit) within ~556 m: complete to that distance only
-    fetchMock.mockImplementation(async () => ok(northOfMonas(50)));
+  it("searches again from the new point once the position leaves what the answer covers", async () => {
+    fetchMock.mockImplementation(async () => ok(northOfMonas(50), 1200));
     const { result } = renderHook(() => useMosqueSearch());
     act(() => result.current.follow(area()));
-    await waitFor(() => expect(result.current.answer?.coverage).toBeCloseTo(556, 0));
+    await waitFor(() => expect(result.current.answer).not.toBeNull());
 
-    // 300 m south: the ones within 256 m are sure, none of them is
-    act(() => result.current.follow(area({ coords: south(300) })));
+    // 1.5 km south: ~1 km from where it searched, so only 165 m of it is sure there
+    act(() => result.current.follow(area({ coords: south(1500) })));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    const url = new URL(String(fetchMock.mock.calls[1][0]), "http://x");
-    expect(url.searchParams.get("lat")).toBe("-6.178");
+    expect(new URL(String(fetchMock.mock.calls[1][0]), "http://x").searchParams.get("lat")).toBe("-6.19");
   });
 
-  it("awaits a search on its way for a nearby position, then looks again from where it ended up", async () => {
+  it("never asks again from the same rounded point: the answer would be the same", async () => {
+    fetchMock.mockImplementation(async () => ok(northOfMonas(50, 2), 100));
+    const { result } = renderHook(() => useMosqueSearch());
+    act(() => result.current.follow(area()));
+    await waitFor(() => expect(result.current.answer).not.toBeNull());
+    // Little of it is sure 300 m south, but the server would search from the same point
+    act(() => result.current.follow(area({ coords: south(300) })));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("awaits a search on its way for a nearby position instead of restarting it", async () => {
     let answerFirst!: (res: Response) => void;
-    fetchMock
-      .mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)))
-      .mockImplementation(async () => ok(northOfMonas(50, 2)));
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)));
     const { result } = renderHook(() => useMosqueSearch());
 
     act(() => result.current.follow(area()));
-    // Fixes keep coming while the answer is on its way: it isn't restarted for each
+    // Fixes keep coming while the answer is on its way
     act(() => result.current.follow(area({ coords: south(100) })));
     act(() => result.current.follow(area({ coords: south(150) })));
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    // 50 within 100 m of Monas, a dense block: from 150 m south, none of them is sure
-    await act(async () => answerFirst(ok(northOfMonas(50, 2))));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    const url = new URL(String(fetchMock.mock.calls[1][0]), "http://x");
-    expect(url.searchParams.get("lat")).toBe("-6.177");
+    await act(async () => answerFirst(ok([mosque], 1800)));
+    await waitFor(() => expect(result.current.answer).not.toBeNull());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("starts again for another basis, even at the same spot", async () => {
-    fetchMock.mockImplementation(async () => ok([mosque]));
+    fetchMock.mockImplementation(async () => ok([mosque], 1800));
     const { result } = renderHook(() => useMosqueSearch());
     act(() => result.current.follow(area({ basis: "pusat:KOTA JAKARTA" })));
     await waitFor(() => expect(result.current.answer?.basis).toBe("pusat:KOTA JAKARTA"));
@@ -135,19 +151,19 @@ describe("useMosqueSearch", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("says when nothing is within the radius", async () => {
-    fetchMock.mockImplementation(async () => ok([]));
+  it("says when nothing is recorded within the distance searched", async () => {
+    fetchMock.mockImplementation(async () => ok([], 25_000));
     const { result } = renderHook(() => useMosqueSearch());
     act(() => result.current.follow(area()));
     await waitFor(() => expect(result.current.answer?.mosques).toEqual([]));
     expect(result.current.error).toBe(
-      "Tidak ada masjid atau musholla ditemukan dalam radius 2 km. Coba perluas pencarian atau pindah lokasi."
+      "Tidak ada masjid atau musholla yang tercatat dalam 25 km. Coba cari di Google Maps, atau laporkan yang Anda tahu di OpenStreetMap."
     );
   });
 
   it("retries a failing server twice, then says it is busy", async () => {
     vi.useFakeTimers();
-    fetchMock.mockImplementation(async () => new Response("", { status: 502 }));
+    fetchMock.mockImplementation(async () => new Response("", { status: 503 }));
     const { result } = renderHook(() => useMosqueSearch());
     act(() => result.current.refresh(area()));
     await act(async () => {

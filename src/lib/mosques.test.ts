@@ -1,16 +1,8 @@
-import { describe, it, expect } from "vitest";
 import {
   distanceMeters,
   formatDistance,
-  DEFAULT_RADIUS,
-  widerRadius,
   formatRadius,
-  SEARCH_RADII,
-  RESULT_LIMIT,
-  buildOverpassQuery,
-  parseOverpassResponse,
   sortByDistance,
-  coverageOf,
   visibleMosques,
   needsSearch,
   type MosqueAnswer,
@@ -87,272 +79,13 @@ describe("formatDistance", () => {
   });
 });
 
-describe("widerRadius", () => {
-  it("doubles the radius up to 10 km", () => {
-    expect(widerRadius(2000)).toBe(4000);
-    expect(widerRadius(3000)).toBe(6000);
-    expect(widerRadius(8000)).toBe(10000);
-    expect(widerRadius(10000)).toBe(10000);
-  });
-});
-
-describe("SEARCH_RADII", () => {
-  it("holds every radius the finder can ask for, and those earlier versions asked for", () => {
-    const asked = new Set<number>();
-    // Earlier versions started at 2, 3 or 4 km, depending on the GPS accuracy
-    for (const start of [DEFAULT_RADIUS, 3000, 4000]) {
-      let radius = start;
-      for (let i = 0; i < 5; i++, radius = widerRadius(radius)) asked.add(radius);
-    }
-    for (const radius of asked) expect(SEARCH_RADII).toContain(radius);
-  });
-});
-
 describe("formatRadius", () => {
-  it("shows meters below 1 km and kilometers from there", () => {
+  it("shows meters below 1 km and kilometers, to a tenth, from there", () => {
     expect(formatRadius(800)).toBe("800 m");
     expect(formatRadius(2000)).toBe("2 km");
     expect(formatRadius(2500)).toBe("2.5 km");
-  });
-});
-
-describe("buildOverpassQuery", () => {
-  it("contains json output and timeout", () => {
-    const query = buildOverpassQuery(-6.17, 106.85, 2000);
-    expect(query).toContain("[out:json][timeout:8]");
-  });
-
-  it("asks for nodes, ways and relations in every way a mosque or musholla is mapped", () => {
-    const query = buildOverpassQuery(-6.17, 106.85, 2000);
-    expect(query).toContain('nwr["amenity"="place_of_worship"]["religion"~"^(muslim|islam)$"]');
-    // A place of worship without a religion, named like a masjid or a musholla
-    expect(query).toContain('nwr["amenity"="place_of_worship"][!"religion"]["name"~"^(m[ae]sjid|mu(s|sh)[oa]l|langgar|surau|meunasah|tajug)",i]');
-    expect(query).toContain('nwr["building"~"^(mosque|musalla)$"]');
-    expect(query).toContain('nwr["place_of_worship"~"^(musall?a|mushall?a|mush?oll?a)$"]');
-    expect(query).not.toMatch(/\bnw\[/);
-  });
-
-  it("interpolates coordinates and radius", () => {
-    const query = buildOverpassQuery(-6.17, 106.85, 3000);
-    expect(query).toContain("around:3000,-6.17,106.85");
-  });
-
-  it("ends with out center body qt", () => {
-    const query = buildOverpassQuery(-6.17, 106.85, 2000);
-    expect(query).toContain("out center body qt;");
-  });
-});
-
-describe("parseOverpassResponse", () => {
-  const userLat = -6.17;
-  const userLng = 106.85;
-
-  it("returns empty array for null-ish data", () => {
-    expect(parseOverpassResponse(null as never, userLat, userLng)).toEqual([]);
-    expect(parseOverpassResponse({} as never, userLat, userLng)).toEqual([]);
-    expect(parseOverpassResponse({ elements: [] }, userLat, userLng)).toEqual([]);
-  });
-
-  it("parses node elements correctly", () => {
-    const data = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { name: "Masjid Al-Amin" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Masjid Al-Amin");
-    expect(result[0].lat).toBe(-6.18);
-    expect(result[0].lng).toBe(106.86);
-    expect(result[0].distance).toBeGreaterThan(0);
-  });
-
-  it("parses way elements using center", () => {
-    const data = {
-      elements: [
-        { type: "way" as const, id: 2, center: { lat: -6.18, lon: 106.86 }, tags: { name: "Masjid B" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-    expect(result[0].lat).toBe(-6.18);
-  });
-
-  it("parses relation elements using center", () => {
-    const data = {
-      elements: [
-        { type: "relation" as const, id: 3, center: { lat: -6.19, lon: 106.87 }, tags: { name: "Masjid C" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-  });
-
-  it("deduplicates by type/id", () => {
-    const data = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { name: "Masjid A" } },
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { name: "Masjid A" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-  });
-
-  it("sorts by distance ascending", () => {
-    const data = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.20, lon: 106.90, tags: { name: "Far" } },
-        { type: "node" as const, id: 2, lat: -6.171, lon: 106.851, tags: { name: "Near" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result[0].name).toBe("Near");
-    expect(result[1].name).toBe("Far");
-  });
-
-  it("respects limit parameter", () => {
-    const elements = Array.from({ length: 30 }, (_, i) => ({
-      type: "node" as const,
-      id: i,
-      lat: -6.17 + i * 0.001,
-      lon: 106.85,
-      tags: { name: `Masjid ${i}` },
-    }));
-    const result = parseOverpassResponse({ elements }, userLat, userLng, 5);
-    expect(result).toHaveLength(5);
-  });
-
-  it("defaults limit to 50", () => {
-    const elements = Array.from({ length: 60 }, (_, i) => ({
-      type: "node" as const,
-      id: i,
-      lat: -6.17 + i * 0.001,
-      lon: 106.85,
-      tags: { name: `Masjid ${i}` },
-    }));
-    const result = parseOverpassResponse({ elements }, userLat, userLng);
-    expect(result).toHaveLength(RESULT_LIMIT);
-    expect(RESULT_LIMIT).toBe(50);
-  });
-
-  it("knows a musholla by its name as well as by its tags", () => {
-    const data: Parameters<typeof parseOverpassResponse>[0] = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.171, lon: 106.85, tags: { amenity: "place_of_worship", religion: "muslim", name: "Mushola Al-Ikhlas" } },
-        { type: "node" as const, id: 2, lat: -6.172, lon: 106.85, tags: { amenity: "place_of_worship", name: "Langgar Kidul" } },
-        { type: "node" as const, id: 3, lat: -6.173, lon: 106.85, tags: { amenity: "place_of_worship", religion: "islam", name: "Masjid Al-Amin" } },
-      ],
-    };
-    expect(parseOverpassResponse(data, userLat, userLng).map((m) => m.type)).toEqual(["musholla", "musholla", "masjid"]);
-  });
-
-  it("lists a mosque mapped as a point and as its building once, with the fuller entry", () => {
-    const data: Parameters<typeof parseOverpassResponse>[0] = {
-      elements: [
-        { type: "way" as const, id: 20, center: { lat: -6.1803, lon: 106.8601 }, tags: { building: "mosque" } },
-        { type: "way" as const, id: 21, center: { lat: -6.1801, lon: 106.86 }, tags: { building: "mosque", name: "Masjid Al-Ikhlas" } },
-        {
-          type: "node" as const,
-          id: 10,
-          lat: -6.18,
-          lon: 106.86,
-          tags: { amenity: "place_of_worship", religion: "muslim", name: "Masjid Al-Ikhlas", "addr:street": "Jl. Damai" },
-        },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ id: "node/10", name: "Masjid Al-Ikhlas", address: "Jl. Damai" });
-  });
-
-  it("uses name fallback chain: name > name:id > name:en > old_name", () => {
-    const data: Parameters<typeof parseOverpassResponse>[0] = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { "name:id": "Masjid Indo" } },
-        { type: "node" as const, id: 2, lat: -6.18, lon: 106.86, tags: { "name:en": "English Mosque" } },
-        { type: "node" as const, id: 3, lat: -6.18, lon: 106.86, tags: { old_name: "Old Mosque" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result.find((m) => m.id === "node/1")?.name).toBe("Masjid Indo");
-    expect(result.find((m) => m.id === "node/2")?.name).toBe("English Mosque");
-    expect(result.find((m) => m.id === "node/3")?.name).toBe("Old Mosque");
-  });
-
-  it("defaults to 'Masjid' when no name tags", () => {
-    const data = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { amenity: "place_of_worship" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result[0].name).toBe("Masjid");
-  });
-
-  it("returns 'Musholla' for musalla with no name", () => {
-    const data = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86, tags: { place_of_worship: "musalla" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result[0].name).toBe("Musholla");
-  });
-
-  it("appends address when name is just 'Masjid'", () => {
-    const data = {
-      elements: [
-        {
-          type: "node" as const,
-          id: 1,
-          lat: -6.18,
-          lon: 106.86,
-          tags: { name: "Masjid", "addr:street": "Jl. Merdeka" },
-        },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result[0].name).toBe("Masjid (Jl. Merdeka)");
-  });
-
-  it("skips elements with no extractable center", () => {
-    const data = {
-      elements: [
-        { type: "way" as const, id: 1, tags: { name: "No Center" } },
-        { type: "node" as const, id: 2, lat: -6.18, lon: 106.86, tags: { name: "Has Center" } },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Has Center");
-  });
-
-  it("extracts address from addr:street or addr:full", () => {
-    const data = {
-      elements: [
-        {
-          type: "node" as const,
-          id: 1,
-          lat: -6.18,
-          lon: 106.86,
-          tags: { name: "Masjid X", "addr:full": "Jl. Sudirman No.1" },
-        },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result[0].address).toBe("Jl. Sudirman No.1");
-  });
-
-  it("handles elements with no tags", () => {
-    const data = {
-      elements: [
-        { type: "node" as const, id: 1, lat: -6.18, lon: 106.86 },
-      ],
-    };
-    const result = parseOverpassResponse(data, userLat, userLng);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Masjid");
+    expect(formatRadius(25_000)).toBe("25 km");
+    expect(formatRadius(1834.6)).toBe("1.8 km");
   });
 });
 
@@ -375,21 +108,13 @@ describe("sortByDistance", () => {
   });
 });
 
-describe("coverageOf", () => {
-  it("is the whole radius unless the list was cut at the limit", () => {
-    const list = [mosqueAt("a", 0, 0, 100), mosqueAt("b", 0, 0, 700)];
-    expect(coverageOf(list, 2000)).toBe(2000);
-    expect(coverageOf(list, 2000, 2)).toBe(700);
-  });
-});
-
 describe("visibleMosques and needsSearch", () => {
   const center = { lat: -6.2, lng: 106.8 };
   // Ten mosques due north, every ~111 m from the center
   const tenNorth = Array.from({ length: 10 }, (_, i) =>
     mosqueAt(`n${i}`, -6.2 + (i + 1) * 0.001, 106.8, (i + 1) * 111.2)
   );
-  const answer = (mosques: Mosque[], coverage: number): MosqueAnswer => ({ center, radius: 2000, coverage, mosques });
+  const answer = (mosques: Mosque[], coverage: number): MosqueAnswer => ({ center, coverage, mosques });
   const south = (meters: number) => ({ lat: -6.2 - meters / 111_200, lng: 106.8 });
 
   it("shows the whole answer from where it searched, nearest first", () => {

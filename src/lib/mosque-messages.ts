@@ -15,9 +15,9 @@ export const MOSQUE_MESSAGES = {
   stale: "Gagal memperbarui data. Menampilkan hasil sebelumnya.",
 } as const;
 
-/** No mosque within `radius` (e.g. "2 km") */
-export function noMosquesMessage(radius: string): string {
-  return `Tidak ada masjid atau musholla ditemukan dalam radius ${radius}. Coba perluas pencarian atau pindah lokasi.`;
+/** No mosque within `reach` (e.g. "25 km") */
+export function noMosquesMessage(reach: string): string {
+  return `Tidak ada masjid atau musholla yang tercatat dalam ${reach}. Coba cari di Google Maps, atau laporkan yang Anda tahu di OpenStreetMap.`;
 }
 
 /** Where the search is when it isn't around the GPS position */

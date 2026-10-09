@@ -68,7 +68,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Nominatim, Overpass and MyQuran's Hijri dates
+      - name: Nominatim and MyQuran's Hijri dates
         id: upstream
         continue-on-error: true
         run: FAILURES_FILE="$RUNNER_TEMP/failures.md" scripts/synthetic.sh daily

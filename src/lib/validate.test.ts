@@ -6,7 +6,7 @@ import {
   isLocation,
   isScheduleDay,
   parseCityList,
-  parseMosques,
+  parseMosqueAnswer,
   parseScheduleResponse,
   parseServerTime,
   parseUpstreamPeriod,
@@ -143,18 +143,24 @@ describe("parseCityList", () => {
   });
 });
 
-describe("parseMosques", () => {
-  const mosque = { id: "node/1", name: "Masjid Istiqlal", lat: -6.17, lng: 106.83, distance: 120, type: "masjid" };
+describe("parseMosqueAnswer", () => {
+  const mosque = { id: "n1", name: "Masjid Istiqlal", lat: -6.17, lng: 106.83, distance: 120, type: "masjid" };
 
-  it("keeps the well-formed mosques of a successful answer", () => {
-    expect(parseMosques({ status: true, data: [mosque, { ...mosque, lat: "x" }, { ...mosque, type: "church" }] })).toEqual([
-      mosque,
-    ]);
+  it("keeps the well-formed mosques of a successful answer, and where and how far it searched", () => {
+    const meta = { center: { lat: -6.17, lng: 106.83 }, coverage: 1800, dataDate: "2026-10-06" };
+    expect(
+      parseMosqueAnswer({ status: true, data: [mosque, { ...mosque, lat: "x" }, { ...mosque, type: "church" }], meta })
+    ).toEqual({ mosques: [mosque], center: { lat: -6.17, lng: 106.83 }, coverage: 1800 });
+  });
+
+  it("leaves out what an answer of an earlier server doesn't say, or says wrong", () => {
+    expect(parseMosqueAnswer({ status: true, data: [mosque] })).toEqual({ mosques: [mosque] });
+    expect(parseMosqueAnswer({ status: true, data: [], meta: { center: { lat: "x" }, coverage: -1 } })).toEqual({ mosques: [] });
   });
 
   it("returns null for a failed or malformed answer", () => {
-    expect(parseMosques({ status: false, error: "Upstream mosque service unavailable" })).toBeNull();
-    expect(parseMosques({ status: true })).toBeNull();
+    expect(parseMosqueAnswer({ status: false, error: "Mosque data unavailable" })).toBeNull();
+    expect(parseMosqueAnswer({ status: true })).toBeNull();
   });
 });
 
