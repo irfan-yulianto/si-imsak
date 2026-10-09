@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { classifyType, dedupe, displayName, distanceMeters, isIslamicName, normalizeName } from "./mosque-osm";
+import {
+  classifyType,
+  dedupe,
+  displayName,
+  distanceMeters,
+  isIslamicName,
+  isMosque,
+  normalizeName,
+  osmIdOf,
+  placeFromFeature,
+} from "./mosque-osm";
 
 describe("classifyType", () => {
   it.each([
@@ -132,5 +142,69 @@ describe("dedupe", () => {
     const start = performance.now();
     expect(dedupe(many)).toHaveLength(20_000);
     expect(performance.now() - start).toBeLessThan(2_000);
+  });
+});
+
+describe("isMosque", () => {
+  it("takes what the Overpass query takes", () => {
+    expect(isMosque({ amenity: "place_of_worship", religion: "muslim" })).toBe(true);
+    expect(isMosque({ amenity: "place_of_worship", religion: "islam" })).toBe(true);
+    expect(isMosque({ amenity: "place_of_worship", name: "Mushola Al-Amin" })).toBe(true);
+    expect(isMosque({ building: "mosque" })).toBe(true);
+    expect(isMosque({ place_of_worship: "musalla" })).toBe(true);
+  });
+
+  it("and a building that only has a mosque's name", () => {
+    expect(isMosque({ building: "yes", name: "Masjid Al-Falah" })).toBe(true);
+    expect(isMosque({ building: "yes", name: "Langgar Kidul" })).toBe(true);
+  });
+
+  it("but not other religions, other things with a mosque's name, or places no longer in use", () => {
+    expect(isMosque({ amenity: "place_of_worship", religion: "christian", name: "Masjid" })).toBe(false);
+    expect(isMosque({ amenity: "place_of_worship", name: "Gereja Santo Yosef" })).toBe(false);
+    expect(isMosque({ building: "yes", name: "Gedung Serbaguna" })).toBe(false);
+    expect(isMosque({ highway: "bus_stop", name: "Masjid Raya" })).toBe(false);
+    expect(isMosque({ building: "retail", shop: "clothes", name: "Masjid Busana" })).toBe(false);
+    expect(isMosque({ name: "Masjid Raya" })).toBe(false);
+    expect(isMosque({ amenity: "place_of_worship", religion: "muslim", disused: "yes" })).toBe(false);
+    expect(isMosque({ building: "ruins", name: "Masjid Tua" })).toBe(false);
+  });
+});
+
+describe("osmIdOf", () => {
+  it("reads node, way and relation ids, and turns area ids back into them", () => {
+    expect(osmIdOf("n123")).toBe("n123");
+    expect(osmIdOf("w45")).toBe("w45");
+    expect(osmIdOf("a246")).toBe("w123");
+    expect(osmIdOf("a247")).toBe("r123");
+    expect(osmIdOf(17)).toBeNull();
+    expect(osmIdOf(undefined)).toBeNull();
+  });
+});
+
+describe("placeFromFeature", () => {
+  it("places a point where it is, and a building at the center of its bounds", () => {
+    expect(
+      placeFromFeature({
+        id: "n1",
+        geometry: { type: "Point", coordinates: [106.8, -6.2] },
+        properties: { amenity: "place_of_worship", religion: "muslim", name: "Mushola Al-Amin", "addr:street": "Jl. Damai" },
+      })
+    ).toEqual({ id: "n1", lat: -6.2, lng: 106.8, type: "musholla", name: "Mushola Al-Amin", osmName: "Mushola Al-Amin", street: "Jl. Damai", rank: 7 });
+
+    const building = placeFromFeature({
+      id: "a20",
+      geometry: { type: "Polygon", coordinates: [[[106.8, -6.2], [106.802, -6.2], [106.802, -6.198], [106.8, -6.198], [106.8, -6.2]]] },
+      properties: { building: "mosque" },
+    });
+    expect(building).toMatchObject({ id: "w10", type: "masjid", name: "Masjid", osmName: undefined, rank: 0 });
+    expect(building!.lat).toBeCloseTo(-6.199, 6);
+    expect(building!.lng).toBeCloseTo(106.801, 6);
+  });
+
+  it("skips what isn't a mosque, or has no position", () => {
+    expect(placeFromFeature({ id: "n1", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { shop: "bakery" } })).toBeNull();
+    expect(placeFromFeature({ id: "n1", geometry: null, properties: { building: "mosque" } })).toBeNull();
+    expect(placeFromFeature({ id: "x", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { building: "mosque" } })).toBeNull();
   });
 });

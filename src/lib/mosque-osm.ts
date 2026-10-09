@@ -53,6 +53,108 @@ export function displayName(tags: Tags | undefined): string {
   return name;
 }
 
+/** Keys that make a building named like a mosque something else (a shop, a bus stop, …) */
+const SOMETHING_ELSE = [
+  "amenity", "shop", "office", "craft", "tourism", "leisure", "healthcare", "highway",
+  "railway", "public_transport", "aeroway", "man_made", "power", "emergency",
+];
+
+/**
+ * Whether the tags describe a masjid or a musholla in use: what the Overpass query asks
+ * for, and also a building that only has a mosque's name (mapped from the air, often).
+ */
+export function isMosque(tags: Tags): boolean {
+  if (tags.disused === "yes" || tags.abandoned === "yes" || tags.ruins === "yes" || tags.building === "ruins") return false;
+  const religion = tags.religion?.toLowerCase();
+  if (religion && religion !== "muslim" && religion !== "islam") return false;
+  if (tags.amenity === "place_of_worship") return Boolean(religion) || isIslamicName(osmName(tags)) || MUSHOLLA_TAG.test(tags.place_of_worship ?? "");
+  if (/^(?:mosque|musalla)$/i.test(tags.building ?? "") || MUSHOLLA_TAG.test(tags.place_of_worship ?? "")) return true;
+  return Boolean(tags.building) && isIslamicName(osmName(tags)) && !SOMETHING_ELSE.some((key) => tags[key]);
+}
+
+/** How much an entry tells: of two describing one place, the fuller one is kept */
+export function completeness(tags: Tags): number {
+  return (osmName(tags) ? 4 : 0) + (tags["addr:street"] || tags["addr:full"] ? 2 : 0) + (tags.amenity ? 1 : 0);
+}
+
+/** A place in the mosque dataset, before duplicates are dropped */
+export interface OsmPlace {
+  /** n123, w123 or r123 */
+  id: string;
+  lat: number;
+  lng: number;
+  type: MosqueType;
+  /** The name to show (see displayName) */
+  name: string;
+  /** OpenStreetMap's own name, for finding duplicates */
+  osmName?: string;
+  street?: string;
+  /** See completeness() */
+  rank: number;
+}
+
+type Position = readonly number[];
+
+/** Every position of a GeoJSON geometry's coordinates, however deeply nested */
+function* positions(coordinates: unknown): Generator<Position> {
+  if (!Array.isArray(coordinates)) return;
+  if (typeof coordinates[0] === "number") {
+    yield coordinates as Position;
+    return;
+  }
+  for (const inner of coordinates) yield* positions(inner);
+}
+
+/**
+ * The OpenStreetMap id behind an `osmium export --add-unique-id=type_id` feature id:
+ * n123, w123 and r123 as they are; an area's a246 is way 123, a247 relation 123.
+ */
+export function osmIdOf(featureId: unknown): string | null {
+  const match = /^([nwra])(\d+)$/.exec(String(featureId ?? ""));
+  if (!match) return null;
+  if (match[1] !== "a") return `${match[1]}${match[2]}`;
+  const area = Number(match[2]);
+  return area % 2 === 0 ? `w${area / 2}` : `r${(area - 1) / 2}`;
+}
+
+/**
+ * A feature of the GeoJSON sequence `osmium export` writes, as a place of the dataset;
+ * null when it isn't a mosque. A building's position is the center of its bounding box,
+ * like Overpass's "out center".
+ */
+export function placeFromFeature(feature: {
+  id?: unknown;
+  geometry?: { type?: string; coordinates?: unknown } | null;
+  properties?: Record<string, unknown> | null;
+}): OsmPlace | null {
+  const tags: Record<string, string> = {};
+  for (const [key, value] of Object.entries(feature.properties ?? {})) {
+    if (typeof value === "string") tags[key] = value;
+  }
+  const id = osmIdOf(feature.id);
+  if (!id || !isMosque(tags)) return null;
+
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const [lng, lat] of positions(feature.geometry?.coordinates)) {
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
+    minLng = Math.min(minLng, lng);
+    maxLng = Math.max(maxLng, lng);
+  }
+  if (!Number.isFinite(minLat) || !Number.isFinite(minLng)) return null;
+
+  return {
+    id,
+    lat: (minLat + maxLat) / 2,
+    lng: (minLng + maxLng) / 2,
+    type: classifyType(tags),
+    name: displayName(tags),
+    osmName: osmName(tags) || undefined,
+    street: tags["addr:street"] || tags["addr:full"] || undefined,
+    rank: completeness(tags),
+  };
+}
+
 /**
  * A name reduced for comparison: case, accents, punctuation and the spellings of
  * "masjid" and "musholla" ignored ("Masjid Jami' Al-Ikhlas" = "mesjid jami al ikhlas").
@@ -100,13 +202,18 @@ const CELL_DEG = 0.001;
  * Drops the entries that describe a place already in the list: one with the same name
  * within 100 m (a mosque mapped both as a point and as its building), or one without a
  * name within 60 m of another. `places` comes in order of preference: of duplicates,
- * the first is kept, so put named and more complete entries first.
+ * the first is kept, so put named and more complete entries first. `nameOf` gives each
+ * entry's OpenStreetMap name (none: "" or undefined).
  */
-export function dedupe<T extends { name?: string; lat: number; lng: number }>(places: readonly T[]): T[] {
+export function dedupe<T extends { lat: number; lng: number }>(
+  places: readonly T[],
+  nameOf: (place: T) => string | undefined = (place) => (place as { name?: string }).name
+): T[] {
   const kept: T[] = [];
   const grid = new Map<string, { place: T; key: string }[]>();
   for (const place of places) {
-    const key = place.name ? normalizeName(place.name) : "";
+    const name = nameOf(place);
+    const key = name ? normalizeName(name) : "";
     const row = Math.floor(place.lat / CELL_DEG);
     const col = Math.floor(place.lng / CELL_DEG);
     let duplicate = false;
