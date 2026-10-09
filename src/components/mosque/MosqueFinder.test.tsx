@@ -239,6 +239,10 @@ describe("MosqueFinder: results", () => {
       "href",
       "https://www.openstreetmap.org/copyright"
     );
+    expect(screen.getByRole("link", { name: /Overture Maps Foundation/ })).toHaveAttribute(
+      "href",
+      "https://docs.overturemaps.org/attribution/"
+    );
   });
 
   it("keeps the location, the search, the results and the links out of Clarity recordings", async () => {

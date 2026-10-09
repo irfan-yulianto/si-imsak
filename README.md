@@ -9,7 +9,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, dalam satu tabel ringkas untuk semua layar: di HP tabelnya bisa digeser ke dua arah dengan kolom tanggal dan judul kolom tetap terlihat, dan dibuka di baris hari ini
 - **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`), dihitung di perangkat sehingga tetap jalan offline. Tanggal resmi di Indonesia mengikuti sidang isbat Kemenag, jadi di sekitar awal bulan Hijriyah tanggalnya bisa berbeda satu hari. Endpoint kalender MyQuran v3 sudah dicek sebagai alternatif: metodenya perhitungan "standar", bukan hasil isbat, jadi tidak lebih akurat
 - **Pencari Masjid Terdekat** — Masjid dan musholla terdekat dari posisi GPS, atau di sekitar pusat kota pilihan, dengan navigasi langsung ke Google Maps.
-  - Datanya dari OpenStreetMap, dibangun ulang setiap minggu menjadi dataset sendiri (lihat "Data masjid"). Dataset ini dibaca oleh server, tanpa layanan pihak ketiga saat pencarian.
+  - Datanya dari OpenStreetMap, dilengkapi Overture Places untuk masjid yang belum dipetakan di OpenStreetMap, dan dibangun ulang setiap minggu menjadi dataset sendiri (lihat "Data masjid"). Dataset ini dibaca oleh server, tanpa layanan pihak ketiga saat pencarian.
   - Bila izin lokasi sudah diberikan, GPS langsung dipakai tanpa perlu menekan tombol.
   - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
   - Titik dan bangunan untuk masjid yang sama ditampilkan sekali, dan musholla dikenali dari namanya.
@@ -39,7 +39,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 | Data | Sumber |
 |------|--------|
 | Jadwal Sholat | [MyQuran API v3](https://api.myquran.com) — data resmi Kemenag RI |
-| Masjid Terdekat | [OpenStreetMap](https://www.openstreetmap.org/copyright): `data/mosques.tsv`, dibangun setiap minggu dari ekstrak Geofabrik oleh workflow **Mosque data** (ODbL). Server menjawab dari dataset ini di memori |
+| Masjid Terdekat | [OpenStreetMap](https://www.openstreetmap.org/copyright) dan [Overture Maps Foundation](https://docs.overturemaps.org/attribution/): `data/mosques.tsv`, dibangun setiap minggu dari ekstrak Geofabrik dan rilis Overture terbaru oleh workflow **Mosque data** (ODbL; bagian Overture juga CDLA-Permissive-2.0). Server menjawab dari dataset ini di memori |
 | Deteksi Kota | [Nominatim](https://nominatim.org) (OpenStreetMap) — reverse geocoding |
 | Sinkronisasi Waktu | Endpoint `/api/time` (jam server) — fallback ke waktu lokal perangkat |
 
@@ -120,7 +120,7 @@ src/
 │   ├── http.ts                  # Jawaban JSON, panggilan upstream, gerbang 1 req/detik untuk Nominatim
 │   ├── log.ts                   # Log JSON satu baris untuk route API
 │   ├── messages.ts              # Pesan error dan status untuk pengguna (pencari masjid: mosque-messages.ts)
-│   ├── mosque-osm.ts            # Nama, jenis (masjid/musholla), dan duplikat dari tag OpenStreetMap; tanpa import
+│   ├── mosque-osm.ts            # Nama, jenis (masjid/musholla), dan duplikat dari OpenStreetMap; tambahan dari Overture; tanpa import
 │   ├── mosque-index.ts          # Dataset di memori: grid 0,01°, masjid terdekat dan cakupannya (server)
 │   ├── mosques.ts               # Aturan cakupan di klien: urutan dari posisi persis, kapan bertanya lagi
 │   ├── mosque-tsv.ts            # Format data/mosques.tsv dan validasinya; tanpa import
@@ -146,8 +146,8 @@ public/
 └── .well-known/security.txt
 e2e/                             # Tes Playwright + mock upstream (mock-upstream.mjs)
 scripts/                         # Anggaran bundle, diff screenshot, screenshot PWA, synthetic monitoring
-└── mosque-data/                 # Pembangun data/mosques.tsv dari OpenStreetMap (lihat "Data masjid")
-data/                            # data/mosques.tsv (ODbL, data/LICENSE), diperbarui workflow Mosque data
+└── mosque-data/                 # Pembangun data/mosques.tsv dari OpenStreetMap dan Overture (lihat "Data masjid")
+data/                            # data/mosques.tsv (ODbL dan CDLA-Permissive-2.0, data/LICENSE), diperbarui workflow Mosque data
 ```
 
 ## Keamanan
@@ -275,7 +275,7 @@ node scripts/pwa-screenshots.mjs
 
 ### Synthetic monitoring
 
-Workflow **Synthetic** (`.github/workflows/synthetic.yml`, skrip `scripts/synthetic.sh`) memeriksa production tiap jam di menit ke-17: header keamanan, region function (`sin1`), jadwal bulan berjalan, pencarian masjid (minimal 10 di dekat Monas, dari data OpenStreetMap yang umurnya tidak lebih dari 21 hari), file statis, dan kontrak API MyQuran. Sekali sehari ia juga memeriksa Nominatim, lalu membuka situs di Chromium dengan skrip Clarity dan Vercel yang asli untuk menangkap pelanggaran CSP. Kegagalan membuka issue berlabel `synthetic-failure`, yang tertutup sendiri saat pemeriksaan kembali lulus. Workflow ini juga bisa dijalankan manual dari tab Actions.
+Workflow **Synthetic** (`.github/workflows/synthetic.yml`, skrip `scripts/synthetic.sh`) memeriksa production tiap jam di menit ke-17: header keamanan, region function (`sin1`), jadwal bulan berjalan, pencarian masjid (minimal 10 di dekat Monas, dari data yang umurnya tidak lebih dari 21 hari), file statis, dan kontrak API MyQuran. Sekali sehari ia juga memeriksa Nominatim, lalu membuka situs di Chromium dengan skrip Clarity dan Vercel yang asli untuk menangkap pelanggaran CSP. Kegagalan membuka issue berlabel `synthetic-failure`, yang tertutup sendiri saat pemeriksaan kembali lulus. Workflow ini juga bisa dijalankan manual dari tab Actions.
 
 Runner GitHub berjalan di IP datacenter, sehingga Vercel Firewall bisa menantangnya dengan halaman "Security Checkpoint" (HTTP 429). Monitor melaporkannya sebagai kegagalan tersendiri, dan situs tidak ikut diperiksa. Agar monitor bisa lewat:
 
@@ -289,31 +289,37 @@ GitHub mematikan workflow terjadwal setelah 60 hari tanpa aktivitas di repo. Bil
 
 ### Data masjid
 
-Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/mosques.tsv`, yaitu masjid dan musholla di Indonesia dari OpenStreetMap. Datanya diambil dari ekstrak Geofabrik dan diperbarui setiap Selasa pukul 02.23 WIB. Workflow ini juga bisa dijalankan manual dari tab Actions.
+Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/mosques.tsv`, yaitu masjid dan musholla di Indonesia dari OpenStreetMap, ditambah yang hanya ada di Overture Places. Datanya diambil dari ekstrak Geofabrik dan rilis Overture terbaru, dan diperbarui setiap Selasa pukul 02.23 WIB. Workflow ini juga bisa dijalankan manual dari tab Actions.
 
 **Cara dataset dibangun** (`scripts/mosque-data/build.sh`):
 1. `osmium tags-filter` menyaring calon dengan `filters.txt`.
 2. `osmium export` mengubahnya menjadi GeoJSON.
-3. `build.mjs` memakai aturan yang sama dengan aplikasi (`src/lib/mosque-osm.ts`):
+3. `overturemaps download` mengambil tempat Overture di kotak Indonesia, lalu `overture.py` menyisakan yang:
+   - beralamat di Indonesia (kotaknya juga mencakup Malaysia, Singapura, dan Brunei);
+   - seluruh sumbernya berlisensi CDLA-Permissive-2.0;
+   - namanya mungkin nama masjid.
+4. `build.mjs` memakai aturan yang sama dengan aplikasi (`src/lib/mosque-osm.ts`):
    - tempat ibadah Muslim, bangunan masjid, dan bangunan yang bernama masjid atau musholla ikut;
-   - masjid yang dipetakan sebagai titik sekaligus bangunan ditulis sekali.
+   - masjid yang dipetakan sebagai titik sekaligus bangunan ditulis sekali;
+   - dari Overture, hanya tempat yang namanya berawalan Masjid, Musholla, Langgar, Surau, Meunasah, atau Tajug, dan yang confidence-nya minimal 0,5 (`OVERTURE_MIN_CONFIDENCE`);
+   - tempat Overture dilewati bila ada tempat lain dalam 60 m, atau tempat bernama mirip dalam 300 m. Dua sumber sering menaruh satu masjid di titik yang berbeda, dan Overture kadang punya beberapa halaman untuk satu masjid.
+
+ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture berbentuk `o` diikuti ID Overture tanpa tanda hubung.
 
 **Validasi** (`validate.mjs`) menolak dataset bila:
 - ada ID ganda;
 - ada titik di luar Indonesia;
 - Istiqlal, Baiturrahman, atau Al-Akbar hilang;
-- jumlahnya berubah lebih dari 5% dalam seminggu.
+- jumlah dari OpenStreetMap berubah lebih dari 5%, atau jumlah dari Overture lebih dari 10%, dibanding data sebelumnya. Unduhan Overture yang gagal ikut tertangkap aturan ini.
 
 **Publikasi.** Bila datanya berubah, `publish.sh` membuka pull request dari branch `data/mosques`, menjalankan CI di atasnya, lalu me-merge-nya bila hijau.
 - Dataset pertama tidak di-merge otomatis.
 - PR data juga menunggu pemilik bila ruleset mewajibkan review atau check `screenshots (base vs head)` (check itu tidak jalan untuk PR buatan workflow).
 - Supaya workflow boleh membuka pull request, aktifkan **Allow GitHub Actions to create and approve pull requests** (Settings → Actions → General → Workflow permissions).
 
-**Overture Places.** Dari tab Actions, centang **overture** untuk mengukur tambahan dari Overture Places dibanding OpenStreetMap. Hasilnya ditulis di ringkasan job dan di log langkah **Measure**. Pengukuran ini tidak mengubah dataset.
-
 **Uji coba perubahan.** Pull request yang mengubah pipeline ini juga menjalankan build dan validasi pada data sungguhan, tanpa membuka PR data. Datasetnya bisa diunduh dari artifact `mosques`.
 
-**Lisensi.** Datanya © kontributor OpenStreetMap, berlisensi ODbL 1.0 (`data/LICENSE`).
+**Lisensi.** Datanya © kontributor OpenStreetMap dan Overture Maps Foundation, berlisensi ODbL 1.0. Bagian dari Overture juga berlisensi CDLA-Permissive-2.0, yang mewajibkan teksnya disertakan bersama data. Teks itu ada di `data/LICENSE`, dan UI menampilkan kedua sumber.
 
 ### Dependensi
 

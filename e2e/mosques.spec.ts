@@ -68,5 +68,6 @@ test.describe("before the location is allowed", () => {
     await expect(page.getByText("Sekitar pusat KOTA JAKARTA, bukan lokasi Anda")).toBeVisible();
     await expect(page.getByRole("button", { name: "Gunakan Lokasi GPS" })).toBeVisible();
     await expect(page.getByRole("link", { name: "kontributor OpenStreetMap (buka di tab baru)" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Overture Maps Foundation (buka di tab baru)" })).toBeVisible();
   });
 });

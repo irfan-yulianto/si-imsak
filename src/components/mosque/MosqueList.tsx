@@ -137,12 +137,17 @@ export default function MosqueList({ mosques, loading, error, coords, onRetry }:
             <span className="sr-only"> (buka di tab baru)</span>
           </a>
 
-          {/* The data's source (its license asks for this), and a way to add what it lacks */}
+          {/* The data's sources (their licenses ask for this), and a way to add what they lack */}
           <p className="text-center text-xs leading-relaxed text-fg-subtle">
             {mosques.length > 0 && "Jarak diukur dalam garis lurus. "}
             Data ©{" "}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-fg">
               kontributor OpenStreetMap
+              <span className="sr-only"> (buka di tab baru)</span>
+            </a>{" "}
+            dan{" "}
+            <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-fg">
+              Overture Maps Foundation
               <span className="sr-only"> (buka di tab baru)</span>
             </a>
             {noteUrl && (

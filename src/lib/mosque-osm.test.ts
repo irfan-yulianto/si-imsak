@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  addMissing,
   classifyType,
   dedupe,
   displayName,
@@ -8,7 +9,9 @@ import {
   isMosque,
   normalizeName,
   osmIdOf,
+  OVERTURE_MIN_CONFIDENCE,
   placeFromFeature,
+  placeFromOverture,
 } from "./mosque-osm";
 
 describe("classifyType", () => {
@@ -201,14 +204,14 @@ describe("placeFromFeature", () => {
         geometry: { type: "Point", coordinates: [106.8, -6.2] },
         properties: { amenity: "place_of_worship", religion: "muslim", name: "Mushola Al-Amin", "addr:street": "Jl. Damai" },
       })
-    ).toEqual({ id: "n1", lat: -6.2, lng: 106.8, type: "musholla", name: "Mushola Al-Amin", osmName: "Mushola Al-Amin", street: "Jl. Damai", rank: 7 });
+    ).toEqual({ id: "n1", lat: -6.2, lng: 106.8, type: "musholla", name: "Mushola Al-Amin", sourceName: "Mushola Al-Amin", street: "Jl. Damai", rank: 7 });
 
     const building = placeFromFeature({
       id: "a20",
       geometry: { type: "Polygon", coordinates: [[[106.8, -6.2], [106.802, -6.2], [106.802, -6.198], [106.8, -6.198], [106.8, -6.2]]] },
       properties: { building: "mosque" },
     });
-    expect(building).toMatchObject({ id: "w10", type: "masjid", name: "Masjid", osmName: undefined, rank: 0 });
+    expect(building).toMatchObject({ id: "w10", type: "masjid", name: "Masjid", sourceName: undefined, rank: 0 });
     expect(building!.lat).toBeCloseTo(-6.199, 6);
     expect(building!.lng).toBeCloseTo(106.801, 6);
   });
@@ -217,5 +220,76 @@ describe("placeFromFeature", () => {
     expect(placeFromFeature({ id: "n1", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { shop: "bakery" } })).toBeNull();
     expect(placeFromFeature({ id: "n1", geometry: null, properties: { building: "mosque" } })).toBeNull();
     expect(placeFromFeature({ id: "x", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { building: "mosque" } })).toBeNull();
+  });
+});
+
+describe("placeFromOverture", () => {
+  const record = { id: "E46A95AF-60b4-4e83-8418-7ca17f1f7349", lat: -6.2, lng: 106.8, name: " Mushola  Al-Amin ", street: "Jl. Damai,", confidence: 0.8 };
+
+  it("takes a place named like a mosque that Overture is sure enough of", () => {
+    expect(placeFromOverture(record)).toEqual({
+      id: "oe46a95af60b44e8384187ca17f1f7349",
+      lat: -6.2,
+      lng: 106.8,
+      type: "musholla",
+      name: "Mushola Al-Amin",
+      sourceName: "Mushola Al-Amin",
+      street: "Jl. Damai",
+      rank: 0.8,
+    });
+    // A bare name is told apart by its street, as from OpenStreetMap
+    expect(placeFromOverture({ ...record, name: "Masjid", street: "Unnamed Road, Jl. Kenanga" })).toMatchObject({
+      type: "masjid",
+      name: "Masjid (Jl. Kenanga)",
+      street: "Jl. Kenanga",
+    });
+    expect(placeFromOverture({ ...record, street: "Unnamed Road" })?.street).toBeUndefined();
+  });
+
+  it.each([
+    ["a shop", { name: "Muslim Galeri Indonesia" }],
+    ["a madrasah", { name: "Madrasah As Sunnah" }],
+    ["a name that isn't a mosque's", { name: "Jembatan Sirotol Mustaqim" }],
+    ["a place Overture isn't sure of", { confidence: OVERTURE_MIN_CONFIDENCE - 0.01 }],
+    ["no confidence", { confidence: undefined }],
+    ["an id that isn't Overture's", { id: "n123" }],
+    ["no position", { lat: undefined }],
+  ])("leaves out %s", (_what, overrides) => {
+    expect(placeFromOverture({ ...record, ...overrides })).toBeNull();
+  });
+});
+
+describe("addMissing", () => {
+  // ~11 m per 0.0001°
+  const at = (name: string | undefined, dLat: number, type: "masjid" | "musholla" = "masjid") => ({ name, type, lat: -6.2 + dLat, lng: 106.8 });
+  const add = (listed: ReturnType<typeof at>[], others: ReturnType<typeof at>[]) => addMissing(listed, others, (place) => place.name);
+
+  it("adds what isn't listed nearby", () => {
+    const other = at("Masjid Nurul Huda", 0.001);
+    expect(add([at("Masjid Al-Ikhlas", 0)], [other])).toEqual([other]);
+  });
+
+  it("leaves out what is within 60 m of a listed place, whatever the names", () => {
+    expect(add([at("Masjid Raya Baiturrahman", 0)], [at("Masjid Jami Baiturrahim", 0.0005)])).toEqual([]);
+    expect(add([at(undefined, 0)], [at("Musholla Al-Amin", 0.0005)])).toEqual([]);
+  });
+
+  it("leaves out what is named alike within 300 m: the same mosque, placed elsewhere", () => {
+    const listed = [at("Al-Ikhlas", 0)];
+    // The same name, its longer form, and the same but for "Masjid Jami'"
+    expect(add([at("Masjid Al-Ikhlas", 0)], [at("MASJID AL IKHLAS", 0.002)])).toEqual([]);
+    expect(add([at("Masjid Baitul Hikmah", 0)], [at("Masjid Baitul Hikmah Gondolayu", 0.002)])).toEqual([]);
+    expect(add(listed, [at("Masjid Jami' Al-Ikhlas", 0.002)])).toEqual([]);
+    // Further, it is another one
+    expect(add(listed, [at("Masjid Al-Ikhlas", 0.004)])).toHaveLength(1);
+    // A musholla of the same name is another place
+    expect(add(listed, [at("Musholla Al-Ikhlas", 0.002, "musholla")])).toHaveLength(1);
+    // So are two that are only called "Masjid"
+    expect(add([at("Masjid", 0)], [at("Masjid", 0.002)])).toHaveLength(1);
+  });
+
+  it("adds a place the other source has twice once, the first given", () => {
+    const sure = at("Masjid An-Nur", 0.003);
+    expect(add([], [sure, at("Masjid An Nur", 0.0045), at("Masjid At-Taqwa", 0.0035)])).toEqual([sure]);
   });
 });

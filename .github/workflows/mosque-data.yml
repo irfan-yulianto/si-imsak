@@ -1,21 +1,16 @@
 name: Mosque data
 
-# The mosques and mushollas of Indonesia in OpenStreetMap, as data/mosques.tsv, built
-# from Geofabrik's daily extract (scripts/mosque-data/build.sh). Every week, or by hand,
-# a change becomes a pull request from the branch data/mosques, which this workflow
-# merges once CI passes; the first dataset waits for a person (publish.sh). On a pull
-# request that changes the build, it only builds and checks: the change meets real data
-# before it is merged.
+# The mosques and mushollas of Indonesia as data/mosques.tsv: OpenStreetMap's, from
+# Geofabrik's daily extract, and those Overture Places adds where OpenStreetMap has none
+# (scripts/mosque-data/build.sh). Every week, or by hand, a change becomes a pull request
+# from the branch data/mosques, which this workflow merges once CI passes; the first
+# dataset waits for a person (publish.sh). On a pull request that changes the build, it
+# only builds and checks: the change meets real data before it is merged.
 on:
   schedule:
     # Tuesdays, 02:23 WIB
     - cron: "23 19 * * 1"
   workflow_dispatch:
-    inputs:
-      overture:
-        description: "Also measure what Overture Places would add (job summary and log only)"
-        type: boolean
-        default: false
   pull_request:
     paths:
       - ".github/workflows/mosque-data.yml"
@@ -51,8 +46,12 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Install osmium
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+      - name: Install osmium and the Overture client
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "overturemaps==1.0.2"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
 
       - name: Download Geofabrik's extract of Indonesia
         working-directory: ${{ runner.temp }}
@@ -63,10 +62,19 @@ jobs:
           md5sum -c indonesia-latest.osm.pbf.md5
           ls -lh indonesia-latest.osm.pbf
 
+      - name: Download Overture's places in Indonesia
+        working-directory: ${{ runner.temp }}
+        run: |
+          # The latest release: Overture keeps only the last two months' online
+          release=$(python3 -c "from overturemaps.core import get_latest_release; print(get_latest_release())")
+          echo "OVERTURE_RELEASE=$release" >> "$GITHUB_ENV"
+          overturemaps download --release="$release" --bbox=95,-11,141,6 -f geoparquet --type=place -o places.parquet
+          python3 "$GITHUB_WORKSPACE/scripts/mosque-data/overture.py" places.parquet overture.jsonl
+
       - name: Build
         run: |
           git show HEAD:data/mosques.tsv > "$RUNNER_TEMP/previous.tsv" 2>/dev/null || rm -f "$RUNNER_TEMP/previous.tsv"
-          scripts/mosque-data/build.sh "$RUNNER_TEMP/indonesia-latest.osm.pbf" "$RUNNER_TEMP"
+          scripts/mosque-data/build.sh "$RUNNER_TEMP/indonesia-latest.osm.pbf" "$RUNNER_TEMP" "$RUNNER_TEMP/overture.jsonl" "$OVERTURE_RELEASE"
 
       - name: Check
         run: |
@@ -91,29 +99,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/mosque-data/publish.sh
-
-  overture:
-    name: measure Overture Places
-    if: github.repository == 'irfan-yulianto/si-imsak' && github.event_name == 'workflow_dispatch' && inputs.overture
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install the Overture client and DuckDB
-        run: |
-          python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install --quiet "overturemaps>=0.10" "duckdb>=1.1"
-          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
-
-      - name: Download Overture's places in Indonesia
-        run: overturemaps download --bbox=95,-11,141,6 -f geoparquet --type=place -o "$RUNNER_TEMP/places.parquet"
-
-      - name: Measure
-        # In the log too, where the API can read it; bash for pipefail
-        shell: bash
-        run: python3 scripts/mosque-data/overture-measure.py "$RUNNER_TEMP/places.parquet" data/mosques.tsv | tee -a "$GITHUB_STEP_SUMMARY"

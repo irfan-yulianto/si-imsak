@@ -2,7 +2,22 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.2.1
+## [Belum dirilis] — v2.3.0
+
+Pencari masjid kini juga mengenal masjid dan musholla yang belum dipetakan di OpenStreetMap.
+
+### Ditambahkan
+- **Overture Places.** Dataset masjid ditambah tempat dari Overture Maps Foundation (data Meta, lisensi CDLA-Permissive-2.0) yang belum ada di OpenStreetMap. Pada data saat ini, tambahannya sekitar 32 ribu tempat (+43%): Jakarta +38%, Bandung +141%, Medan +65%.
+  - **Yang diambil:** hanya tempat beralamat di Indonesia, bernama Masjid, Musholla, Langgar, Surau, Meunasah, atau Tajug, dengan confidence minimal 0,5. Toko, madrasah, dan yayasan tidak ikut.
+  - **Duplikat:** tempat Overture dilewati bila ada tempat lain dalam 60 m, atau tempat bernama mirip dalam 300 m.
+  - **Akurasi posisi:** pada masjid yang ada di kedua sumber, posisi Overture berselisih median 13 m dari OpenStreetMap.
+- **Atribusi.** Daftar masjid menyebut kontributor OpenStreetMap dan Overture Maps Foundation, dan `data/LICENSE` memuat teks CDLA-Permissive-2.0.
+
+### Diubah
+- **Validasi per sumber.** Jumlah dari OpenStreetMap boleh berubah 5% per minggu, dan dari Overture 10%. Unduhan Overture yang gagal ikut tertangkap.
+- **Pengukuran Overture dihapus.** Tambahannya kini tercatat di ringkasan setiap build.
+
+## [2.2.1] — 2026-10-09 ([#493](https://github.com/irfan-yulianto/si-imsak/pull/493))
 
 ### Diperbaiki
 - **Duplikat dengan nama lebih panjang.** Dataset masjid juga membuang duplikat yang namanya lebih panjang, bila nama yang satu adalah awal nama yang lain. Contohnya "Masjid Baitul Hikmah" dan "Masjid Baitul Hikmah Gondolayu Lor" dalam 100 m. Nama pendeknya harus tiga kata, supaya "Masjid Raya" tidak menelan "Masjid Raya Bintaro".
