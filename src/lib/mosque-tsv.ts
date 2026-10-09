@@ -1,12 +1,12 @@
 // The mosque dataset's file, data/mosques.tsv: a header, then one place per line, sorted
-// by OpenStreetMap id so that a week's changes make a small diff. Coordinates are whole
-// numbers of 1e-5 degrees (~1 m). Written by the dataset build (scripts/mosque-data),
-// read by /api/mosques. No imports: plain Node reads this file too.
+// by id (OpenStreetMap's, then Overture's) so that a week's changes make a small diff.
+// Coordinates are whole numbers of 1e-5 degrees (~1 m). Written by the dataset build
+// (scripts/mosque-data), read by /api/mosques. No imports: plain Node reads this file too.
 
 export const TSV_HEADER = "id\tlat\tlng\ttype\tname\tstreet";
 
 export interface DatasetRow {
-  /** n123, w123 or r123 */
+  /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture */
   id: string;
   lat: number;
   lng: number;
@@ -15,13 +15,29 @@ export interface DatasetRow {
   street?: string;
 }
 
-const ID = /^[nwr]\d+$/;
-const TYPE_ORDER = { n: 0, w: 1, r: 2 } as const;
+const ID = /^(?:[nwr]\d+|o[0-9a-f]{32})$/;
+const TYPE_ORDER = { n: 0, w: 1, r: 2, o: 3 } as const;
 
-/** Nodes, then ways, then relations, each by number */
+/** OpenStreetMap's nodes, ways and relations, each by number; then Overture's places */
 export function compareIds(a: string, b: string): number {
   const byType = TYPE_ORDER[a[0] as keyof typeof TYPE_ORDER] - TYPE_ORDER[b[0] as keyof typeof TYPE_ORDER];
-  return byType || Number(a.slice(1)) - Number(b.slice(1));
+  if (byType) return byType;
+  if (a[0] === "o") return a < b ? -1 : a > b ? 1 : 0;
+  return Number(a.slice(1)) - Number(b.slice(1));
+}
+
+export type DataSource = "openstreetmap" | "overture";
+
+/** Where a row of the dataset comes from, by its id */
+export function sourceOf(id: string): DataSource {
+  return id[0] === "o" ? "overture" : "openstreetmap";
+}
+
+/** How many rows each source gave */
+export function countBySource(rows: readonly DatasetRow[]): Record<DataSource, number> {
+  const counts = { openstreetmap: 0, overture: 0 };
+  for (const row of rows) counts[sourceOf(row.id)]++;
+  return counts;
 }
 
 /** A tab or a line break would split the row */
@@ -76,18 +92,28 @@ export const LANDMARKS = [
   { name: /akbar/i, lat: -7.3366, lng: 112.715, where: "Surabaya" },
 ] as const;
 
+/** How far each source's count may move in a week: OpenStreetMap's mapping is steady, Overture's monthly releases less so */
+const MAX_CHANGE: Record<DataSource, number> = { openstreetmap: 0.05, overture: 0.1 };
+
 /**
  * Why a freshly built dataset can't replace the committed one (none: it can): rows out
- * of bounds or repeated, landmarks missing, or a count that moved more than `maxChange`
- * (5%) from `previousCount`, which a week of mapping doesn't do but a broken build does.
+ * of bounds or repeated, landmarks missing, or a source whose count moved more than
+ * `maxChange` (5% for OpenStreetMap, 10% for Overture) from the `previous` dataset's,
+ * which a week doesn't do but a broken build or download does. A source the previous
+ * dataset didn't have isn't compared.
  */
 export function datasetProblems(
   rows: readonly DatasetRow[],
   {
     bounds,
-    previousCount,
-    maxChange = 0.05,
-  }: { bounds: { latMin: number; latMax: number; lngMin: number; lngMax: number }; previousCount?: number; maxChange?: number }
+    previous,
+    maxChange = MAX_CHANGE,
+  }: {
+    bounds: { latMin: number; latMax: number; lngMin: number; lngMax: number };
+    /** countBySource() of the previous dataset */
+    previous?: Record<DataSource, number>;
+    maxChange?: Record<DataSource, number>;
+  }
 ): string[] {
   const problems: string[] = [];
   const ids = new Set<string>();
@@ -105,10 +131,15 @@ export function datasetProblems(
     );
     if (!found) problems.push(`No ${landmark.name.source} mosque near ${landmark.where}`);
   }
-  if (previousCount) {
-    const change = (rows.length - previousCount) / previousCount;
-    if (Math.abs(change) > maxChange) {
-      problems.push(`${rows.length} places, ${(change * 100).toFixed(1)}% from ${previousCount}: more than ${maxChange * 100}%`);
+  if (previous) {
+    const counts = countBySource(rows);
+    for (const source of ["openstreetmap", "overture"] as const) {
+      const before = previous[source];
+      if (!before) continue;
+      const change = (counts[source] - before) / before;
+      if (Math.abs(change) > maxChange[source]) {
+        problems.push(`${counts[source]} places from ${source}, ${(change * 100).toFixed(1)}% from ${before}: more than ${maxChange[source] * 100}%`);
+      }
     }
   }
   return problems;

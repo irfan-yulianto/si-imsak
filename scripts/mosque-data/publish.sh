@@ -16,13 +16,13 @@ first=false
 git cat-file -e "HEAD:$file" 2>/dev/null || first=true
 
 date=$(date -u +%Y-%m-%d)
-title="chore(data): data masjid OpenStreetMap $date"
+title="chore(data): data masjid OpenStreetMap dan Overture $date"
 {
-  echo "Pembaruan mingguan data masjid dan musholla dari OpenStreetMap, dibuat oleh workflow **Mosque data**."
+  echo "Pembaruan mingguan data masjid dan musholla dari OpenStreetMap dan Overture Maps, dibuat oleh workflow **Mosque data**."
   echo
   cat "$RUNNER_TEMP/summary.md"
   echo
-  echo "Data © kontributor OpenStreetMap, lisensi [ODbL](https://opendatacommons.org/licenses/odbl/1-0/) (lihat \`data/LICENSE\`)."
+  echo "Data © kontributor OpenStreetMap ([ODbL](https://opendatacommons.org/licenses/odbl/1-0/)) dan Overture Maps Foundation ([CDLA-Permissive-2.0](https://cdla.dev/permissive-2-0/)); lihat \`data/LICENSE\`."
 } > "$RUNNER_TEMP/body.md"
 
 git config user.name "github-actions[bot]"

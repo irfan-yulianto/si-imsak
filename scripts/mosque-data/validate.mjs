@@ -5,7 +5,7 @@
 //   node scripts/mosque-data/validate.mjs data/mosques.tsv [previous.tsv] [summary.md]
 import fs from "node:fs";
 import { INDONESIA_BOUNDS } from "../../src/lib/constants.ts";
-import { datasetChanges, datasetProblems, parseTsv } from "../../src/lib/mosque-tsv.ts";
+import { countBySource, datasetChanges, datasetProblems, parseTsv } from "../../src/lib/mosque-tsv.ts";
 
 const [file, previousFile, summaryFile] = process.argv.slice(2);
 if (!file) {
@@ -15,14 +15,17 @@ if (!file) {
 
 const rows = parseTsv(fs.readFileSync(file, "utf8"));
 const previous = previousFile && fs.existsSync(previousFile) ? parseTsv(fs.readFileSync(previousFile, "utf8")) : null;
-const problems = datasetProblems(rows, { bounds: INDONESIA_BOUNDS, previousCount: previous?.length });
+const problems = datasetProblems(rows, { bounds: INDONESIA_BOUNDS, previous: previous ? countBySource(previous) : undefined });
 const changes = previous ? datasetChanges(previous, rows) : null;
 
 const masjid = rows.filter((row) => row.type === "masjid").length;
+const bySource = countBySource(rows);
+const n = (count) => count.toLocaleString("id-ID");
 const summary = [
-  `**${rows.length.toLocaleString("id-ID")}** tempat: ${masjid.toLocaleString("id-ID")} masjid, ${(rows.length - masjid).toLocaleString("id-ID")} musholla.`,
+  `**${n(rows.length)}** tempat: ${n(masjid)} masjid, ${n(rows.length - masjid)} musholla.`,
+  `Dari OpenStreetMap ${n(bySource.openstreetmap)}, dari Overture ${n(bySource.overture)}.`,
   changes
-    ? `Dibanding data sebelumnya (${previous.length.toLocaleString("id-ID")}): +${changes.added} baru, −${changes.removed} hilang, ${changes.changed} berubah.`
+    ? `Dibanding data sebelumnya (${n(previous.length)}): +${n(changes.added)} baru, −${n(changes.removed)} hilang, ${n(changes.changed)} berubah.`
     : "Dataset pertama.",
   ...(problems.length ? ["", "Masalah:", ...problems.slice(0, 20).map((p) => `- ${p}`)] : []),
 ].join("\n");

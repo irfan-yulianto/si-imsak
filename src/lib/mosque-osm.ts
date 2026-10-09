@@ -1,7 +1,8 @@
 // Mosques as OpenStreetMap describes them: what each is called, whether it is a masjid
-// or a musholla, and which entries describe the same place. Shared by the app and the
-// dataset build (scripts/mosque-data), which runs this file in plain Node: no imports,
-// and only TypeScript that Node can strip.
+// or a musholla, and which entries describe the same place; and the ones Overture Places
+// adds where OpenStreetMap has none. Shared by the app and the dataset build
+// (scripts/mosque-data), which runs this file in plain Node: no imports, and only
+// TypeScript that Node can strip.
 
 export type MosqueType = "masjid" | "musholla";
 
@@ -79,18 +80,18 @@ export function completeness(tags: Tags): number {
 }
 
 /** A place in the mosque dataset, before duplicates are dropped */
-export interface OsmPlace {
-  /** n123, w123 or r123 */
+export interface Place {
+  /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture */
   id: string;
   lat: number;
   lng: number;
   type: MosqueType;
   /** The name to show (see displayName) */
   name: string;
-  /** OpenStreetMap's own name, for finding duplicates */
-  osmName?: string;
+  /** The source's own name, for finding duplicates (none: unnamed) */
+  sourceName?: string;
   street?: string;
-  /** See completeness() */
+  /** Of two entries for one place, the higher ranks first: completeness() or Overture's confidence */
   rank: number;
 }
 
@@ -127,7 +128,7 @@ export function placeFromFeature(feature: {
   id?: unknown;
   geometry?: { type?: string; coordinates?: unknown } | null;
   properties?: Record<string, unknown> | null;
-}): OsmPlace | null {
+}): Place | null {
   const tags: Record<string, string> = {};
   for (const [key, value] of Object.entries(feature.properties ?? {})) {
     if (typeof value === "string") tags[key] = value;
@@ -150,7 +151,7 @@ export function placeFromFeature(feature: {
     lng: (minLng + maxLng) / 2,
     type: classifyType(tags),
     name: displayName(tags),
-    osmName: osmName(tags) || undefined,
+    sourceName: osmName(tags) || undefined,
     street: tags["addr:street"] || tags["addr:full"] || undefined,
     rank: completeness(tags),
   };
@@ -243,4 +244,123 @@ export function dedupe<T extends { lat: number; lng: number }>(
     grid.set(cell, [...(grid.get(cell) ?? []), { place, key }]);
   }
   return kept;
+}
+
+/** Overture's confidence below which its place is left out: a page that may name no mosque there */
+export const OVERTURE_MIN_CONFIDENCE = 0.5;
+
+/** A line of scripts/mosque-data/overture.py's output: an Overture place in Indonesia */
+export interface OvertureRecord {
+  id?: unknown;
+  lat?: unknown;
+  lng?: unknown;
+  name?: unknown;
+  /** Overture's freeform address */
+  street?: unknown;
+  confidence?: unknown;
+}
+
+const trimmed = (value: unknown) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
+
+/**
+ * An Overture place as a place of the dataset; null unless it is named like a masjid or a
+ * musholla (not a shop called "Muslim …", a madrasah or a yayasan) and Overture is sure
+ * enough of it. Its id is "o" and Overture's, without the dashes.
+ */
+export function placeFromOverture(record: OvertureRecord): Place | null {
+  const id = trimmed(record.id).replace(/-/g, "").toLowerCase();
+  const { lat, lng, confidence } = record;
+  const name = trimmed(record.name);
+  if (!/^[0-9a-f]{32}$/.test(id) || typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  if (typeof confidence !== "number" || !(confidence >= OVERTURE_MIN_CONFIDENCE) || !isIslamicName(name)) return null;
+  // Overture writes "Unnamed Road" where it knows no street
+  const street = trimmed(record.street).replace(/^unnamed road\b,?\s*/i, "").replace(/[\s,]+$/, "") || undefined;
+  return {
+    id: `o${id}`,
+    lat,
+    lng,
+    type: classifyType({ name }),
+    name: displayName({ name, "addr:full": street }),
+    sourceName: name,
+    street,
+    rank: confidence,
+  };
+}
+
+/** A place of another source this close to one listed is that one, whatever their names */
+const ANOTHER_SOURCE_M = 60;
+/**
+ * ...and this close, when named alike: two sources (or Overture's pages for one mosque)
+ * put one mosque up to a few hundred meters apart
+ */
+const NAMED_ALIKE_M = 300;
+/** Grid cells (degrees, ~330 m): every pair within 300 m is in neighbouring cells */
+const WIDE_CELL_DEG = 0.003;
+/** The words a name opens with to say what it is, which say nothing of which one it is */
+const KIND_WORDS = /^(?:masjid|musholla|langgar|surau|meunasah|tajug)(?: (?:jami|jamik|jamie|raya|agung|besar))?(?: |$)/;
+
+interface Listed<T> {
+  place: T;
+  /** normalizeName() of its name; "" for none, or one that only says what it is ("Masjid") */
+  name: string;
+  /** The name without its kind words: "Masjid Jami' Al-Ikhlas" → "al ikhlas" */
+  core: string;
+}
+
+/**
+ * Whether two entries carry one name: the same (see sameName), or the same but for the
+ * words that say what they are, for the same kind of place ("Al-Ikhlas" and "Masjid Jami'
+ * Al-Ikhlas" are one, "Musholla Al-Ikhlas" is another).
+ */
+function namedAlike<T extends { type: MosqueType }>(a: Listed<T>, b: Listed<T>): boolean {
+  if (!a.name || !b.name) return false;
+  return sameName(a.name, b.name) || (a.place.type === b.place.type && a.core.length >= 4 && a.core === b.core);
+}
+
+/**
+ * The places of `others` (another source) that `listed` lacks, to add to it: those with
+ * no listed place within 60 m, nor one named alike within 300 m. `others` comes in order
+ * of preference, and each one added counts as listed for the next: a place the other
+ * source has twice is added once. `nameOf` gives each place's own name (none: "" or undefined).
+ */
+export function addMissing<T extends { lat: number; lng: number; type: MosqueType }>(
+  listed: readonly T[],
+  others: readonly T[],
+  nameOf: (place: T) => string | undefined
+): T[] {
+  const grid = new Map<string, Listed<T>[]>();
+  const cellOf = (place: T) => [Math.floor(place.lat / WIDE_CELL_DEG), Math.floor(place.lng / WIDE_CELL_DEG)];
+  const entry = (place: T): Listed<T> => {
+    const name = normalizeName(nameOf(place) ?? "");
+    const core = name.replace(KIND_WORDS, "");
+    return { place, name: core ? name : "", core };
+  };
+  const list = (item: Listed<T>) => {
+    const [row, col] = cellOf(item.place);
+    const cell = grid.get(`${row}:${col}`);
+    if (cell) cell.push(item);
+    else grid.set(`${row}:${col}`, [item]);
+  };
+  for (const place of listed) list(entry(place));
+
+  const added: T[] = [];
+  for (const place of others) {
+    const item = entry(place);
+    const [row, col] = cellOf(place);
+    let duplicate = false;
+    for (let dr = -1; dr <= 1 && !duplicate; dr++) {
+      for (let dc = -1; dc <= 1 && !duplicate; dc++) {
+        duplicate = (grid.get(`${row + dr}:${col + dc}`) ?? []).some((other) => {
+          const meters = distanceMeters(place.lat, place.lng, other.place.lat, other.place.lng);
+          return meters <= ANOTHER_SOURCE_M || (meters <= NAMED_ALIKE_M && namedAlike(item, other));
+        });
+      }
+    }
+    if (duplicate) continue;
+    added.push(place);
+    list(item);
+  }
+  return added;
 }
