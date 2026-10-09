@@ -21,6 +21,24 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Storage can be missing or throw (private modes, full quota): src/lib/storage.ts
+    // wraps every access and keeps the key names in one place
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/storage.ts", "src/**/*.test.{ts,tsx}", "src/__tests__/**"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        { name: "localStorage", message: "Use src/lib/storage.ts" },
+        { name: "sessionStorage", message: "Use src/lib/storage.ts" },
+      ],
+      "no-restricted-properties": [
+        "error",
+        { object: "window", property: "localStorage", message: "Use src/lib/storage.ts" },
+        { object: "window", property: "sessionStorage", message: "Use src/lib/storage.ts" },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

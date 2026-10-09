@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
 import type { Mosque } from "@/types";
-import { roundCoord } from "@/lib/constants";
-import { isObject, parseMosques } from "@/lib/validate";
+import { MOSQUE_CACHE_MAX_AGE, roundCoord } from "@/lib/constants";
+import { KEYS, read, write } from "@/lib/storage";
+import { isMosqueList, isObject, parseMosques } from "@/lib/validate";
 import { CITIES, CITY_MAP } from "@/lib/cities";
 import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
 import CityCombobox from "@/components/ui/CityCombobox";
@@ -45,38 +46,6 @@ function getCoordsFromCityName(cityName: string): { lat: number; lng: number } |
   const norm = cityName.toUpperCase().trim();
   const city = CITY_MAP.get(norm);
   return city ? { lat: city.lat, lng: city.lng } : null;
-}
-
-// --- Cache utilities ---
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-function getCacheKey(lat: number, lng: number, radius: number): string {
-  const snapLat = lat.toFixed(2);
-  const snapLng = lng.toFixed(2);
-  return `mosques_${snapLat}_${snapLng}_r${radius}`;
-}
-
-function getCached(key: string): Mosque[] | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) {
-      localStorage.removeItem(key);
-      return null;
-    }
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function setCache(key: string, data: Mosque[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
-  } catch {
-    // localStorage full or unavailable
-  }
 }
 
 // --- Accuracy display ---
@@ -266,7 +235,7 @@ export default function MosqueFinder() {
     }
 
     const radius = radiusOverride || getSearchRadius(currentAccuracy);
-    const cacheKey = getCacheKey(targetCoords.lat, targetCoords.lng, radius);
+    const cacheKey = KEYS.mosques(targetCoords.lat, targetCoords.lng, radius);
     const radiusLabel = radius >= 1000 ? `${radius / 1000} km` : `${radius} m`;
     const remember = () => {
       lastFetchCoordsRef.current = targetCoords;
@@ -277,7 +246,7 @@ export default function MosqueFinder() {
 
     // Check cache first (unless force refresh)
     if (!forceRefresh) {
-      const cached = getCached(cacheKey);
+      const cached = read(cacheKey, isMosqueList, MOSQUE_CACHE_MAX_AGE);
       if (cached) {
         // The cache is shared by positions up to ~1 km apart: measure from this one
         const results = cached
@@ -324,7 +293,7 @@ export default function MosqueFinder() {
           .map((m) => ({ ...m, distance: haversineDistance(targetCoords.lat, targetCoords.lng, m.lat, m.lng) }))
           .sort((a, b) => a.distance - b.distance);
         setMosques(results);
-        setCache(cacheKey, results);
+        write(cacheKey, results);
         remember();
         if (results.length === 0) {
           // Distinct "no results" message

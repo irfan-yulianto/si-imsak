@@ -153,10 +153,12 @@ Log request Vercel mencatat IP dan URL, termasuk koordinat yang dibulatkan, sesu
 Yang disimpan di perangkat (localStorage, bisa dihapus lewat pengaturan browser):
 
 - `selectedLocation` — kota terpilih
-- `schedule_*` — jadwal per bulan, dipakai saat offline, kedaluwarsa setelah 7 hari
-- `mosques_*` — hasil pencarian masjid selama 30 menit; nama kuncinya memuat koordinat yang dibulatkan ke 2 desimal (±1 km)
+- `si:schedule:*` — jadwal per bulan, dipakai saat offline, kedaluwarsa setelah 7 hari (paling banyak 24 bulan)
+- `si:mosques:*` — hasil pencarian masjid selama 30 menit; nama kuncinya memuat koordinat yang dibulatkan ke 2 desimal (±1 km)
 - `theme`, `locationPermissionDismissed`, `pwa-install-dismissed` — preferensi tampilan dan prompt
-- `timeOffset` (sessionStorage) — selisih jam perangkat dengan server
+- `si:timeOffset` (sessionStorage) — selisih jam perangkat dengan server
+
+Semua akses ke storage lewat `src/lib/storage.ts`. Cache dari versi lama (`schedule_*`, `mosques_*`) dipindah ke kunci baru saat aplikasi dibuka, dan yang kedaluwarsa dibersihkan.
 
 Koordinat GPS hanya disimpan di memori selama halaman terbuka. Pemilik deployment sebaiknya memasang masking Clarity ke **Strict** sebagai lapis kedua.
 

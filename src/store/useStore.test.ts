@@ -19,6 +19,9 @@ beforeEach(() => {
   vi.resetModules();
 });
 
+
+const CACHED_DAY = { tanggal: "Kamis, 01/10/2026", date: "2026-10-01", imsak: "04:01", subuh: "04:11", terbit: "05:26", dhuha: "05:51", dzuhur: "11:33", ashar: "14:41", maghrib: "17:40", isya: "18:49" };
+
 describe("useStore", () => {
   it("initializes with default Jakarta location when no cache", async () => {
     const { useStore } = await import("./useStore");
@@ -30,14 +33,14 @@ describe("useStore", () => {
   it("hydrates location from localStorage cache", async () => {
     localStorage.setItem(
       "selectedLocation",
-      JSON.stringify({ id: "test-id", lokasi: "KOTA BALI", daerah: "BALI" })
+      JSON.stringify({ id: "0123456789abcdef0123456789abcdef", lokasi: "KOTA BALI", daerah: "BALI" })
     );
     const { useStore } = await import("./useStore");
     // Nothing is read from localStorage until after mount (keeps hydration in sync)
     expect(useStore.getState().location.cityName).toBe("KOTA JAKARTA");
     useStore.getState().hydrateFromCache();
     const state = useStore.getState();
-    expect(state.location.cityId).toBe("test-id");
+    expect(state.location.cityId).toBe("0123456789abcdef0123456789abcdef");
     expect(state.location.cityName).toBe("KOTA BALI");
     expect(state.location.timezone).toBe("WITA");
   });
@@ -234,17 +237,17 @@ describe("useStore", () => {
     });
 
     it("loads the cached schedule for the city's current month without a loading state", async () => {
-      localStorage.setItem("selectedLocation", JSON.stringify({ id: "bali", lokasi: "KOTA DENPASAR", daerah: "BALI" }));
+      localStorage.setItem("selectedLocation", JSON.stringify({ id: "0123456789abcdef0123456789abcdef", lokasi: "KOTA DENPASAR", daerah: "BALI" }));
       localStorage.setItem(
-        "schedule_bali_2026_10",
-        JSON.stringify({ _ts: Date.now(), status: true, data: { jadwal: [{ date: "x" }] } })
+        "si:schedule:0123456789abcdef0123456789abcdef:2026-10",
+        JSON.stringify({ v: 1, ts: Date.now(), data: { id: "0123456789abcdef0123456789abcdef", lokasi: "KOTA DENPASAR", daerah: "BALI", jadwal: [CACHED_DAY] } })
       );
       const { useStore } = await import("./useStore");
       expect(useStore.getState().schedule.loading).toBe(true);
 
       useStore.getState().hydrateFromCache();
       const state = useStore.getState();
-      expect(state.schedule).toEqual({ data: [{ date: "x" }], loading: false, error: null });
+      expect(state.schedule).toEqual({ data: [CACHED_DAY], loading: false, error: null });
       expect(state.countdownSchedule).toHaveLength(1);
       expect(state.viewMonth).toBe(10);
       expect(state.viewYear).toBe(2026);
@@ -254,22 +257,22 @@ describe("useStore", () => {
     it("decides today in the saved city's time zone", async () => {
       // 30 Sep 23:30 WIB is already 1 Oct 01:30 in WIT
       vi.setSystemTime(new Date("2026-09-30T16:30:00Z"));
-      localStorage.setItem("selectedLocation", JSON.stringify({ id: "papua", lokasi: "KOTA JAYAPURA", daerah: "PAPUA" }));
+      localStorage.setItem("selectedLocation", JSON.stringify({ id: "fedcba9876543210fedcba9876543210", lokasi: "KOTA JAYAPURA", daerah: "PAPUA" }));
       const { useStore } = await import("./useStore");
       useStore.getState().hydrateFromCache();
       expect(useStore.getState().todayDateStr).toBe("2026-10-01");
 
-      localStorage.setItem("selectedLocation", JSON.stringify({ id: "jkt", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }));
+      localStorage.setItem("selectedLocation", JSON.stringify({ id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }));
       useStore.getState().hydrateFromCache();
       expect(useStore.getState().todayDateStr).toBe("2026-09-30");
       expect(useStore.getState().viewMonth).toBe(9);
     });
 
     it("ignores an expired cached schedule", async () => {
-      localStorage.setItem("selectedLocation", JSON.stringify({ id: "bali", lokasi: "KOTA DENPASAR", daerah: "BALI" }));
+      localStorage.setItem("selectedLocation", JSON.stringify({ id: "0123456789abcdef0123456789abcdef", lokasi: "KOTA DENPASAR", daerah: "BALI" }));
       localStorage.setItem(
-        "schedule_bali_2026_10",
-        JSON.stringify({ _ts: Date.now() - 8 * 24 * 3600000, status: true, data: { jadwal: [{ date: "x" }] } })
+        "si:schedule:0123456789abcdef0123456789abcdef:2026-10",
+        JSON.stringify({ v: 1, ts: Date.now() - 8 * 24 * 3600000, data: { id: "0123456789abcdef0123456789abcdef", lokasi: "KOTA DENPASAR", daerah: "BALI", jadwal: [CACHED_DAY] } })
       );
       const { useStore } = await import("./useStore");
       useStore.getState().hydrateFromCache();
@@ -304,7 +307,7 @@ describe("useStore", () => {
       });
 
       it("does not ask when a city is saved", async () => {
-        localStorage.setItem("selectedLocation", JSON.stringify({ id: "jkt", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }));
+        localStorage.setItem("selectedLocation", JSON.stringify({ id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA" }));
         const { useStore } = await import("./useStore");
         useStore.getState().hydrateFromCache();
         expect(useStore.getState().locationPrompt).toBe(false);
@@ -569,9 +572,9 @@ describe("useStore", () => {
       vi.mocked(getSchedule).mockResolvedValue({ status: true, data: { id: "x", lokasi: "X", daerah: "X", jadwal: [] } });
 
       const { useStore } = await import("./useStore");
-      useStore.getState().setLocation({ id: "papua", lokasi: "KOTA JAYAPURA", daerah: "PAPUA" }, "WIT");
+      useStore.getState().setLocation({ id: "fedcba9876543210fedcba9876543210", lokasi: "KOTA JAYAPURA", daerah: "PAPUA" }, "WIT");
       await useStore.getState().refetchSchedule();
-      expect(vi.mocked(getSchedule)).toHaveBeenCalledWith("papua", 2026, 2);
+      expect(vi.mocked(getSchedule)).toHaveBeenCalledWith("fedcba9876543210fedcba9876543210", 2026, 2);
     });
 
     it("fetches only the current month on other days", async () => {

@@ -212,8 +212,8 @@ describe("MosqueFinder Component - U6 Fixes", () => {
   it("measures cached results from the current position", async () => {
     // Cached by a visit ~1 km away, when this mosque was 5 m from the user
     localStorage.setItem(
-      "mosques_-6.20_106.80_r2000",
-      JSON.stringify({ data: [{ ...mosque("m1", "Masjid Dekat", 106.81), distance: 5 }], ts: Date.now() })
+      "si:mosques:-6.20:106.80:2000",
+      JSON.stringify({ v: 1, ts: Date.now(), data: [{ ...mosque("m1", "Masjid Dekat", 106.81), distance: 5 }] })
     );
     render(<MosqueFinder />);
 

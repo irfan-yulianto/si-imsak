@@ -11,6 +11,7 @@ import InstallBanner from "@/components/pwa/InstallBanner";
 import { CalendarIcon, MosqueIcon } from "@/components/ui/Icons";
 import UpdateToast from "@/components/pwa/UpdateToast";
 import { useStore } from "@/store/useStore";
+import { prepareStorage } from "@/lib/storage";
 
 const MosqueFinder = dynamic(() => import("@/components/mosque/MosqueFinder"), {
   ssr: false,
@@ -38,6 +39,7 @@ export default function Home() {
   // Load cached city/schedule/theme right after hydration but before the first paint:
   // the first client render matches the server HTML, and users still never see defaults.
   useLayoutEffect(() => {
+    prepareStorage();
     useStore.getState().hydrateFromCache();
   }, []);
 

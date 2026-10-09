@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { syncServerTime } from "./time";
 
+// How lib/storage keeps the offset for the session
+const KEY = "si:timeOffset";
+const entry = (offset: number, ts: number) => JSON.stringify({ v: 1, ts, data: offset });
+
 describe("syncServerTime", () => {
   beforeEach(() => {
     sessionStorage.clear();
@@ -12,8 +16,7 @@ describe("syncServerTime", () => {
   });
 
   it("returns cached offset from sessionStorage when valid", async () => {
-    const cachedData = { offset: 500, ts: Date.now() - 1000 }; // 1 second ago
-    sessionStorage.setItem("timeOffset", JSON.stringify(cachedData));
+    sessionStorage.setItem(KEY, entry(500, Date.now() - 1000)); // 1 second ago
 
     vi.stubGlobal("fetch", vi.fn());
     const result = await syncServerTime();
@@ -35,8 +38,7 @@ describe("syncServerTime", () => {
   });
 
   it("calls fetch when cache is expired (>1 hour)", async () => {
-    const cachedData = { offset: 500, ts: Date.now() - 3700000 }; // 1 hour + 100s ago
-    sessionStorage.setItem("timeOffset", JSON.stringify(cachedData));
+    sessionStorage.setItem(KEY, entry(500, Date.now() - 3700000)); // 1 hour + 100s ago
 
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -86,15 +88,13 @@ describe("syncServerTime", () => {
     );
 
     await syncServerTime();
-    const stored = sessionStorage.getItem("timeOffset");
-    expect(stored).toBeTruthy();
-    const parsed = JSON.parse(stored!);
-    expect(typeof parsed.offset).toBe("number");
+    const parsed = JSON.parse(sessionStorage.getItem(KEY)!);
+    expect(typeof parsed.data).toBe("number");
     expect(typeof parsed.ts).toBe("number");
   });
 
   it("passes the background-refreshed offset to onRefresh", async () => {
-    sessionStorage.setItem("timeOffset", JSON.stringify({ offset: 500, ts: Date.now() - 1000 }));
+    sessionStorage.setItem(KEY, entry(500, Date.now() - 1000));
     const serverNow = Date.now() + 2000;
     vi.stubGlobal(
       "fetch",
@@ -109,7 +109,7 @@ describe("syncServerTime", () => {
   });
 
   it("does not call onRefresh when the background refresh fails", async () => {
-    sessionStorage.setItem("timeOffset", JSON.stringify({ offset: 500, ts: Date.now() - 1000 }));
+    sessionStorage.setItem(KEY, entry(500, Date.now() - 1000));
     const mockFetch = vi.fn().mockRejectedValue(new Error("offline"));
     vi.stubGlobal("fetch", mockFetch);
     const onRefresh = vi.fn();

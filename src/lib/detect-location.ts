@@ -1,6 +1,7 @@
 import { useStore } from "@/store/useStore";
 import { reverseGeocodeCity, searchCities } from "./api";
 import { Location } from "@/types";
+import { KEYS, writeJson, writeRaw } from "./storage";
 
 export interface DetectionResult {
   success: boolean;
@@ -57,11 +58,8 @@ export function detectAndUpdateLocation(): Promise<DetectionResult> {
               (c) => c.lokasi.toUpperCase().trim() === guessNorm
             ) ?? searchRes.data[0];
 
-          // Save to localStorage
-          try {
-            localStorage.setItem("selectedLocation", JSON.stringify(city));
-            localStorage.setItem("locationPermissionDismissed", String(Date.now()));
-          } catch {}
+          writeJson(KEYS.location, city);
+          writeRaw(KEYS.locationPromptDismissed, String(Date.now()));
 
           const result = await useStore.getState().loadCitySchedule(city);
           if (result.superseded) resolve({ success: false, superseded: true });

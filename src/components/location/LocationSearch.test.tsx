@@ -93,13 +93,13 @@ describe("LocationSearch Component", () => {
   });
 
   it("fetches schedule on mount if location is saved in localStorage", async () => {
-    const mockLocation = { id: "test-id", lokasi: "TEST CITY", daerah: "TEST PROV" };
+    const mockLocation = { id: "0123456789abcdef0123456789abcdef", lokasi: "TEST CITY", daerah: "TEST PROV" };
     localStorage.setItem("selectedLocation", JSON.stringify(mockLocation));
 
     vi.mocked(getSchedule).mockResolvedValue({
       status: true,
       data: {
-        id: "test-id",
+        id: "0123456789abcdef0123456789abcdef",
         lokasi: "TEST CITY",
         daerah: "TEST PROV",
         jadwal: [],
@@ -115,7 +115,7 @@ describe("LocationSearch Component", () => {
 
     await waitFor(() => {
       expect(getSchedule).toHaveBeenCalledWith(
-        "test-id",
+        "0123456789abcdef0123456789abcdef",
         expect.any(Number),
         expect.any(Number)
       );

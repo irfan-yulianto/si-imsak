@@ -13,8 +13,9 @@ export const BUILD_TIME = Number(process.env.NEXT_PUBLIC_BUILD_TIME) || Date.now
 // Identifies the deploy; the service worker URL carries it so each deploy gets a fresh worker.
 export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 
-// Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
-export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
+// How long cached data stays usable on the device
+export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
+export const MOSQUE_CACHE_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 
 // CDN caching for upstream data that changes rarely (schedules, city search).
 // Vercel's edge serves repeat requests without invoking the function, and keeps

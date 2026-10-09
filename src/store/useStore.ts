@@ -6,44 +6,20 @@ import { DEFAULT_LOCATION, SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
 import { BUILD_DATE, cityDate, daysInMonth, shiftMonth } from "@/lib/city-time";
 import { getSchedule } from "@/lib/api";
 import { getTimezone } from "@/lib/timezone";
+import { KEYS, read, readJson, readRaw, remove, writeRaw } from "@/lib/storage";
+import { isLocation, isScheduleData } from "@/lib/validate";
 
-/** Read the cached location from localStorage (client only, after mount) */
+/** The saved city (client only, after mount) */
 function readCachedLocation(): LocationState | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem("selectedLocation");
-    if (!raw) return null;
-    const loc: Location & { daerah?: string } = JSON.parse(raw);
-    // Old v2 numeric IDs are no longer valid upstream
-    if (!loc.id || !loc.lokasi || /^\d+$/.test(loc.id)) return null;
-    const tz = getTimezone(loc.daerah || "");
-    return {
-      cityId: loc.id,
-      cityName: loc.lokasi,
-      province: loc.daerah || "",
-      timezone: tz,
-    };
-  } catch (e) {
-    console.warn("Failed to get initial location from localStorage:", e);
-    return null;
-  }
+  const loc = readJson(KEYS.location, isLocation);
+  if (!loc) return null;
+  const province = loc.daerah || "";
+  return { cityId: loc.id, cityName: loc.lokasi, province, timezone: getTimezone(province) };
 }
 
-/** Read a cached month from localStorage (client only, after mount) */
+/** A month cached for offline use (client only, after mount) */
 function readCachedSchedule(cityId: string, year: number, month: number): ScheduleDay[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const key = `schedule_${cityId}_${year}_${month}`;
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!parsed._ts || Date.now() - parsed._ts > SCHEDULE_CACHE_MAX_AGE) return [];
-    if (!parsed.data?.jadwal) return [];
-    return parsed.data.jadwal;
-  } catch (e) {
-    console.warn("Failed to get initial schedule from localStorage:", e);
-    return [];
-  }
+  return read(KEYS.schedule(cityId, year, month), isScheduleData, SCHEDULE_CACHE_MAX_AGE)?.jadwal ?? [];
 }
 
 interface ScheduleState {
@@ -147,18 +123,14 @@ function loadErrorMessage(): string {
 /** Show the location prompt when there is no saved city and it wasn't dismissed in the last 7 days. */
 function shouldShowLocationPrompt(hasSavedLocation: boolean): boolean {
   if (hasSavedLocation) return false;
-  try {
-    const dismissed = Number(localStorage.getItem("locationPermissionDismissed"));
-    if (!dismissed) return true;
-    if (Date.now() - dismissed > LOCATION_PROMPT_INTERVAL) {
-      localStorage.removeItem("locationPermissionDismissed");
-      return true;
-    }
-    return false;
-  } catch {
-    // localStorage unavailable (Safari private mode) — ask every visit
+  // Without storage (some private modes) this asks on every visit
+  const dismissed = Number(readRaw(KEYS.locationPromptDismissed));
+  if (!dismissed) return true;
+  if (Date.now() - dismissed > LOCATION_PROMPT_INTERVAL) {
+    remove(KEYS.locationPromptDismissed);
     return true;
   }
+  return false;
 }
 
 // Initial state must be identical on the server and on the client's first render
@@ -222,7 +194,7 @@ export const useStore = create<AppState>((set, get) => ({
   theme: "dark",
   setTheme: (theme) => {
     if (typeof window !== "undefined") {
-      try { localStorage.setItem("theme", theme); } catch (e) { console.warn("Failed to set theme in localStorage:", e); }
+      writeRaw(KEYS.theme, theme);
       document.documentElement.classList.toggle("dark", theme === "dark");
     }
     set({ theme });
@@ -236,12 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
   hydrateFromCache: () => {
     if (typeof window === "undefined") return;
 
-    let theme: "light" | "dark" = "dark";
-    try {
-      if (localStorage.getItem("theme") === "light") theme = "light";
-    } catch (e) {
-      console.warn("Failed to get theme from localStorage:", e);
-    }
+    const theme = readRaw(KEYS.theme) === "light" ? "light" : "dark";
 
     const cachedLocation = readCachedLocation();
     const location = cachedLocation ?? get().location;

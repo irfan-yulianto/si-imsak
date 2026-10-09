@@ -7,6 +7,7 @@ import { cityDate, monthKey } from "@/lib/city-time";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
 import { detectAndUpdateLocation } from "@/lib/detect-location";
+import { KEYS, writeJson, writeRaw } from "@/lib/storage";
 
 export default function LocationSearch() {
   const [query, setQuery] = useState("");
@@ -126,22 +127,13 @@ export default function LocationSearch() {
   const handleSelect = (city: Location) => {
     handleQueryChange("");
     setLocationPrompt(false);
-    try {
-      localStorage.setItem("selectedLocation", JSON.stringify(city));
-      localStorage.removeItem("detectedKecamatan"); // clean up legacy key
-    } catch (e) {
-      console.warn("Failed to save selected location", e);
-    }
+    writeJson(KEYS.location, city);
     loadCitySchedule(city);
   };
 
   const handleDismissPrompt = () => {
     setLocationPrompt(false);
-    try {
-      localStorage.setItem("locationPermissionDismissed", String(Date.now()));
-    } catch (e) {
-      console.warn("Failed to save location dismissal", e);
-    }
+    writeRaw(KEYS.locationPromptDismissed, String(Date.now()));
   };
 
   return (

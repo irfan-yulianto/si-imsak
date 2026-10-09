@@ -1,3 +1,4 @@
+import { FakeStorage } from "@/__tests__/fake-storage";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { reverseGeocodeCity, searchCities, getSchedule } from "./api";
 
@@ -129,7 +130,11 @@ describe("getSchedule", () => {
     );
   });
 
-  it("caches to localStorage on success", async () => {
+  // How lib/storage keeps a cached month
+  const KEY = "si:schedule:abc123:2026-03";
+  const entry = (data: unknown, ts = Date.now()) => JSON.stringify({ v: 1, ts, data });
+
+  it("keeps the month for offline use", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -139,26 +144,21 @@ describe("getSchedule", () => {
     );
 
     await getSchedule("abc123", 2026, 3);
-    const cached = localStorage.getItem("schedule_abc123_2026_3");
-    expect(cached).toBeTruthy();
-    const parsed = JSON.parse(cached!);
-    expect(parsed._ts).toBeDefined();
-    expect(parsed.status).toBe(true);
+    const parsed = JSON.parse(localStorage.getItem(KEY)!);
+    expect(parsed).toMatchObject({ v: 1, data: mockSchedule.data });
+    expect(Date.now() - parsed.ts).toBeLessThan(1000);
   });
 
-  it("falls back to localStorage cache on fetch failure", async () => {
-    // Pre-populate cache
-    const cached = { _ts: Date.now(), ...mockSchedule };
-    localStorage.setItem("schedule_abc123_2026_3", JSON.stringify(cached));
-
+  it("falls back to the cached month on fetch failure", async () => {
+    localStorage.setItem(KEY, entry(mockSchedule.data));
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
 
     const result = await getSchedule("abc123", 2026, 3);
-    expect(result.status).toBe(true);
+    expect(result).toEqual(mockSchedule);
   });
 
   it("treats a malformed answer like a failed one, and uses the cached copy", async () => {
-    localStorage.setItem("schedule_abc123_2026_3", JSON.stringify({ _ts: Date.now(), ...mockSchedule }));
+    localStorage.setItem(KEY, entry(mockSchedule.data));
     const broken = { status: true, data: { ...mockSchedule.data, jadwal: [{ date: "2026-03-01", imsak: "04:30" }] } };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(broken) }));
 
@@ -166,23 +166,20 @@ describe("getSchedule", () => {
     expect(result.data?.jadwal).toEqual(mockSchedule.data.jadwal);
   });
 
-  it("rejects stale cache (older than 7 days)", async () => {
-    // Pre-populate with expired cache
-    const oldTs = Date.now() - 8 * 24 * 3600000; // 8 days ago
-    const cached = { _ts: oldTs, ...mockSchedule };
-    localStorage.setItem("schedule_abc123_2026_3", JSON.stringify(cached));
-
+  it("rejects a cached month older than 7 days", async () => {
+    localStorage.setItem(KEY, entry(mockSchedule.data, Date.now() - 8 * 24 * 3600000));
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
 
     await expect(getSchedule("abc123", 2026, 3)).rejects.toThrow("Network error");
+    expect(localStorage.getItem(KEY)).toBeNull();
   });
 
   it("removes corrupted cache entries", async () => {
-    localStorage.setItem("schedule_abc123_2026_3", "not-valid-json{{{");
+    localStorage.setItem(KEY, "not-valid-json{{{");
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Offline")));
 
     await expect(getSchedule("abc123", 2026, 3)).rejects.toThrow("Offline");
-    expect(localStorage.getItem("schedule_abc123_2026_3")).toBeNull();
+    expect(localStorage.getItem(KEY)).toBeNull();
   });
 
   it("throws original error when no cache is available", async () => {
@@ -191,31 +188,16 @@ describe("getSchedule", () => {
     await expect(getSchedule("abc123", 2026, 3)).rejects.toThrow("Server error");
   });
 
-  it("evicts old caches when localStorage is full, then retries", async () => {
-    // Pre-populate with old schedule cache
-    const oldTs = Date.now() - 8 * 24 * 3600000;
-    localStorage.setItem("schedule_old_2025_1", JSON.stringify({ _ts: oldTs }));
-
-    let setItemCallCount = 0;
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-    vi.spyOn(localStorage, "setItem").mockImplementation((key, value) => {
-      setItemCallCount++;
-      if (setItemCallCount === 1) {
-        throw new DOMException("QuotaExceededError");
-      }
-      return originalSetItem(key, value);
-    });
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockSchedule),
-      })
-    );
+  it("makes room by dropping the oldest cached month when storage is full", async () => {
+    const fake = new FakeStorage();
+    vi.stubGlobal("localStorage", fake);
+    fake.setItem("si:schedule:old:2025-01", entry(mockSchedule.data, Date.now() - 6 * 24 * 3600000));
+    fake.failures = 1;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(mockSchedule) }));
 
     const result = await getSchedule("abc123", 2026, 3);
     expect(result.status).toBe(true);
+    expect(fake.keys()).toEqual([KEY]);
   });
 
   it("returns parsed response on success", async () => {
@@ -254,7 +236,7 @@ describe("getSchedule request sharing and partial months", () => {
   it("does not cache partial months in localStorage", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok({ status: true, partial: true, data: { jadwal: [] } })));
     await getSchedule("abc", 2026, 4);
-    expect(localStorage.getItem("schedule_abc_2026_4")).toBeNull();
+    expect(localStorage.getItem("si:schedule:abc:2026-04")).toBeNull();
   });
 });
 

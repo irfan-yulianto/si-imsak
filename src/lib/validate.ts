@@ -48,6 +48,22 @@ export function isLocation(value: unknown): value is Location {
   );
 }
 
+export const isScheduleDayList = (value: unknown): value is ScheduleDay[] =>
+  Array.isArray(value) && value.every(isScheduleDay);
+
+/** A month as /api/schedule returns it (and as it is cached for offline use) */
+export type ScheduleData = NonNullable<ScheduleResponse["data"]>;
+
+export function isScheduleData(value: unknown): value is ScheduleData {
+  return (
+    isObject(value) &&
+    isString(value.id) &&
+    isString(value.lokasi) &&
+    isString(value.daerah) &&
+    isScheduleDayList(value.jadwal)
+  );
+}
+
 function isMosque(value: unknown): value is Mosque {
   return (
     isObject(value) &&
@@ -60,6 +76,8 @@ function isMosque(value: unknown): value is Mosque {
     (value.type === undefined || value.type === "masjid" || value.type === "musholla")
   );
 }
+
+export const isMosqueList = (value: unknown): value is Mosque[] => Array.isArray(value) && value.every(isMosque);
 
 /** An upstream (MyQuran) day for `date` in our format, or null unless all eight times are HH:MM */
 export function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
