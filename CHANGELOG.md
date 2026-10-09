@@ -2,7 +2,12 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.0.0
+## [Belum dirilis] — v2.0.1
+
+### Diperbaiki
+- Link "Masjid Terdekat" di header memindahkan fokus keyboard dan screen reader ke pencari masjid, bukan hanya menggulir layar.
+
+## [2.0.0] — 2026-10-09 ([#484](https://github.com/irfan-yulianto/si-imsak/pull/484))
 
 Tampilan baru di atas token desain. Tidak ada fitur yang ditambah atau dihapus; versi mayor karena hampir semua layar berubah.
 
