@@ -24,7 +24,7 @@ export const KEYS = {
   mosques: (lat: number, lng: number, radius: number) => `si:mosques:${lat.toFixed(2)}:${lng.toFixed(2)}:${radius}`,
 } as const;
 
-export const PREFIX = { schedule: "si:schedule:", mosques: "si:mosques:" } as const;
+const PREFIX = { schedule: "si:schedule:", mosques: "si:mosques:" } as const;
 
 interface Envelope {
   v: 1;

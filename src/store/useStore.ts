@@ -7,7 +7,6 @@ import { createCitySlice, type CitySlice } from "./city-slice";
 import { createScheduleSlice, monthId, type ScheduleSlice } from "./schedule-slice";
 
 export type AppState = AppSlice & CitySlice & ScheduleSlice;
-export type { CityLoadResult, DetectionResult } from "./city-slice";
 export type { MonthEntry } from "./schedule-slice";
 export { monthId };
 

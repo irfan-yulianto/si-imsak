@@ -7,7 +7,7 @@ import { BUILD_TIME } from "@/lib/constants";
 // (eslint.config.mjs bans Date#getMonth() and friends everywhere else).
 
 /** UTC offset of each Indonesian time zone. Indonesia has no daylight saving time. */
-export const TZ_OFFSET_HOURS: Record<TimezoneLabel, number> = { WIB: 7, WITA: 8, WIT: 9 };
+const TZ_OFFSET_HOURS: Record<TimezoneLabel, number> = { WIB: 7, WITA: 8, WIT: 9 };
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
