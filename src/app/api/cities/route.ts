@@ -2,6 +2,7 @@ import { CDN_CACHE_DAY, NO_STORE } from "@/lib/constants";
 import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { log, errorMessage } from "@/lib/log";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
+import { isObject, parseCityList } from "@/lib/validate";
 import type { CitySearchResponse } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -50,18 +51,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await res.json();
-    // Filter upstream response to only include expected fields
-    const safeData = {
-      status: !!data.status,
-      data: Array.isArray(data.data)
-        ? data.data.map((c: Record<string, unknown>) => ({
-            id: typeof c.id === "string" ? c.id : "",
-            lokasi: typeof c.lokasi === "string" ? c.lokasi : "",
-            daerah: typeof c.daerah === "string" ? c.daerah : "",
-          })).filter((c: { id: string }) => c.id)
-        : [],
-    };
+    const body: unknown = await res.json();
+    // Only well-formed cities, with only the fields we use
+    const safeData = { status: isObject(body) && !!body.status, data: parseCityList(body) };
     return NextResponse.json<CitySearchResponse>(safeData, {
       headers: { "Cache-Control": safeData.status ? CDN_CACHE_DAY : NO_STORE },
     });

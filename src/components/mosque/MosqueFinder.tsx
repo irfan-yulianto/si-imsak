@@ -5,6 +5,7 @@ import { useStore } from "@/store/useStore";
 import { formatDistance, getSearchRadius, haversineDistance } from "@/lib/mosques";
 import type { Mosque } from "@/types";
 import { roundCoord } from "@/lib/constants";
+import { isObject, parseMosques } from "@/lib/validate";
 import { CITIES, CITY_MAP } from "@/lib/cities";
 import { MosqueIcon, MapPinIcon, SearchIcon } from "@/components/ui/Icons";
 import CityCombobox from "@/components/ui/CityCombobox";
@@ -313,12 +314,13 @@ export default function MosqueFinder() {
             : "Server sedang bermasalah. Coba lagi nanti.");
         return;
       }
-      const data = await res.json();
+      const data: unknown = await res.json();
       if (!isCurrent()) return;
 
-      if (data.status && data.data) {
+      const found = parseMosques(data);
+      if (found) {
         // Server distances use rounded coords — recompute from the exact position
-        const results: Mosque[] = (data.data as Mosque[])
+        const results: Mosque[] = found
           .map((m) => ({ ...m, distance: haversineDistance(targetCoords.lat, targetCoords.lng, m.lat, m.lng) }))
           .sort((a, b) => a.distance - b.distance);
         setMosques(results);
@@ -330,7 +332,9 @@ export default function MosqueFinder() {
         }
       } else {
         // Distinct "API error" message
-        setError(data.error || "Server gagal memuat data masjid. Coba tekan Muat Ulang.");
+        setError(
+          isObject(data) && typeof data.error === "string" ? data.error : "Server gagal memuat data masjid. Coba tekan Muat Ulang."
+        );
       }
     } catch {
       // Distinct "network error" message

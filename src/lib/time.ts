@@ -1,3 +1,5 @@
+import { parseServerTime } from "@/lib/validate";
+
 function cacheOffset(offset: number) {
   if (typeof window === "undefined") return;
   try {
@@ -49,9 +51,8 @@ async function fetchServerTimeOffset(): Promise<number | null> {
 
     if (!res.ok) return null;
 
-    const data = await res.json();
-    const serverTime = Number(data.now);
-    if (!Number.isFinite(serverTime)) return null;
+    const serverTime = parseServerTime(await res.json());
+    if (serverTime === null) return null;
     // NTP-style: assume the server read its clock halfway through the round trip
     const latency = (after - before) / 2;
     const offset = serverTime + latency - after;

@@ -2,7 +2,8 @@ import { CDN_CACHE_DAY, NO_STORE, getScheduleYearRange } from "@/lib/constants";
 import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { log, errorMessage } from "@/lib/log";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
-import { PRAYER_KEYS, type PrayerTimes, type ScheduleDay, type ScheduleResponse } from "@/types";
+import { isCityId, parseUpstreamPeriod, toScheduleDay, type UpstreamPeriod } from "@/lib/validate";
+import type { ScheduleDay, ScheduleResponse } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 // The whole request, including retries, finishes within DEADLINE_MS
@@ -17,8 +18,6 @@ const BREAKER_MS = 15_000;
 const RETRY_AFTER_S = 30;
 const UNAVAILABLE_CACHE = "public, s-maxage=30";
 const NOT_FOUND_CACHE = "public, s-maxage=300";
-
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Get number of days in a month
 function getDaysInMonth(year: number, month: number): number {
@@ -54,12 +53,6 @@ async function withConcurrency<T>(
   return results;
 }
 
-interface UpstreamData {
-  kabko?: unknown;
-  prov?: unknown;
-  jadwal: Record<string, unknown>;
-}
-
 /**
  * What one upstream call came back with:
  * - ok: data for the period (individual days are validated separately)
@@ -68,7 +61,7 @@ interface UpstreamData {
  * - unavailable: 5xx, 429, timeout, network error or a body that isn't JSON
  */
 type Outcome =
-  | { kind: "ok"; data: UpstreamData }
+  | { kind: "ok"; data: UpstreamPeriod }
   | { kind: "empty" | "client" | "unavailable" };
 
 interface RequestLog {
@@ -104,10 +97,8 @@ async function fetchPeriod(
     });
     if (res.status === 429 || res.status >= 500) return { kind: "unavailable" };
     if (!res.ok) return { kind: "client" };
-    const body = await res.json();
-    const data = body?.status ? body.data : null;
-    if (data?.jadwal && typeof data.jadwal === "object") return { kind: "ok", data };
-    return { kind: "empty" };
+    const data = parseUpstreamPeriod(await res.json());
+    return data ? { kind: "ok", data } : { kind: "empty" };
   } catch {
     return { kind: "unavailable" };
   }
@@ -124,20 +115,6 @@ async function fetchPeriodRetrying(
   if (first.kind !== "unavailable" || deadline.aborted) return first;
   await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
   return fetchPeriod(cityId, period, deadline, entry);
-}
-
-/** An upstream day with all eight times as HH:MM, in our format — or null */
-function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
-  if (!raw || typeof raw !== "object") return null;
-  const day = raw as Record<string, unknown>;
-  if (typeof day.tanggal !== "string" || !day.tanggal) return null;
-  const times = {} as PrayerTimes;
-  for (const key of PRAYER_KEYS) {
-    const value = day[key];
-    if (typeof value !== "string" || !HHMM.test(value)) return null;
-    times[key] = value;
-  }
-  return { tanggal: day.tanggal, date, ...times };
 }
 
 function unavailable(retryAfterS: number) {
@@ -171,8 +148,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Validate city_id: MD5 hash (32 hex chars)
-  if (!/^[a-f0-9]{32}$/.test(cityId)) {
+  if (!isCityId(cityId)) {
     return NextResponse.json<ScheduleResponse>(
       { status: false, error: "Invalid city_id" },
       { status: 400 }
@@ -220,7 +196,7 @@ export async function GET(request: NextRequest) {
   try {
     const deadline = AbortSignal.any([request.signal, AbortSignal.timeout(DEADLINE_MS)]);
     const days = new Map<string, ScheduleDay>();
-    let meta: UpstreamData | undefined;
+    let meta: UpstreamPeriod | undefined;
     const take = (outcome: Outcome, wanted: string[]) => {
       if (outcome.kind !== "ok") return;
       for (const date of wanted) {
@@ -288,8 +264,8 @@ export async function GET(request: NextRequest) {
           ...(partial && { partial: true }),
           data: {
             id: cityId,
-            lokasi: typeof meta?.kabko === "string" ? meta.kabko : "",
-            daerah: typeof meta?.prov === "string" ? meta.prov : "",
+            lokasi: meta?.kabko ?? "",
+            daerah: meta?.prov ?? "",
             jadwal,
           },
         },

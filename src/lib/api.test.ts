@@ -53,15 +53,22 @@ describe("searchCities", () => {
     );
   });
 
-  it("returns parsed JSON on success", async () => {
-    const expected = { status: true, data: [{ id: "1", lokasi: "KOTA JAKARTA" }] };
+  it("returns the well-formed cities on success", async () => {
+    const body = {
+      status: true,
+      data: [
+        { id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "KOTA JAKARTA" },
+        { id: "1", lokasi: "OLD NUMERIC ID" },
+        { id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "" },
+      ],
+    };
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(expected) })
+      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(body) })
     );
 
     const result = await searchCities("jakarta");
-    expect(result).toEqual(expected);
+    expect(result).toEqual({ status: true, data: [{ id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "KOTA JAKARTA", daerah: "" }] });
   });
 
   it("throws on non-ok response", async () => {
@@ -96,10 +103,15 @@ describe("getSchedule", () => {
   const mockSchedule = {
     status: true,
     data: {
-      id: "abc123",
+      id: "58a2fc6ed39fd083f55d4182bf88826d",
       lokasi: "KOTA JAKARTA",
       daerah: "DKI JAKARTA",
-      jadwal: [{ date: "2026-03-01", imsak: "04:30" }],
+      jadwal: [
+        {
+          tanggal: "Minggu, 01/03/2026", date: "2026-03-01", imsak: "04:30", subuh: "04:40", terbit: "05:55",
+          dhuha: "06:20", dzuhur: "12:05", ashar: "15:15", maghrib: "18:10", isya: "19:20",
+        },
+      ],
     },
   };
 
@@ -143,6 +155,15 @@ describe("getSchedule", () => {
 
     const result = await getSchedule("abc123", 2026, 3);
     expect(result.status).toBe(true);
+  });
+
+  it("treats a malformed answer like a failed one, and uses the cached copy", async () => {
+    localStorage.setItem("schedule_abc123_2026_3", JSON.stringify({ _ts: Date.now(), ...mockSchedule }));
+    const broken = { status: true, data: { ...mockSchedule.data, jadwal: [{ date: "2026-03-01", imsak: "04:30" }] } };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(broken) }));
+
+    const result = await getSchedule("abc123", 2026, 3);
+    expect(result.data?.jadwal).toEqual(mockSchedule.data.jadwal);
   });
 
   it("rejects stale cache (older than 7 days)", async () => {

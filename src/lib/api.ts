@@ -1,5 +1,6 @@
 import { CitySearchResponse, ScheduleResponse } from "@/types";
 import { SCHEDULE_CACHE_MAX_AGE, roundCoord } from "@/lib/constants";
+import { isObject, parseCityList, parseScheduleResponse } from "@/lib/validate";
 
 const API_BASE = "/api";
 const REQUEST_TIMEOUT = 15000; // 15 seconds
@@ -34,8 +35,8 @@ export async function reverseGeocodeCity(lat: number, lng: number): Promise<stri
       signal: controller.signal,
     });
     if (!res.ok) return "";
-    const data = await res.json();
-    return data.status ? data.city : "";
+    const data: unknown = await res.json();
+    return isObject(data) && data.status && typeof data.city === "string" ? data.city : "";
   } catch {
     return "";
   } finally {
@@ -53,7 +54,8 @@ export async function searchCities(keyword: string, signal?: AbortSignal): Promi
     // 400 = query too short/invalid after sanitizing — same as "no results"
     if (res.status === 400) return { status: false, data: [] };
     if (!res.ok) throw new Error("Failed to search cities");
-    return res.json();
+    const body: unknown = await res.json();
+    return { status: isObject(body) && body.status === true, data: parseCityList(body) };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -98,8 +100,9 @@ async function fetchSchedule(
       if (!res.ok) throw new Error("Failed to fetch schedule");
       // The timeout also covers reading the body, so a stalled response can't leave
       // the schedule loading forever
-      const data: ScheduleResponse = await res.json();
+      const data = parseScheduleResponse(await res.json());
       clearTimeout(timeoutId);
+      if (!data) throw new Error("Malformed schedule response");
 
       // Cache to localStorage for offline use (with timestamp for TTL).
       // Partial months (some days missing upstream) are not cached.

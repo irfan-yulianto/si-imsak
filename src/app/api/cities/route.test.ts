@@ -126,7 +126,7 @@ describe("GET /api/cities", () => {
             status: true,
             data: [
               {
-                id: "abc123",
+                id: "58a2fc6ed39fd083f55d4182bf88826d",
                 lokasi: "KOTA JAKARTA",
                 daerah: "DKI JAKARTA",
                 extra_field: "should be removed",
@@ -139,14 +139,14 @@ describe("GET /api/cities", () => {
     const res = await GET(makeRequest("jakarta"));
     const json = await res.json();
     expect(json.data[0]).toEqual({
-      id: "abc123",
+      id: "58a2fc6ed39fd083f55d4182bf88826d",
       lokasi: "KOTA JAKARTA",
       daerah: "DKI JAKARTA",
     });
     expect(json.data[0].extra_field).toBeUndefined();
   });
 
-  it("removes entries with empty id", async () => {
+  it("removes entries without a valid id or name", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -156,7 +156,9 @@ describe("GET /api/cities", () => {
             status: true,
             data: [
               { id: "", lokasi: "BAD", daerah: "BAD" },
-              { id: "valid", lokasi: "GOOD", daerah: "GOOD" },
+              { id: "1234", lokasi: "OLD NUMERIC ID", daerah: "BAD" },
+              { id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "", daerah: "NO NAME" },
+              { id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "GOOD", daerah: "GOOD" },
             ],
           }),
       })
@@ -164,8 +166,7 @@ describe("GET /api/cities", () => {
 
     const res = await GET(makeRequest("test"));
     const json = await res.json();
-    expect(json.data).toHaveLength(1);
-    expect(json.data[0].id).toBe("valid");
+    expect(json.data).toEqual([{ id: "58a2fc6ed39fd083f55d4182bf88826d", lokasi: "GOOD", daerah: "GOOD" }]);
   });
 
   it("returns 400 for a query that is too short after sanitizing", async () => {
