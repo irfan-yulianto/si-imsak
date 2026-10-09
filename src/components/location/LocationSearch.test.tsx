@@ -392,7 +392,7 @@ describe("LocationSearch Component", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      /^Gagal mencari kota\. Periksa koneksi internet\. Ketik nama kotamu di kolom pencarian\.$/
+      /^Gagal mencari kota\. Periksa koneksi internet\. Ketik nama kota Anda di kolom pencarian\.$/
     );
   });
 

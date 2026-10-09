@@ -19,6 +19,8 @@ const SIZES = {
 
 type BaseProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   variant?: ButtonVariant;
+  /** Fully rounded instead of the control radius */
+  pill?: boolean;
   type?: "button" | "submit";
   ref?: Ref<HTMLButtonElement>;
 };
@@ -26,14 +28,17 @@ type BaseProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
 /** An icon-only button has no text, so it must be named */
 export type ButtonProps = BaseProps & ({ size?: "md" | "sm" } | { size: "icon"; "aria-label": string });
 
-export const buttonClass = (variant: ButtonVariant = "primary", size: keyof typeof SIZES = "md") =>
+// className may add to these classes, but not replace one: two utilities for the same
+// property (px-3 and px-4) don't override each other by their order in the attribute
+export const buttonClass = (variant: ButtonVariant = "primary", size: keyof typeof SIZES = "md", pill = false) =>
   cx(
-    "focus-ring inline-flex cursor-pointer items-center justify-center rounded-control font-semibold transition-colors",
+    "focus-ring inline-flex cursor-pointer items-center justify-center font-semibold transition-colors",
     "disabled:cursor-not-allowed disabled:opacity-40",
+    pill ? "rounded-full" : "rounded-control",
     VARIANTS[variant],
     SIZES[size]
   );
 
-export default function Button({ variant = "primary", size = "md", type = "button", className, ...props }: ButtonProps) {
-  return <button type={type} className={cx(buttonClass(variant, size), className)} {...props} />;
+export default function Button({ variant = "primary", size = "md", pill, type = "button", className, ...props }: ButtonProps) {
+  return <button type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
 }

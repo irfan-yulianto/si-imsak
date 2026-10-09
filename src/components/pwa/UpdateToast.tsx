@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BUILD_ID } from "@/lib/constants";
 import Button from "@/components/ui/Button";
 
@@ -58,25 +59,25 @@ export default function UpdateToast() {
     };
   }, []);
 
-  if (!waitingWorker) return null;
+  const dock = waitingWorker ? document.getElementById("dock") : null;
+  if (!waitingWorker || !dock) return null;
 
   const applyUpdate = () => {
     reloadRequestedRef.current = true;
     waitingWorker.postMessage({ type: "SKIP_WAITING" });
   };
 
-  return (
+  return createPortal(
     <div
       role="status"
-      className="fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-card border border-border bg-surface p-3 shadow-lg md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
+      className="pointer-events-auto order-2 flex items-center gap-3 self-stretch rounded-card border border-border bg-surface p-3 shadow-lg"
     >
       <p className="flex-1 text-sm text-fg">Versi baru Si-Imsak tersedia.</p>
-      <Button variant="ghost" onClick={() => setWaitingWorker(null)} className="px-3">
+      <Button variant="ghost" onClick={() => setWaitingWorker(null)}>
         Nanti
       </Button>
-      <Button onClick={applyUpdate} className="px-3">
-        Muat Ulang
-      </Button>
-    </div>
+      <Button onClick={applyUpdate}>Muat Ulang</Button>
+    </div>,
+    dock
   );
 }

@@ -42,6 +42,8 @@ beforeEach(() => {
   resetStore();
   renders.clear();
   vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver);
+  // The page's dock, where the "Hari Ini" button is shown
+  document.body.insertAdjacentHTML("beforeend", '<div id="dock"></div>');
   // 12 March 2024, 23:59:30 WIB
   vi.useFakeTimers({ now: new Date("2024-03-12T16:59:30Z") });
   seedCity(JAKARTA, "2024-03-12");
@@ -50,6 +52,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  document.getElementById("dock")?.remove();
 });
 
 describe("ScheduleTable renders", () => {

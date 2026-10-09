@@ -50,15 +50,22 @@
   --safe-r: env(safe-area-inset-right);
   --safe-b: env(safe-area-inset-bottom);
   --safe-l: env(safe-area-inset-left);
-  --header-h: 3.75rem;
+  /* Two rows on phones (the city search gets its own), one from the sm breakpoint */
+  --header-h: 7rem;
   --nav-h: 3.5rem;
   --row-h: 2.5rem;
 }
 
+@media (min-width: 40rem) {
+  :root {
+    --header-h: 3.75rem;
+  }
+}
+
 .dark {
   --bg: #0F1419;
-  --surface: rgb(30 41 59 / 0.8);
-  --surface-2: rgb(51 65 85 / 0.5);
+  --surface: #1B2534;
+  --surface-2: #273344;
   --surface-hover: #334155;
   --fg: #E2E8F0;
   --fg-muted: #CBD5E1;
@@ -123,6 +130,17 @@
 
   --font-sans: var(--font-jakarta);
   --font-mono: var(--font-jetbrains);
+}
+
+/* Keyboard focus and anchors never land under the fixed header or the phone's tab bar
+   (WCAG 2.4.11) */
+html {
+  scroll-padding-top: calc(var(--header-h) + var(--safe-t) + 1.5rem);
+}
+@media (max-width: 47.99rem) {
+  html {
+    scroll-padding-bottom: calc(var(--nav-h) + var(--safe-b) + 1rem);
+  }
 }
 
 body {

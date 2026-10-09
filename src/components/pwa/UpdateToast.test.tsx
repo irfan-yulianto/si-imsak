@@ -22,10 +22,13 @@ function mockServiceWorker({ waiting, controller }: { waiting: object | null; co
 describe("UpdateToast", () => {
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "production");
+    // The page's dock, where the notice is shown
+    document.body.insertAdjacentHTML("beforeend", '<div id="dock"></div>');
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    document.getElementById("dock")?.remove();
   });
 
   it("registers the worker with the build id", async () => {

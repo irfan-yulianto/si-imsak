@@ -22,7 +22,7 @@ export const MESSAGES = {
   detectTimeout: "Waktu deteksi habis",
   detectFailed: "Gagal mendeteksi lokasi",
   locationUnknown: "Lokasi tidak dapat dideteksi",
-  typeCityInstead: "Ketik nama kotamu di kolom pencarian.",
+  typeCityInstead: "Ketik nama kota Anda di kolom pencarian.",
 } as const;
 
 /** Why a schedule didn't load: the device being offline, or anything else */

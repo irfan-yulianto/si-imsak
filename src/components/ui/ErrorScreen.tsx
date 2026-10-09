@@ -12,7 +12,7 @@ export default function ErrorScreen({ onRetry }: { onRetry: () => void }) {
         </div>
         <h2 className="mb-2 text-lg font-bold text-fg">Terjadi Kesalahan</h2>
         <p className="mb-4 text-sm text-fg-muted">Aplikasi mengalami masalah. Silakan coba lagi.</p>
-        <Button onClick={onRetry} aria-label="Coba lagi memuat halaman" className="px-6">
+        <Button onClick={onRetry} aria-label="Coba lagi memuat halaman">
           Coba Lagi
         </Button>
       </Card>

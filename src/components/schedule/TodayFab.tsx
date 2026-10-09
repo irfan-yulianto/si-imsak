@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { CalendarIcon } from "@/components/ui/Icons";
+import Button from "@/components/ui/Button";
 
 /**
  * The floating "Hari Ini" button, shown while today's card is scrolled out of view. It
@@ -25,16 +27,18 @@ export default function TodayFab({ todayRef, todayDate, active }: {
     return () => observer.disconnect();
   }, [todayRef, todayDate, active]);
 
-  if (!active || cardVisible) return null;
-  return (
-    <button
-      type="button"
+  const dock = active && !cardVisible ? document.getElementById("dock") : null;
+  if (!dock) return null;
+  return createPortal(
+    <Button
+      pill
       onClick={() => todayRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
       aria-label="Gulir ke jadwal hari ini"
-      className="focus-ring fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-800 active:scale-95"
+      className="pointer-events-auto order-1 shadow-lg md:hidden"
     >
       <CalendarIcon size={14} />
       Hari Ini
-    </button>
+    </Button>,
+    dock
   );
 }

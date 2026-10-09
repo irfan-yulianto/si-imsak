@@ -103,10 +103,10 @@ export default function Home() {
       </a>
       <Header />
 
-      {/* Spacer for fixed header */}
-      <div className="h-[calc(4rem+env(safe-area-inset-top))]" />
+      {/* Room for the fixed header */}
+      <div className="h-[calc(0.75rem+var(--header-h)+var(--safe-t))] shrink-0" />
 
-      <main id="konten" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 focus:outline-none">
+      <main id="konten" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 pb-6 pt-3 focus:outline-none">
         {/* Hero + Schedule — a tab on mobile, always visible on desktop */}
         <div
           id="panel-jadwal"
@@ -149,10 +149,16 @@ export default function Home() {
 
       <Footer />
 
+      {/* What floats above the page bottom, stacked instead of on top of each other: the
+          update notice, and the "Hari Ini" button (both render into it with a portal) */}
+      <div
+        id="dock"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--nav-h)+var(--safe-b)+0.75rem)] z-[60] mx-auto flex max-w-md flex-col items-end gap-2 px-4 md:bottom-[calc(1.5rem+var(--safe-b))]"
+      />
       <UpdateToast />
 
       {/* Mobile bottom navigation (tabs) */}
-      <nav aria-label="Menu utama" className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-100 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden dark:border-slate-800 dark:bg-slate-900/90">
+      <nav aria-label="Menu utama" className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface/90 pb-[var(--safe-b)] backdrop-blur-xl md:hidden">
         <div role="tablist" aria-label="Tampilan" className="mx-auto flex max-w-md">
           {TABS.map(({ id, label, Icon }) => {
             const selected = activeTab === id;
@@ -170,8 +176,8 @@ export default function Home() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => selectTab(id)}
                 onKeyDown={onTabKeyDown}
-                className={`flex min-h-14 flex-1 cursor-pointer flex-col items-center justify-center gap-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset ${
-                  selected ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"
+                className={`flex h-[var(--nav-h)] flex-1 cursor-pointer flex-col items-center justify-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                  selected ? "text-accent-fg" : "text-fg-subtle"
                 }`}
               >
                 <Icon size={20} />
@@ -182,8 +188,8 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Spacer for mobile bottom nav */}
-      <div className="h-16 md:hidden" />
+      {/* Room for the phone's tab bar */}
+      <div className="h-[calc(var(--nav-h)+var(--safe-b))] shrink-0 md:hidden" />
     </div>
   );
 }
