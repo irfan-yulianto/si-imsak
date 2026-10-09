@@ -1,15 +1,10 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
-import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, UPSTREAM_USER_AGENT, roundCoord } from "@/lib/constants";
+import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, roundCoord } from "@/lib/constants";
+import { OVERPASS_ENDPOINTS, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 25;
-
-const OVERPASS_ENDPOINTS = [
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.openstreetmap.ru/api/interpreter",
-];
 
 const FETCH_TIMEOUT = 10000;
 

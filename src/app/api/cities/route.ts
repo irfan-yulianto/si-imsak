@@ -1,4 +1,5 @@
-import { CDN_CACHE_DAY, MYQURAN_API_BASE, NO_STORE, UPSTREAM_USER_AGENT } from "@/lib/constants";
+import { CDN_CACHE_DAY, NO_STORE } from "@/lib/constants";
+import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 
