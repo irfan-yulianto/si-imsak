@@ -8,16 +8,6 @@ vi.mock("@/components/location/LocationSearch", () => ({
   default: () => <div data-testid="location-search-mock">Location Search</div>,
 }));
 
-// Mock the getHijriMonthsForGregorianMonth function
-const mockGetHijriMonths = vi.fn<(year: number, month: number) => { monthName: string; year: number }[]>(() => [
-  { monthName: "Ramadan", year: 1445 },
-  { monthName: "Syawal", year: 1445 },
-]);
-
-vi.mock("@/lib/hijri", () => ({
-  getHijriMonthsForGregorianMonth: (year: number, month: number) => mockGetHijriMonths(year, month),
-}));
-
 // Mock useStore
 vi.mock("@/store/useStore", () => ({
   useStore: vi.fn(),
@@ -33,8 +23,6 @@ describe("Header Component", () => {
     isOffline: false,
     theme: "dark",
     setTheme: mockSetTheme,
-    viewMonth: 3, // March
-    viewYear: 2024,
   };
 
   beforeEach(() => {
@@ -66,23 +54,9 @@ describe("Header Component", () => {
     expect(screen.getByTestId("location-search-mock")).toBeInTheDocument();
   });
 
-  it("displays hijri subtitle based on viewMonth and viewYear", () => {
+  it("shows the app's tagline (the month is MonthNav's)", () => {
     render(<Header />);
-
-    expect(mockGetHijriMonths).toHaveBeenCalledWith(2024, 3);
-
-    // Check for the expected string format from our mock: "Ramadan – Syawal 1445H"
-    expect(screen.getByText("Ramadan – Syawal 1445H / 2024")).toBeInTheDocument();
-  });
-
-  it("displays single hijri month correctly without dash", () => {
-    mockGetHijriMonths.mockReturnValueOnce([
-      { monthName: "Ramadan", year: 1445 },
-    ]);
-
-    render(<Header />);
-
-    expect(screen.getByText("Ramadan 1445H / 2024")).toBeInTheDocument();
+    expect(screen.getByText("Jadwal sholat & imsakiyah")).toBeInTheDocument();
   });
 
   it("shows offline badge when isOffline is true", () => {

@@ -7,7 +7,13 @@ import { formatLongDate } from "@/lib/city-time";
 import { MESSAGES } from "@/lib/messages";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
+import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
+import { cx } from "@/components/ui/cx";
 import { useMemo } from "react";
+
+/** Four times a row on phones and in the desktop column, all eight on tablets */
+const TILES = "grid grid-cols-4 gap-1.5 p-3 md:grid-cols-8 md:gap-2 md:p-4 lg:grid-cols-4";
 
 export default function TodayCard() {
   const countdownSchedule = useCountdownDays();
@@ -45,117 +51,73 @@ export default function TodayCard() {
 
   if (!todaySchedule) {
     if (loading) {
+      // The same shape as the card, so nothing moves when it fills in
       return (
-        <div role="status" aria-label="Memuat jadwal hari ini" className="min-h-[160px] rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
-          <div className="h-9 animate-shimmer rounded-t-2xl" />
-          <div className="p-4">
-            <div className="mx-auto mb-3 h-4 w-40 animate-shimmer rounded" />
-            <div className="grid grid-cols-4 gap-1.5">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5 rounded-xl bg-slate-50 px-1 py-2.5 dark:bg-slate-700/50">
-                  <div className="h-4 w-4 animate-shimmer rounded" />
-                  <div className="h-2 w-8 animate-shimmer rounded" />
-                  <div className="h-4 w-10 animate-shimmer rounded" />
-                </div>
-              ))}
-            </div>
+        <Card role="status" aria-label="Memuat jadwal hari ini" className="h-full">
+          <div className="border-b border-border px-4 py-3">
+            <Skeleton className="h-6 w-44 max-w-full" />
+            <Skeleton className="mt-0.5 h-4 w-32" />
           </div>
-        </div>
+          <div className={TILES}>
+            {PRAYER_KEYS.map((key) => (
+              <div key={key} className="flex flex-col items-center gap-1.5 rounded-tile bg-surface-2 px-1 py-2.5">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-3 w-10" />
+                <Skeleton className="h-5 w-12" />
+              </div>
+            ))}
+          </div>
+        </Card>
       );
     }
     return (
-      <div role="status" className="min-h-[160px] rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
-        <p className="text-center text-sm text-slate-600 dark:text-slate-300">
-          {MESSAGES.noTodaySchedule}
-        </p>
-      </div>
+      <Card role="status" className="flex h-full min-h-40 items-center justify-center p-4">
+        <p className="text-center text-sm text-fg-muted">{MESSAGES.noTodaySchedule}</p>
+      </Card>
     );
   }
 
-  const dayName = todaySchedule.tanggal?.split(",")[0] || "";
+  const dayName = todaySchedule.tanggal.split(",")[0];
 
   return (
-    <div className="min-h-[160px] rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
-      {/* Hijri date banner */}
-      {hijriDate && (
-        <div className="flex items-center justify-center gap-2 rounded-t-2xl bg-gradient-to-r from-amber-50 to-amber-100/50 px-4 py-2 dark:from-amber-950/30 dark:to-amber-900/20">
-          <CalendarIcon
-            size={13}
-            className="text-amber-700 dark:text-amber-400"
-          />
-          <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
-            {hijriDate}
-          </span>
-        </div>
-      )}
-
-      <div className="p-4">
-        <p className="mb-3 text-center text-xs text-slate-500 dark:text-slate-400">
+    <Card className="h-full">
+      {/* The Hijri date under the heading, not beside it: a long pair would wrap on phones
+          and push the times down as they load */}
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-base font-bold text-fg">
           {dayName}, {formatLongDate(todayDateStr)}
+        </h2>
+        <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-gold">
+          <CalendarIcon size={14} />
+          {hijriDate}
         </p>
-
-        {/* Prayer times — 4-col grid (2 rows on mobile, 1 row on desktop) */}
-        <div
-          role="region"
-          aria-label="Jadwal sholat hari ini"
-          className="stagger-fade-in grid grid-cols-4 gap-1.5 md:gap-2"
-        >
-          {PRAYER_KEYS.map((key, idx) => {
-            const isActive = idx === currentPrayerIdx;
-            const isPast = currentPrayerIdx >= 0 && idx < currentPrayerIdx;
-            const time = todaySchedule[key];
-            const Icon = PRAYER_ICON_MAP[key];
-
-            return (
-              <div
-                key={key}
-                aria-current={isActive ? "time" : undefined}
-                className={`flex cursor-default flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition-all duration-200 md:px-2.5 ${
-                  isActive
-                    ? "animate-pulse-glow bg-gradient-to-b from-amber-50 to-amber-100/80 ring-2 ring-amber-300/50 dark:from-amber-900/30 dark:to-amber-800/20 dark:ring-amber-500/30"
-                    : isPast
-                      ? "bg-slate-50/60 opacity-75 dark:bg-slate-700/30"
-                      : "bg-slate-50 hover:-translate-y-0.5 hover:bg-slate-100/80 dark:bg-slate-700/50 dark:hover:bg-slate-600/50"
-                }`}
-              >
-                {Icon && (
-                  <Icon
-                    size={16}
-                    className={
-                      isActive
-                        ? "text-amber-700 dark:text-amber-400"
-                        : "text-slate-500 dark:text-slate-400"
-                    }
-                  />
-                )}
-                <p
-                  className={`text-[11px] font-semibold uppercase ${
-                    isActive
-                      ? "text-amber-700 dark:text-amber-400"
-                      : "text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  {PRAYER_NAMES[idx]}
-                </p>
-                <p
-                  className={`font-mono text-sm font-bold ${
-                    isActive
-                      ? "text-amber-800 dark:text-amber-300"
-                      : isPast
-                        ? "text-slate-500 line-through decoration-slate-300 dark:text-slate-400 dark:decoration-slate-600"
-                        : "text-slate-700 dark:text-slate-200"
-                  }`}
-                >
-                  {time || "--:--"}
-                </p>
-                {(isActive || isPast) && (
-                  <span className="sr-only">{isActive ? "(sedang berlangsung)" : "(sudah lewat)"}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
-    </div>
+
+      <div role="region" aria-label="Jadwal sholat hari ini" className={TILES}>
+        {PRAYER_KEYS.map((key, idx) => {
+          const isActive = idx === currentPrayerIdx;
+          const isPast = currentPrayerIdx >= 0 && idx < currentPrayerIdx;
+          const Icon = PRAYER_ICON_MAP[key];
+          return (
+            <div
+              key={key}
+              aria-current={isActive ? "time" : undefined}
+              className={cx(
+                "flex flex-col items-center gap-1 rounded-tile px-1 py-2.5",
+                isActive ? "bg-gold-soft text-gold ring-1 ring-gold/40" : "bg-surface-2",
+                isPast ? "text-fg-subtle" : !isActive && "text-fg"
+              )}
+            >
+              <Icon size={16} className={isActive ? undefined : "text-fg-subtle"} />
+              <p className="text-2xs font-semibold uppercase tracking-wide">{PRAYER_NAMES[idx]}</p>
+              <p className="font-mono text-sm font-bold tabular-nums">{todaySchedule[key]}</p>
+              {(isActive || isPast) && (
+                <span className="sr-only">{isActive ? "(sedang berlangsung)" : "(sudah lewat)"}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

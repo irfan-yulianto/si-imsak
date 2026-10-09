@@ -145,7 +145,7 @@ describe("MosqueFinder Component - U6 Fixes", () => {
     });
     const masked = '[data-clarity-mask="True"]';
     expect(screen.getByText("Masjid Raya").closest(masked)).not.toBeNull();
-    expect(screen.getByText(/^Lokasi GPS \(/).closest(masked)).not.toBeNull();
+    expect(screen.getByText("Lokasi GPS Anda").closest(masked)).not.toBeNull();
     expect(screen.getByRole("combobox").closest(masked)).not.toBeNull();
   });
 

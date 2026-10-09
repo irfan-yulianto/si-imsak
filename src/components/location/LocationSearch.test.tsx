@@ -144,7 +144,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota");
+    const input = screen.getByPlaceholderText("Cari kota…");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "jak" } });
@@ -175,7 +175,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota");
+    const input = screen.getByPlaceholderText("Cari kota…");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "xyz" } });
@@ -197,7 +197,7 @@ describe("LocationSearch Component", () => {
     renderAfterHydrate();
 
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText("Cari kota"), { target: { value: "bandung" } });
+      fireEvent.change(screen.getByPlaceholderText("Cari kota…"), { target: { value: "bandung" } });
     });
     await act(async () => {
       vi.advanceTimersByTime(350);
@@ -206,12 +206,12 @@ describe("LocationSearch Component", () => {
     await waitFor(() => {
       expect(screen.getByRole("listbox")).toHaveTextContent("Gagal mencari kota. Periksa koneksi internet");
     });
-    expect(screen.queryByText("Kota tidak ditemukan")).not.toBeInTheDocument();
+    expect(screen.queryByText("Kota tidak ditemukan.")).not.toBeInTheDocument();
 
     // The next search that gets an answer tells "not found" again
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: [] });
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText("Cari kota"), { target: { value: "bandungx" } });
+      fireEvent.change(screen.getByPlaceholderText("Cari kota…"), { target: { value: "bandungx" } });
     });
     await act(async () => {
       vi.advanceTimersByTime(350);
@@ -244,7 +244,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota");
+    const input = screen.getByPlaceholderText("Cari kota…");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "ban" } });
@@ -293,7 +293,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota");
+    const input = screen.getByPlaceholderText("Cari kota…");
 
     await act(async () => {
       fireEvent.change(input, { target: { value: "tes" } });
@@ -392,7 +392,7 @@ describe("LocationSearch Component", () => {
     });
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      /^Gagal mencari kota\. Periksa koneksi internet\. Ketik nama kotamu di kolom pencarian\.$/
+      /^Gagal mencari kota\. Periksa koneksi internet\. Ketik nama kota Anda di kolom pencarian\.$/
     );
   });
 
@@ -451,7 +451,7 @@ describe("LocationSearch Component", () => {
       vi.advanceTimersByTime(100);
     });
 
-    const input = screen.getByPlaceholderText("Cari kota");
+    const input = screen.getByPlaceholderText("Cari kota…");
     await act(async () => {
       fireEvent.change(input, { target: { value: "ban" } });
     });

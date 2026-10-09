@@ -1,35 +1,166 @@
 @import "tailwindcss";
 
-@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Design tokens. Components use the semantic names (bg-surface, text-fg-muted,
+ * border-border, rounded-card…) instead of palette shades, so each theme is defined
+ * once: light on :root, dark on .dark.
+ */
+:root {
+  color-scheme: light;
+  --bg: #F1F5F3;
+  --surface: #FFFFFF;
+  /* Insets on a surface: tiles, stripes, inputs */
+  --surface-2: #F4F7F6;
+  --surface-hover: #EAF0ED;
+  --fg: #0F172A;
+  --fg-muted: #475569;
+  --fg-subtle: #5B6B7F;
+  --border: #E2E8F0;
+  /* Solid buttons, with --on-accent text; --accent-fg for accent text and links */
+  --accent: #047857;
+  --accent-hover: #065F46;
+  --on-accent: #FFFFFF;
+  --accent-soft: #E7F6EF;
+  --accent-soft-hover: #D3EEE2;
+  --accent-fg: #047857;
+  /* Keyboard focus; the countdown sets it to --on-hero for its own controls */
+  --focus: #047857;
+  /* Hijri dates, Imsak and the time in progress */
+  --gold: #B45309;
+  --gold-soft: #FDF4E3;
+  /* Offline, stale data, hints */
+  --warning: #B45309;
+  --warning-soft: #FDF4E3;
+  --danger: #B91C1C;
+  --danger-soft: #FDECEC;
+  /* The countdown, in both themes */
+  --hero-from: #064E3B;
+  --hero-via: #166534;
+  --hero-to: #115E59;
+  --on-hero: #FFFFFF;
+  --on-hero-muted: #BBF7D0;
+  --on-hero-gold: #FCD34D;
+  --on-hero-danger: #FECACA;
+  --brand: #064E3B;
+  --shimmer-a: #E8EDEA;
+  --shimmer-b: #F3F6F4;
+  --scrollbar: #CBD5E1;
+  --scrollbar-hover: #94A3B8;
+  --card-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+
+  /* Layout */
+  --safe-t: env(safe-area-inset-top);
+  --safe-r: env(safe-area-inset-right);
+  --safe-b: env(safe-area-inset-bottom);
+  --safe-l: env(safe-area-inset-left);
+  /* Two rows on phones (the city search gets its own), one from the sm breakpoint */
+  --header-h: 7rem;
+  --nav-h: 3.5rem;
+  /* The month bar above the table, sticky on wide screens */
+  --monthnav-h: 3.75rem;
+  --row-h: 2.5rem;
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --header-h: 3.75rem;
+  }
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0A0E13;
+  --surface: #1A2532;
+  --surface-2: #233140;
+  --surface-hover: #2C3B4C;
+  --fg: #E6EDF3;
+  --fg-muted: #B4C0CE;
+  --fg-subtle: #93A1B3;
+  --border: #2C3949;
+  --accent: #047857;
+  --accent-hover: #065F46;
+  --on-accent: #FFFFFF;
+  --accent-soft: #11332B;
+  --accent-soft-hover: #164034;
+  --accent-fg: #34D399;
+  --focus: #34D399;
+  --gold: #FBBF24;
+  --gold-soft: #302718;
+  --warning: #FBBF24;
+  --warning-soft: #302718;
+  --danger: #FCA5A5;
+  --danger-soft: #3D1E22;
+  --shimmer-a: #233140;
+  --shimmer-b: #2C3B4C;
+  --scrollbar: #374151;
+  --scrollbar-hover: #4B5563;
+  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+}
+
+/* `inline`: the utilities read the variables where they are used, so .dark applies.
+   Resolved on :root instead, they would keep the light values (the bug that once hid
+   the font). */
 @theme inline {
-  --color-background: #F8FAF9;
-  --color-foreground: #0F172A;
-  --color-surface: #FFFFFF;
-  --color-gold: #D4A017;
-  --color-gold-light: #FEF3C7;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-hover: var(--accent-soft-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-focus: var(--focus);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-hero-from: var(--hero-from);
+  --color-hero-via: var(--hero-via);
+  --color-hero-to: var(--hero-to);
+  --color-on-hero: var(--on-hero);
+  --color-on-hero-muted: var(--on-hero-muted);
+  --color-on-hero-gold: var(--on-hero-gold);
+  --color-on-hero-danger: var(--on-hero-danger);
+  --color-brand: var(--brand);
+
+  --radius-control: 0.625rem;
+  --radius-tile: 0.75rem;
+  --radius-card: 1rem;
+  --shadow-card: var(--card-shadow);
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
   --font-sans: var(--font-jakarta);
   --font-mono: var(--font-jetbrains);
 }
 
-:root {
-  --gold: #D4A017;
-  --gold-light: #FEF3C7;
-  --emerald-deep: #064E3B;
-  --green-primary: #16A34A;
+/* Keyboard focus and anchors never land under the fixed header or the phone's tab bar
+   (WCAG 2.4.11) */
+html {
+  scroll-padding-top: calc(var(--header-h) + var(--safe-t) + 1.5rem);
+}
+@media (max-width: 47.99rem) {
+  html {
+    scroll-padding-bottom: calc(var(--nav-h) + var(--safe-b) + 1rem);
+  }
 }
 
 body {
-  background-color: #F8FAF9;
-  color: #0F172A;
+  background-color: var(--bg);
+  color: var(--fg);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   position: relative;
   transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.dark body {
-  background-color: #0F1419;
-  color: #E2E8F0;
 }
 
 /* Subtle Islamic geometric background pattern */
@@ -48,11 +179,6 @@ body::before {
 }
 
 /* Animations */
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -63,17 +189,8 @@ body::before {
   50% { box-shadow: 0 0 20px 4px rgba(212, 160, 23, 0.15); }
 }
 
-@keyframes countdown-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out both;
-}
-
 .animate-shimmer {
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, var(--shimmer-a) 25%, var(--shimmer-b) 50%, var(--shimmer-a) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -81,24 +198,6 @@ body::before {
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
-
-.animate-countdown-pulse {
-  animation: countdown-pulse 1s ease-in-out infinite;
-}
-
-/* Staggered fade-in for lists */
-.stagger-fade-in > * {
-  opacity: 0;
-  animation: fade-in 0.4s ease-out both;
-}
-.stagger-fade-in > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-fade-in > *:nth-child(2) { animation-delay: 50ms; }
-.stagger-fade-in > *:nth-child(3) { animation-delay: 100ms; }
-.stagger-fade-in > *:nth-child(4) { animation-delay: 150ms; }
-.stagger-fade-in > *:nth-child(5) { animation-delay: 200ms; }
-.stagger-fade-in > *:nth-child(6) { animation-delay: 250ms; }
-.stagger-fade-in > *:nth-child(7) { animation-delay: 300ms; }
-.stagger-fade-in > *:nth-child(8) { animation-delay: 350ms; }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -109,40 +208,18 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--scrollbar);
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #374151;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
-}
-
-/* Dark shimmer */
-.dark .animate-shimmer {
-  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* Hide scrollbar for horizontal scroll */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+  background: var(--scrollbar-hover);
 }
 
 /* Keyboard focus indicator for buttons and links — use `focus-ring` on any
    interactive element that doesn't draw its own focus-visible style. */
 @utility focus-ring {
   &:focus-visible {
-    outline: 2px solid var(--color-emerald-500);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
 }
@@ -154,7 +231,6 @@ body::before {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    /* Staggered reveals start hidden; without this they still wait out their delay */
     animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;

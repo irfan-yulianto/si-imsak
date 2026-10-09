@@ -1,40 +1,45 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { CalendarIcon } from "@/components/ui/Icons";
+import Button from "@/components/ui/Button";
 
 /**
- * The floating "Hari Ini" button, shown while today's card is scrolled out of view. It
- * watches the card on its own, so scrolling re-renders the button, never the month.
+ * The floating "Hari Ini" button (phones), shown while today's row is scrolled out of
+ * view. It watches the row on its own, so scrolling re-renders the button, never the month.
  */
 export default function TodayFab({ todayRef, todayDate, active }: {
-  /** Today's card */
-  todayRef: RefObject<HTMLDivElement | null>;
-  /** Today's date: at midnight the next card becomes today's */
+  /** Today's row */
+  todayRef: RefObject<HTMLElement | null>;
+  /** Today's date: at midnight the next row becomes today's */
   todayDate: string;
-  /** Today's card is on screen: the month shown is loaded and contains today */
+  /** Today's row is on screen: the month shown is loaded and contains today */
   active: boolean;
 }) {
-  const [cardVisible, setCardVisible] = useState(true);
+  const [rowVisible, setRowVisible] = useState(true);
 
   useEffect(() => {
-    const card = todayRef.current;
-    if (!card || !active) return;
-    const observer = new IntersectionObserver(([entry]) => setCardVisible(entry.isIntersecting), { threshold: 0.1 });
-    observer.observe(card);
+    const row = todayRef.current;
+    if (!row || !active) return;
+    const observer = new IntersectionObserver(([entry]) => setRowVisible(entry.isIntersecting), { threshold: 0.1 });
+    observer.observe(row);
     return () => observer.disconnect();
   }, [todayRef, todayDate, active]);
 
-  if (!active || cardVisible) return null;
-  return (
-    <button
-      type="button"
+  const dock = active && !rowVisible ? document.getElementById("dock") : null;
+  if (!dock) return null;
+  return createPortal(
+    <Button
+      pill
       onClick={() => todayRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
       aria-label="Gulir ke jadwal hari ini"
-      className="focus-ring fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-emerald-700 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-900/30 transition-all hover:bg-emerald-800 active:scale-95"
+      // Phones only, and not over the mosque tab (the schedule is hidden there)
+      className="pointer-events-auto order-1 shadow-lg md:hidden in-data-[tab=masjid]:hidden"
     >
       <CalendarIcon size={14} />
       Hari Ini
-    </button>
+    </Button>,
+    dock
   );
 }

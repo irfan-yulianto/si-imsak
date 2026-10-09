@@ -83,7 +83,7 @@ describe("CityCombobox", () => {
   it("does not claim 'not found' while still searching", () => {
     render(<Harness isSearching />);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "xyz" } });
-    expect(screen.queryByText("Kota tidak ditemukan")).not.toBeInTheDocument();
+    expect(screen.queryByText("Kota tidak ditemukan.")).not.toBeInTheDocument();
   });
 
   it("closes on Escape keeping the text and focus, then clears on a second Escape", () => {

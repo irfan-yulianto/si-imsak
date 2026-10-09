@@ -2,7 +2,35 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v1.3.0
+## [Belum dirilis] — v2.0.0
+
+Tampilan baru di atas token desain. Tidak ada fitur yang ditambah atau dihapus; versi mayor karena hampir semua layar berubah.
+
+### Diubah
+- Warna, radius, bayangan, dan ukuran teks didefinisikan sekali per tema sebagai token di `globals.css`, dan komponen memakai nama semantiknya (`bg-surface`, `text-fg-muted`, `rounded-card`, …). Komponen dasar baru di `components/ui/`: Button, Card, Badge, Spinner, dan Skeleton.
+- Jadwal bulanan menjadi satu tabel ringkas untuk semua layar, menggantikan kartu per hari di HP. Di HP tabelnya ada di kotak yang bisa digeser ke dua arah, dengan kolom tanggal dan judul kolom tetap terlihat, dan dibuka di baris hari ini. Tinggi halaman di HP turun dari ±16.000 px menjadi ±3.900 px.
+- Di desktop, countdown berada di samping jadwal hari ini. Di tab masjid, kontrol tetap terlihat di samping daftar hasil.
+- Di HP, pencarian kota mendapat baris sendiri di header. Header, navigasi bawah, dan tombol yang melayang memperhitungkan notch dan home indicator iOS. Fokus keyboard tidak pernah tertutup header atau navigasi bawah.
+- Pemberitahuan versi baru dan tombol "Hari Ini" ditumpuk dalam satu kolom, sehingga tidak lagi saling menutupi. Tombol "Hari Ini" tidak muncul di tab masjid.
+- Countdown: nama sholat menjadi judul, lengkap dengan jamnya. Denyut tanpa henti dihapus; animasi hanya muncul saat waktu sholat tiba.
+- Jadwal hari ini: waktu yang sudah lewat diredupkan, bukan dicoret, dan tanggal Hijriyah ada di bawah judul.
+- Kontras kartu terhadap latar dinaikkan di kedua tema. Warna bar browser (`theme-color`) mengikuti tema.
+- Indikator fokus keyboard punya kontras minimal 3:1 di semua permukaan; sebelumnya 2,3:1 di tema terang.
+- Pesan lebih seragam: setiap pesan diakhiri titik, tanpa istilah teknis, dan satu pesan untuk perangkat tanpa deteksi lokasi.
+- Manifest PWA berbahasa Indonesia dan mendukung semua orientasi. Ia juga menyertakan screenshot untuk dialog install dan shortcut ke Masjid Terdekat (`scripts/pwa-screenshots.mjs` membuat ulang screenshot-nya).
+- Fade-in bertahap dihapus, dan banner install pindah ke akhir panel jadwal. Setiap skeleton seukuran isinya, dan tes E2E kini mewajibkan CLS di bawah 0,02.
+- CSS awal turun dari 11,6 KB menjadi 8,5 KB (gzip). JavaScript awal 198,0 KB, sedikit di bawah v1.3.0.
+
+### Diperbaiki
+- Halaman tidak lagi bisa digeser ke samping di HP 320 px, atau di tab masjid saat ada nama masjid yang panjang.
+
+### Privasi
+- Pencari masjid menulis "Lokasi GPS Anda", bukan koordinat Anda, sehingga posisi tidak terbaca dari layar atau rekaman layar.
+
+### Dihapus
+- Tampilan kartu per hari di HP (`MobileCards`) dan tabel khusus desktop (`DesktopTable`), keduanya diganti `MonthTable`.
+
+## [1.3.0] — 2026-10-09 ([#483](https://github.com/irfan-yulianto/si-imsak/pull/483))
 
 ### Diubah
 - Store dipecah per slice. Satu cache bulan (`months`, paling banyak 12 bulan) menggantikan `schedule` dan `countdownSchedule`, dan pindah kota memakai token sehingga jawaban lambat untuk kota sebelumnya diabaikan.

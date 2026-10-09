@@ -1,8 +1,7 @@
 // The mosque finder's messages (the app's others are in messages.ts)
 
 export const MOSQUE_MESSAGES = {
-  // Its GPS
-  gpsUnsupported: "Perangkat tidak mendukung GPS.",
+  // Its GPS (a device without one gets MESSAGES.noGeolocation)
   gpsDenied: "Izin lokasi ditolak. Buka pengaturan browser atau gunakan pencarian kota di bawah.",
   gpsUnavailable: "Lokasi tidak tersedia. Pastikan GPS aktif.",
   gpsFailed: "Gagal mendeteksi lokasi. Coba lagi.",

@@ -20,7 +20,7 @@ describe("Footer Component", () => {
   it("renders the creator info and GitHub link with correct attributes", () => {
     render(<Footer />);
     // Since the copyright text contains dynamic parts and html entities, we can check for partial matches or use the link directly
-    expect(screen.getByText(/Created by Irfan Yulianto/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dibuat oleh Irfan Yulianto/i)).toBeInTheDocument();
 
     const githubLink = screen.getByText("GitHub");
     expect(githubLink).toBeInTheDocument();

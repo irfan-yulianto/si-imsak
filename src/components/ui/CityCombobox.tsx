@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MapPinIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
+import Button from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
+import { cx } from "@/components/ui/cx";
 import { MESSAGES } from "@/lib/messages";
 
 interface CityComboboxProps<T> {
@@ -121,11 +124,7 @@ export default function CityCombobox<T>({
 
   return (
     <div ref={containerRef} className="relative">
-      <SearchIcon
-        size={15}
-        aria-hidden="true"
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
-      />
+      <SearchIcon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle" />
       <input
         ref={inputRef}
         type="text"
@@ -146,28 +145,30 @@ export default function CityCombobox<T>({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         // 16px on phones so iOS Safari doesn't zoom in on focus
-        className={`min-h-11 w-full border border-slate-200/80 bg-slate-50/80 pl-9 pr-11 text-base font-medium text-slate-700 placeholder-slate-500 transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40 sm:text-sm dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:border-emerald-500 dark:focus:bg-slate-800 ${
-          compact ? "rounded-lg py-2" : "rounded-xl py-2.5"
-        }`}
+        className={cx(
+          "min-h-11 w-full rounded-control border border-border bg-surface-2 pl-9 pr-11 text-base font-medium text-fg placeholder:text-fg-subtle transition-colors focus:border-focus focus:bg-surface focus:outline-none focus:ring-2 focus:ring-focus/30 sm:text-sm",
+          compact ? "py-2" : "py-2.5"
+        )}
       />
       {isSearching ? (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-        </div>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-accent-fg">
+          <Spinner size="sm" />
+        </span>
       ) : (
         query && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             aria-label="Bersihkan pencarian"
             onClick={() => {
               onQueryChange("");
               setOpen(false);
               inputRef.current?.focus();
             }}
-            className="focus-ring absolute right-0 top-0 flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="absolute right-0 top-0"
           >
             <XIcon size={16} />
-          </button>
+          </Button>
         )
       )}
 
@@ -176,7 +177,7 @@ export default function CityCombobox<T>({
         role="listbox"
         aria-label={`Hasil ${label.toLowerCase()}`}
         hidden={!showList}
-        className="absolute z-50 mt-1.5 max-h-60 w-full overflow-auto rounded-lg border border-slate-100 bg-white py-1 shadow-xl shadow-black/[0.08] dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/30"
+        className="absolute z-50 mt-1.5 max-h-60 w-full overflow-auto rounded-control border border-border bg-surface py-1 shadow-xl"
       >
         {results.map((item, i) => (
           <li
@@ -188,16 +189,14 @@ export default function CityCombobox<T>({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => select(item)}
             onMouseEnter={() => setActiveIndex(i)}
-            className={`flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2 text-left ${
-              i === active ? "bg-emerald-50 dark:bg-emerald-900/40" : ""
-            }`}
+            className={cx("flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2 text-left", i === active && "bg-accent-soft")}
           >
-            <MapPinIcon size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
-            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{getLabel(item)}</span>
+            <MapPinIcon size={14} className="shrink-0 text-fg-subtle" />
+            <span className="text-sm font-semibold text-fg">{getLabel(item)}</span>
           </li>
         ))}
         {showEmpty && (
-          <li role="presentation" className="px-3 py-2.5 text-center text-sm text-slate-500 dark:text-slate-400">
+          <li role="presentation" className="px-3 py-2.5 text-center text-sm text-fg-subtle">
             {emptyText}
           </li>
         )}

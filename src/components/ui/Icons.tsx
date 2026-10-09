@@ -22,8 +22,8 @@ export function ImsakIcon({ size = 24, ...props }: IconProps) {
   return (
     <svg {...defaultProps(size)} {...props}>
       <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
-      <path d="M5 18h14" strokeWidth={1.5} />
-      <path d="M7 21h10" strokeWidth={1} strokeDasharray="2 2" />
+      <path d="M5 18h14" />
+      <path d="M7 21h10" strokeDasharray="2 2" />
     </svg>
   );
 }
@@ -122,8 +122,8 @@ export function IsyaIcon({ size = 24, ...props }: IconProps) {
   return (
     <svg {...defaultProps(size)} {...props}>
       <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />
-      <path d="M19 3l.5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5L19 3z" fill="currentColor" strokeWidth={0} />
-      <path d="M15 1l.3.9.9.3-.9.3-.3.9-.3-.9-.9-.3.9-.3L15 1z" fill="currentColor" strokeWidth={0} />
+      <path d="M19 3l.5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5L19 3z" fill="currentColor" stroke="none" />
+      <path d="M15 1l.3.9.9.3-.9.3-.3.9-.3-.9-.9-.3.9-.3L15 1z" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -242,6 +242,17 @@ export function RefreshIcon({ size = 24, ...props }: IconProps) {
     <svg {...defaultProps(size)} {...props}>
       <polyline points="23 4 23 10 17 10" />
       <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  );
+}
+
+// iOS share sheet (used in the "Add to Home Screen" instructions)
+export function ShareIcon({ size = 24, ...props }: IconProps) {
+  return (
+    <svg {...defaultProps(size)} {...props}>
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
     </svg>
   );
 }

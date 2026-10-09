@@ -6,16 +6,16 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 
 - **Countdown Real-time** — Timer mundur menuju waktu sholat berikutnya dengan sinkronisasi waktu server, berjalan 24/7 secara siklis (termasuk transisi Isya ke Imsak besok). Menggunakan DOM refs untuk performa optimal tanpa re-render React setiap detik
 - **Jadwal Hari Ini** — Kartu waktu sholat hari ini dengan highlight otomatis waktu sholat yang sedang berlaku
-- **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, tampilan tabel (desktop) dan kartu per hari (mobile)
+- **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, dalam satu tabel ringkas untuk semua layar: di HP tabelnya bisa digeser ke dua arah dengan kolom tanggal dan judul kolom tetap terlihat, dan dibuka di baris hari ini
 - **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`), dihitung di perangkat sehingga tetap jalan offline. Tanggal resmi di Indonesia mengikuti sidang isbat Kemenag, jadi di sekitar awal bulan Hijriyah tanggalnya bisa berbeda satu hari. Endpoint kalender MyQuran v3 sudah dicek sebagai alternatif: metodenya perhitungan "standar", bukan hasil isbat, jadi tidak lebih akurat
 - **Pencari Masjid Terdekat** — Cari masjid di sekitar lokasi GPS atau kota pilihan via OpenStreetMap Overpass API, dengan navigasi langsung ke Google Maps
 - **Deteksi Lokasi** — Geolocation otomatis dengan reverse geocoding sampai tingkat kota/kabupaten, database 514 kota/kabupaten di seluruh Indonesia
 - **Pencarian Kota** — Cari kota/kabupaten dari database Kemenag RI via MyQuran API v3
-- **Tema Gelap & Terang** — Tema gelap secara default, bisa diganti lewat tombol di header; pilihan disimpan di perangkat
-- **PWA** — Installable sebagai Progressive Web App dengan service worker caching
+- **Tema Gelap & Terang** — Tema gelap secara default, bisa diganti lewat tombol di header; pilihan disimpan di perangkat, dan warna bar browser ikut berganti
+- **PWA** — Installable sebagai Progressive Web App dengan service worker caching, screenshot untuk dialog install, dan shortcut ke Masjid Terdekat
 - **Offline Support** — Cache jadwal di localStorage dan service worker. Service worker juga memakai salinan cache saat server error atau jaringan lebih lambat dari 3,5 detik
-- **Responsive** — Optimal di mobile dan desktop dengan bottom navigation pada mobile
-- **Aksesibilitas** — Lolos audit axe-core WCAG 2.1 AA: navigasi keyboard penuh (skip link, tab ARIA, pencarian kota dengan panah/Enter/Escape), status & error diumumkan ke screen reader, target sentuh 44px, menghormati `prefers-reduced-motion`
+- **Responsive** — Bottom navigation di HP; dua kolom di desktop (countdown di samping jadwal hari ini, kontrol pencari masjid di samping hasilnya); memperhitungkan notch dan home indicator iOS
+- **Aksesibilitas** — Lolos audit axe-core WCAG 2.1 AA: navigasi keyboard penuh (skip link, tab ARIA, pencarian kota dengan panah/Enter/Escape) dengan indikator fokus berkontras minimal 3:1, status & error diumumkan ke screen reader, target sentuh 44px, menghormati `prefers-reduced-motion`
 - **Sinkronisasi Waktu** — NTP-style time sync ke endpoint `/api/time` milik aplikasi sendiri, dengan sessionStorage caching untuk instant startup
 
 ## Tech Stack
@@ -86,15 +86,15 @@ src/
 │   ├── global-error.tsx         # Halaman error bila root layout gagal
 │   ├── opengraph-image.tsx      # Gambar preview link (dibuat saat build)
 │   ├── manifest.ts, robots.ts, sitemap.ts
-│   └── globals.css              # Global styles, animasi, Islamic geometric background
+│   └── globals.css              # Token desain (warna tema terang/gelap, radius, ukuran layout), animasi, pola latar
 ├── components/
 │   ├── layout/                  # Header (+ tombol tema), Footer, CurrentYear
 │   ├── location/                # LocationSearch: pencarian kota dan prompt lokasi
 │   ├── mosque/                  # MosqueFinder = MosqueControls + MosqueList (+ ikon khusus masjid)
 │   ├── pwa/                     # InstallBanner, UpdateToast (notifikasi versi baru)
 │   ├── schedule/                # CountdownTimer (LocationBadge, ArrivalNotice), TodayCard,
-│   │                            # ScheduleTable (MonthNav, DesktopTable, MobileCards, TodayFab)
-│   └── ui/                      # CityCombobox, Icons
+│   │                            # ScheduleTable (MonthNav, MonthTable, TodayFab)
+│   └── ui/                      # Button, Card, Badge, Spinner, Skeleton, ErrorScreen, CityCombobox, Icons
 ├── hooks/
 │   ├── useAppBootstrap.ts       # Start-up: migrasi dan hydrate cache, kota, online/offline, jam server
 │   ├── useCityClock.ts          # useCityToday / useCityMinute: tanggal dan menit di kota terpilih
@@ -119,6 +119,7 @@ src/
 │   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window per route)
 │   ├── report-error.ts          # Laporan error dari halaman error
 │   ├── storage.ts               # Satu-satunya akses localStorage/sessionStorage (envelope, migrasi, eviction)
+│   ├── theme.ts                 # Tema: kelas .dark dan theme-color, juga lewat script sebelum paint pertama
 │   ├── time.ts                  # Sinkronisasi waktu server (NTP-style)
 │   ├── timezone.ts              # Mapping timezone Indonesia (WIB/WITA/WIT)
 │   ├── upstream.ts              # Alamat MyQuran, Nominatim, Overpass (bisa diganti lewat env)
@@ -133,9 +134,10 @@ src/
 └── instrumentation.ts           # Log saat server mulai dan saat request error
 public/
 ├── sw.js                        # Service worker (dicek tsconfig.sw.json, dites di src/__tests__/sw.test.ts)
+├── screenshots/                 # Screenshot untuk dialog install PWA (scripts/pwa-screenshots.mjs)
 └── .well-known/security.txt
 e2e/                             # Tes Playwright + mock upstream (mock-upstream.mjs)
-scripts/                         # Anggaran bundle, diff screenshot, synthetic monitoring
+scripts/                         # Anggaran bundle, diff screenshot, screenshot PWA, synthetic monitoring
 ```
 
 ## Keamanan
@@ -250,6 +252,15 @@ Bila Chromium sudah terpasang di mesin, arahkan `PW_CHROMIUM_PATH` ke file execu
 ### Perbandingan screenshot
 
 Workflow **Visual** (`.github/workflows/visual.yml`) mem-build `main` dan pull request, memotret skenario yang sama dari keduanya, lalu membandingkannya piksel per piksel. Selisih membuat job gagal, kecuali pull request diberi label **`visual-change`**: selisihnya tetap dilaporkan di ringkasan job, dan gambarnya tersedia sebagai artefak.
+
+Screenshot untuk dialog install PWA (`public/screenshots/`, dicantumkan di `src/app/manifest.ts`) dibuat ulang setelah perubahan tampilan, dengan data dari fixture E2E dan jam tetap:
+
+```bash
+npm run build && npx next start -p 3100   # di terminal lain
+node scripts/pwa-screenshots.mjs
+```
+
+`src/app/manifest.test.ts` memastikan ukuran di manifest sama dengan ukuran file-nya.
 
 ### Synthetic monitoring
 

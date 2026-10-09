@@ -5,6 +5,9 @@ import { Location } from "@/types";
 import { searchCities } from "@/lib/api";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
+import Button from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
+import { MapPinIcon } from "@/components/ui/Icons";
 import { KEYS, writeJson, writeRaw } from "@/lib/storage";
 import { MESSAGES, detectFailedMessage } from "@/lib/messages";
 
@@ -88,7 +91,7 @@ export default function LocationSearch() {
   return (
     // The city search, its results and the prompt reveal where the user is: kept out of
     // Clarity session recordings
-    <div data-clarity-mask="True" className="relative w-full max-w-[260px]">
+    <div data-clarity-mask="True" className="relative w-full">
       {/* Location permission prompt */}
       {showLocationPrompt && (
         <div
@@ -98,45 +101,42 @@ export default function LocationSearch() {
           onKeyDown={(e) => {
             if (e.key === "Escape") handleDismissPrompt();
           }}
-          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-emerald-200 bg-emerald-50 p-3 shadow-lg dark:border-emerald-800 dark:bg-emerald-950"
+          className="absolute inset-x-0 top-full z-50 mt-2 rounded-card border border-border bg-surface p-4 shadow-xl sm:left-auto sm:w-80"
         >
-          <p id="location-prompt-title" className="mb-1 text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-            Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?
-          </p>
-          <p id="location-prompt-desc" className="mb-2 text-xs text-emerald-800 dark:text-emerald-200">
-            Saat ini menampilkan jadwal {location.cityName} sebagai contoh. Anda juga bisa mencari kota secara manual.
-          </p>
+          <div className="mb-2 flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-fg">
+              <MapPinIcon size={16} />
+            </span>
+            <div>
+              <p id="location-prompt-title" className="text-sm font-semibold text-fg">
+                Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?
+              </p>
+              <p id="location-prompt-desc" className="mt-1 text-xs text-fg-muted">
+                Saat ini menampilkan jadwal {location.cityName} sebagai contoh. Anda juga bisa mencari kota secara manual.
+              </p>
+            </div>
+          </div>
           {promptError && (
-            <p role="alert" className="mb-2 text-xs font-medium text-red-700 dark:text-red-300">
+            <p role="alert" className="mb-2 text-xs font-medium text-danger">
               {promptError}
             </p>
           )}
-          <div className="flex gap-2">
-            <button
-              ref={promptButtonRef}
-              type="button"
-              onClick={detectLocation}
-              disabled={isDetecting}
-              className="focus-ring min-h-11 flex-1 cursor-pointer rounded-md bg-emerald-700 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
-            >
+          <div className="mt-3 flex gap-2">
+            <Button ref={promptButtonRef} onClick={detectLocation} disabled={isDetecting} className="flex-1">
               {isDetecting ? (
-                <span className="flex items-center justify-center gap-1.5">
-                  <span aria-hidden="true" className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Mendeteksi...
-                </span>
+                <>
+                  <Spinner size="sm" />
+                  Mendeteksi…
+                </>
               ) : promptError ? (
                 "Coba Lagi"
               ) : (
                 "Gunakan Lokasi"
               )}
-            </button>
-            <button
-              type="button"
-              onClick={handleDismissPrompt}
-              className="focus-ring min-h-11 cursor-pointer rounded-md px-3 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-800/50"
-            >
+            </Button>
+            <Button variant="ghost" onClick={handleDismissPrompt}>
               {promptError ? "Tutup" : "Nanti"}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -144,7 +144,7 @@ export default function LocationSearch() {
       <CityCombobox
         variant="compact"
         label="Cari kota"
-        placeholder="Cari kota"
+        placeholder="Cari kota…"
         query={query}
         onQueryChange={handleQueryChange}
         results={results}

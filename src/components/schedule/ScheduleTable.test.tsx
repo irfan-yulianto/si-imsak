@@ -26,17 +26,21 @@ describe("ScheduleTable", () => {
   it("shows skeleton rows while a month loads for the first time", () => {
     const { container } = render(<ScheduleTable />);
     expect(container.querySelectorAll(".animate-shimmer").length).toBeGreaterThan(0);
-    expect(screen.getByRole("status")).toHaveTextContent("Memuat jadwal...");
+    expect(screen.getByRole("status")).toHaveTextContent("Memuat jadwal…");
+    // As many skeleton rows as the month has days, so nothing moves when it loads
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(31);
   });
 
-  it("shows the month's days, in the table and as cards", () => {
+  it("shows the month's days in one table, today marked and named for screen readers", () => {
     seedMonth(2024, 3, [MARCH_12]);
     render(<ScheduleTable />);
-    expect(screen.getByText("Maret 2024")).toBeInTheDocument();
-    expect(screen.getAllByText("04:32")).toHaveLength(2);
-    expect(screen.getAllByText("19:18")).toHaveLength(2);
-    // Today is marked in both
-    expect(document.querySelectorAll('[aria-current="date"]')).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Maret 2024" })).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: /^Jadwal imsakiyah Maret 2024, KOTA JAKARTA \(WIB\)/ });
+    expect(table).toHaveTextContent("04:32");
+    expect(table).toHaveTextContent("19:18");
+    const today = document.querySelector('[aria-current="date"]');
+    expect(today).toHaveTextContent(/Selasa, 12 Maret 2024, .*, hari ini/);
+    expect(screen.getByRole("rowheader", { name: /12 Maret 2024/ })).toBeInTheDocument();
   });
 
   it("keeps the days on screen while the month reloads", () => {

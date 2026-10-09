@@ -1,40 +1,30 @@
 import { CrescentIcon } from "@/components/ui/Icons";
 import CurrentYear from "./CurrentYear";
 
+const LINK = "focus-ring rounded font-medium text-accent-fg underline-offset-2 hover:underline";
+
 export default function Footer() {
   return (
-    <footer className="border-t border-slate-100 bg-gradient-to-b from-white to-slate-50 py-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
-      <div className="mx-auto max-w-5xl px-4">
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <CrescentIcon size={14} />
-            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Si-Imsak</span>
-          </div>
-          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-            Sumber data:{" "}
-            <a
-              href="https://bimasislam.kemenag.go.id"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="focus-ring cursor-pointer rounded font-medium text-emerald-700 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-            >
-              Bimas Islam Kemenag RI
-              <span className="sr-only"> (buka di tab baru)</span>
-            </a>
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            &copy; <CurrentYear /> Created by Irfan Yulianto &middot;{" "}
-            <a
-              href="https://github.com/irfan-yulianto/si-imsak"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="focus-ring rounded font-medium text-slate-600 transition-colors hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
-            >
-              GitHub
-              <span className="sr-only"> (buka di tab baru)</span>
-            </a>
-          </p>
-        </div>
+    <footer className="border-t border-border bg-surface py-6">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-1.5 px-4 text-center text-xs text-fg-subtle">
+        <p className="flex items-center gap-2 text-sm font-semibold text-fg-muted">
+          <CrescentIcon size={14} />
+          Si-Imsak
+        </p>
+        <p>
+          Sumber data:{" "}
+          <a href="https://bimasislam.kemenag.go.id" target="_blank" rel="noopener noreferrer" className={LINK}>
+            Bimas Islam Kemenag RI
+            <span className="sr-only"> (buka di tab baru)</span>
+          </a>
+        </p>
+        <p>
+          &copy; <CurrentYear /> Dibuat oleh Irfan Yulianto &middot;{" "}
+          <a href="https://github.com/irfan-yulianto/si-imsak" target="_blank" rel="noopener noreferrer" className={LINK}>
+            GitHub
+            <span className="sr-only"> (buka di tab baru)</span>
+          </a>
+        </p>
       </div>
     </footer>
   );

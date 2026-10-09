@@ -117,7 +117,7 @@ describe("CountdownTimer recovery", () => {
     render(<CountdownTimer />);
     await wait(9_000);
     expect(getSchedule).not.toHaveBeenCalled();
-    expect(screen.getByText("Memuat Jadwal...")).toBeInTheDocument();
+    expect(screen.getByText("Memuat jadwal…")).toBeInTheDocument();
   });
 
   it("doesn't keep showing the previous city's countdown while a new city loads", async () => {
@@ -131,7 +131,7 @@ describe("CountdownTimer recovery", () => {
     });
 
     expect(screen.queryByText("Menuju Waktu Dzuhur")).not.toBeInTheDocument();
-    expect(screen.getByText("Memuat Jadwal...")).toBeInTheDocument();
+    expect(screen.getByText("Memuat jadwal…")).toBeInTheDocument();
   });
 });
 

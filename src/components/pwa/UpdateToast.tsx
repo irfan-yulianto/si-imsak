@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BUILD_ID } from "@/lib/constants";
+import Button from "@/components/ui/Button";
 
 /**
  * Registers the service worker and offers a reload when a new version is ready.
  *
  * The worker URL carries the build id, so every deploy installs a new worker. It
- * waits (instead of taking over mid-use) until the user taps "Muat ulang", which
+ * waits (instead of taking over mid-use) until the user taps "Muat Ulang", which
  * matters for an installed PWA that stays open for hours, e.g. overnight for sahur.
  */
 export default function UpdateToast() {
@@ -57,33 +59,25 @@ export default function UpdateToast() {
     };
   }, []);
 
-  if (!waitingWorker) return null;
+  const dock = waitingWorker ? document.getElementById("dock") : null;
+  if (!waitingWorker || !dock) return null;
 
   const applyUpdate = () => {
     reloadRequestedRef.current = true;
     waitingWorker.postMessage({ type: "SKIP_WAITING" });
   };
 
-  return (
+  return createPortal(
     <div
       role="status"
-      className="fixed inset-x-4 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-3 shadow-lg md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] dark:border-emerald-800 dark:bg-slate-800"
+      className="pointer-events-auto order-2 flex items-center gap-3 self-stretch rounded-card border border-border bg-surface p-3 shadow-lg"
     >
-      <p className="flex-1 text-sm text-slate-700 dark:text-slate-200">Versi baru Si-Imsak tersedia.</p>
-      <button
-        type="button"
-        onClick={() => setWaitingWorker(null)}
-        className="min-h-11 cursor-pointer rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-300 dark:hover:bg-slate-700"
-      >
+      <p className="flex-1 text-sm text-fg">Versi baru Si-Imsak tersedia.</p>
+      <Button variant="ghost" onClick={() => setWaitingWorker(null)}>
         Nanti
-      </button>
-      <button
-        type="button"
-        onClick={applyUpdate}
-        className="min-h-11 cursor-pointer rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800"
-      >
-        Muat ulang
-      </button>
-    </div>
+      </Button>
+      <Button onClick={applyUpdate}>Muat Ulang</Button>
+    </div>,
+    dock
   );
 }

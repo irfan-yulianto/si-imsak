@@ -76,6 +76,14 @@ describe("useGeolocationWatch", () => {
     expect(result.current.error).toBe("Lokasi tidak tersedia. Pastikan GPS aktif.");
   });
 
+  it("says so, as the city detection does, on a device without location", () => {
+    vi.stubGlobal("navigator", { ...navigator, geolocation: undefined });
+    const { result } = renderHook(() => useGeolocationWatch(vi.fn()));
+    act(() => result.current.start());
+    expect(result.current.watching).toBe(false);
+    expect(result.current.error).toBe("Perangkat ini tidak mendukung deteksi lokasi.");
+  });
+
   it("stops watching when the finder closes", () => {
     const { result, unmount } = renderHook(() => useGeolocationWatch(vi.fn()));
     act(() => result.current.start());

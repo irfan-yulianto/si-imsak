@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MESSAGES } from "@/lib/messages";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
 
 /** A fix this accurate (meters) ends the watch */
@@ -45,7 +46,7 @@ export function useGeolocationWatch(onFix: (coords: { lat: number; lng: number }
 
   const start = useCallback(() => {
     if (!navigator.geolocation) {
-      setError(MOSQUE_MESSAGES.gpsUnsupported);
+      setError(MESSAGES.noGeolocation);
       return;
     }
     clear();

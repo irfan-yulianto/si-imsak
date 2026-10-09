@@ -21,16 +21,13 @@ export default function ArrivalNotice({ arrival }: { arrival: Arrival }) {
   const Icon = PRAYER_ICON_MAP[arrival.key];
   const { title, subtitle } = arrivalMessage(arrival.key, arrival.name);
   return (
-    <div className="text-center py-2">
-      <div className="mb-3 flex items-center justify-center gap-2">
-        <Icon size={24} className="animate-pulse-glow text-amber-300" />
-      </div>
-      <p className="text-lg font-extrabold text-amber-300 md:text-xl">
-        {title}
-      </p>
-      <p className="mt-1 text-xs font-medium text-green-200">
-        {subtitle}
-      </p>
+    <div className="text-center">
+      {/* The one animation of the countdown: while a time arrives */}
+      <span className="mx-auto mb-3 flex w-fit animate-pulse-glow rounded-full p-2">
+        <Icon size={24} className="text-on-hero-gold" />
+      </span>
+      <h2 className="text-lg font-extrabold text-on-hero-gold md:text-xl">{title}</h2>
+      <p className="mt-1 text-xs font-medium text-on-hero-muted">{subtitle}</p>
     </div>
   );
 }

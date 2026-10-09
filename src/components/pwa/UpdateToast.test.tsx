@@ -22,10 +22,13 @@ function mockServiceWorker({ waiting, controller }: { waiting: object | null; co
 describe("UpdateToast", () => {
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "production");
+    // The page's dock, where the notice is shown
+    document.body.insertAdjacentHTML("beforeend", '<div id="dock"></div>');
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    document.getElementById("dock")?.remove();
   });
 
   it("registers the worker with the build id", async () => {
@@ -39,7 +42,7 @@ describe("UpdateToast", () => {
     mockServiceWorker({ waiting, controller: {} });
     render(<UpdateToast />);
 
-    const button = await screen.findByRole("button", { name: "Muat ulang" });
+    const button = await screen.findByRole("button", { name: "Muat Ulang" });
     expect(screen.getByRole("status")).toHaveTextContent("Versi baru Si-Imsak tersedia.");
     fireEvent.click(button);
     expect(waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
