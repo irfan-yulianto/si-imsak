@@ -4,8 +4,7 @@ import { GET } from "./route";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/rate-limit", () => ({
-  isRateLimited: vi.fn(() => false),
-  extractClientIp: vi.fn(() => "127.0.0.1"),
+  checkRateLimit: vi.fn(() => ({ ok: true })),
 }));
 
 function makeRequest(query?: string) {
@@ -16,16 +15,17 @@ function makeRequest(query?: string) {
 
 beforeEach(async () => {
   vi.restoreAllMocks();
-  vi.mocked((await import("@/lib/rate-limit")).isRateLimited).mockReturnValue(false);
+  vi.mocked((await import("@/lib/rate-limit")).checkRateLimit).mockReturnValue({ ok: true });
 });
 
 describe("GET /api/cities", () => {
   it("returns 429 when rate limited", async () => {
-    const { isRateLimited } = await import("@/lib/rate-limit");
-    vi.mocked(isRateLimited).mockReturnValue(true);
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockReturnValue({ ok: false, retryAfterS: 42 });
 
     const res = await GET(makeRequest("jakarta"));
     expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("42");
   });
 
   it("returns empty data when query is missing", async () => {

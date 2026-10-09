@@ -1,10 +1,11 @@
 import { CDN_CACHE_DAY, NO_STORE, getScheduleYearRange } from "@/lib/constants";
-import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
+import { MYQURAN_API_BASE } from "@/lib/upstream";
+import { json, tooManyRequests, upstreamFetch } from "@/lib/http";
 import { log, errorMessage } from "@/lib/log";
-import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { isCityId, parseUpstreamPeriod, toScheduleDay, type UpstreamPeriod } from "@/lib/validate";
 import type { ScheduleDay, ScheduleResponse } from "@/types";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
 
 // The whole request, including retries, finishes within DEADLINE_MS
 export const maxDuration = 10;
@@ -88,12 +89,9 @@ async function fetchPeriod(
   if (deadline.aborted) return { kind: "unavailable" };
   entry.calls++;
   try {
-    // No Next.js data cache: a cached `{status:false}` body would outlive an upstream
-    // hiccup by a day. The CDN caches our own response instead.
-    const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
-      cache: "no-store",
-      headers: { "User-Agent": UPSTREAM_USER_AGENT, Accept: "application/json" },
-      signal: AbortSignal.any([deadline, AbortSignal.timeout(CALL_TIMEOUT_MS)]),
+    const res = await upstreamFetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
+      signal: deadline,
+      timeoutMs: CALL_TIMEOUT_MS,
     });
     if (res.status === 429 || res.status >= 500) return { kind: "unavailable" };
     if (!res.ok) return { kind: "client" };
@@ -118,59 +116,32 @@ async function fetchPeriodRetrying(
 }
 
 function unavailable(retryAfterS: number) {
-  return NextResponse.json<ScheduleResponse>(
+  return json<ScheduleResponse>(
     { status: false, error: "Upstream unavailable" },
-    {
-      status: 502,
-      headers: { "Retry-After": String(Math.max(1, retryAfterS)), "Cache-Control": UNAVAILABLE_CACHE },
-    }
+    { status: 502, cache: UNAVAILABLE_CACHE, headers: { "Retry-After": String(Math.max(1, retryAfterS)) } }
   );
 }
 
+const invalid = (error: string) => json<ScheduleResponse>({ status: false, error }, { status: 400 });
+
 export async function GET(request: NextRequest) {
   const started = Date.now();
-  const ip = extractClientIp(request);
-  if (isRateLimited(ip)) {
-    return NextResponse.json<ScheduleResponse>(
-      { status: false, error: "Too many requests" },
-      { status: 429 }
-    );
-  }
+  const limit = checkRateLimit(request, "schedule");
+  if (!limit.ok) return tooManyRequests<ScheduleResponse>({ status: false, error: "Too many requests" }, limit.retryAfterS);
 
   const cityId = request.nextUrl.searchParams.get("city_id");
   const year = request.nextUrl.searchParams.get("year");
   const month = request.nextUrl.searchParams.get("month");
 
-  if (!cityId || !year || !month) {
-    return NextResponse.json<ScheduleResponse>(
-      { status: false, error: "Missing parameters" },
-      { status: 400 }
-    );
-  }
-
-  if (!isCityId(cityId)) {
-    return NextResponse.json<ScheduleResponse>(
-      { status: false, error: "Invalid city_id" },
-      { status: 400 }
-    );
-  }
+  if (!cityId || !year || !month) return invalid("Missing parameters");
+  if (!isCityId(cityId)) return invalid("Invalid city_id");
 
   // Validate year and month
   const yearNum = Number(year);
   const monthNum = Number(month);
   const yearRange = getScheduleYearRange();
-  if (!Number.isInteger(yearNum) || yearNum < yearRange.min || yearNum > yearRange.max) {
-    return NextResponse.json<ScheduleResponse>(
-      { status: false, error: "Invalid year" },
-      { status: 400 }
-    );
-  }
-  if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
-    return NextResponse.json<ScheduleResponse>(
-      { status: false, error: "Invalid month" },
-      { status: 400 }
-    );
-  }
+  if (!Number.isInteger(yearNum) || yearNum < yearRange.min || yearNum > yearRange.max) return invalid("Invalid year");
+  if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) return invalid("Invalid month");
 
   const monthPeriod = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
   const dates = Array.from({ length: getDaysInMonth(yearNum, monthNum) }, (_, i) =>
@@ -228,14 +199,8 @@ export async function GET(request: NextRequest) {
         // city has no schedule
         return finish(
           probe.kind === "ok"
-            ? NextResponse.json<ScheduleResponse>(
-                { status: false, error: "Upstream API error" },
-                { status: 502, headers: { "Cache-Control": NO_STORE } }
-              )
-            : NextResponse.json<ScheduleResponse>(
-                { status: false, error: "Schedule not found" },
-                { status: 404, headers: { "Cache-Control": NOT_FOUND_CACHE } }
-              )
+            ? json<ScheduleResponse>({ status: false, error: "Upstream API error" }, { status: 502, cache: NO_STORE })
+            : json<ScheduleResponse>({ status: false, error: "Schedule not found" }, { status: 404, cache: NOT_FOUND_CACHE })
         );
       }
     }
@@ -258,7 +223,7 @@ export async function GET(request: NextRequest) {
     const partial = jadwal.length < dates.length;
 
     return finish(
-      NextResponse.json<ScheduleResponse>(
+      json<ScheduleResponse>(
         {
           status: true,
           ...(partial && { partial: true }),
@@ -269,16 +234,13 @@ export async function GET(request: NextRequest) {
             jadwal,
           },
         },
-        { headers: { "Cache-Control": partial ? NO_STORE : CDN_CACHE_DAY } }
+        { cache: partial ? NO_STORE : CDN_CACHE_DAY }
       )
     );
   } catch (err) {
     log("error", { route: "schedule", error: errorMessage(err) });
     return finish(
-      NextResponse.json<ScheduleResponse>(
-        { status: false, error: "Failed to fetch schedule" },
-        { status: 500, headers: { "Cache-Control": NO_STORE } }
-      )
+      json<ScheduleResponse>({ status: false, error: "Failed to fetch schedule" }, { status: 500, cache: NO_STORE })
     );
   }
 }

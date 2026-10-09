@@ -1,5 +1,5 @@
 import { CitySearchResponse, ScheduleResponse } from "@/types";
-import { SCHEDULE_CACHE_MAX_AGE, roundCoord } from "@/lib/constants";
+import { GEOCODE_DECIMALS, SCHEDULE_CACHE_MAX_AGE, roundCoord } from "@/lib/constants";
 import { isObject, isScheduleData, parseCityList, parseScheduleResponse } from "@/lib/validate";
 import { KEYS, read, write } from "@/lib/storage";
 
@@ -10,7 +10,7 @@ export async function reverseGeocodeCity(lat: number, lng: number): Promise<stri
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(`${API_BASE}/geocode?lat=${roundCoord(lat)}&lng=${roundCoord(lng)}`, {
+    const res = await fetch(`${API_BASE}/geocode?lat=${roundCoord(lat, GEOCODE_DECIMALS)}&lng=${roundCoord(lng, GEOCODE_DECIMALS)}`, {
       signal: controller.signal,
     });
     if (!res.ok) return "";

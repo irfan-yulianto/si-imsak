@@ -35,7 +35,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 | Data | Sumber |
 |------|--------|
 | Jadwal Sholat | [MyQuran API v3](https://api.myquran.com) — data resmi Kemenag RI |
-| Masjid Terdekat | [OpenStreetMap Overpass API](https://overpass-api.de) — tiga mirror ditanya sekaligus, jawaban pertama yang dipakai |
+| Masjid Terdekat | [OpenStreetMap Overpass API](https://overpass-api.de) — satu mirror dulu; mirror berikutnya ikut ditanya bila yang sebelumnya gagal atau belum menjawab dalam 3 detik, dan jawaban pertama yang dipakai |
 | Deteksi Kota | [Nominatim](https://nominatim.org) (OpenStreetMap) — reverse geocoding |
 | Sinkronisasi Waktu | Endpoint `/api/time` (jam server) — fallback ke waktu lokal perangkat |
 
@@ -77,7 +77,7 @@ src/
 │   ├── api/
 │   │   ├── cities/route.ts      # Proxy pencarian kota ke MyQuran API v3
 │   │   ├── geocode/route.ts     # Reverse geocoding: koordinat → kota/kabupaten (Nominatim)
-│   │   ├── mosques/route.ts     # Pencarian masjid via Overpass API (beberapa mirror sekaligus)
+│   │   ├── mosques/route.ts     # Pencarian masjid via Overpass API (mirror bergantian, dengan hedge 3 detik)
 │   │   ├── schedule/route.ts    # Proxy jadwal sholat ke MyQuran API v3 (1 panggilan bulanan + fallback per hari)
 │   │   └── time/route.ts        # Jam server untuk sinkronisasi waktu klien
 │   ├── layout.tsx               # Root layout (font, metadata, analytics, theme init)
@@ -105,7 +105,8 @@ src/
 │   ├── hijri.ts                 # Konversi kalender Hijriyah (Intl.DateTimeFormat)
 │   ├── log.ts                   # Log JSON satu baris untuk route API
 │   ├── mosques.ts               # Overpass query builder + response parser
-│   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window)
+│   ├── http.ts                  # Jawaban JSON, panggilan upstream, gerbang 1 req/detik untuk Nominatim
+│   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window per route)
 │   ├── report-error.ts          # Laporan error dari halaman error
 │   ├── time.ts                  # Sinkronisasi waktu server (NTP-style)
 │   ├── timezone.ts              # Mapping timezone Indonesia (WIB/WITA/WIT)
@@ -127,8 +128,8 @@ scripts/                         # Anggaran bundle, diff screenshot, synthetic m
 - **Content Security Policy (CSP)** — Whitelist ketat untuk script, connect, image, dan font sources
 - **HSTS** — Strict-Transport-Security dengan preload (max-age 2 tahun)
 - **Security Headers** — X-Frame-Options (DENY), X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy; route API juga mengirim Cross-Origin-Resource-Policy. Header `X-App-Version` menyebut deploy mana yang menjawab
-- **Rate Limiting** — Sliding window per IP di memori (30 req/menit untuk jadwal, 10 req/menit untuk masjid & geocode). Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment)
-- **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius 100-10.000m)
+- **Rate Limiting** — Sliding window per IP dan per route di memori (30 req/menit untuk jadwal dan pencarian kota, 10 req/menit untuk masjid dan geocode). Jawaban 429 menyertakan `Retry-After`. Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment). Panggilan ke Nominatim dibatasi 1 per detik per instance, sesuai kebijakan pemakaiannya
+- **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius hanya 2, 3, 4, 6, 8, atau 10 km)
 - **Request Timeout** — Setiap panggilan upstream punya batas waktu dan satu retry. `/api/schedule` selesai paling lama 8 detik; saat MyQuran down ia membalas 502 dengan `Retry-After` setelah paling banyak 3 panggilan, lalu menahan panggilan berikutnya selama 15 detik
 - **Service Worker Versioning** — Worker didaftarkan sebagai `/sw.js?v=<build id>`, jadi setiap deploy memasang worker dan cache baru; cache lama dihapus saat aktivasi. Versi baru menunggu sampai pengguna menekan "Muat ulang" pada notifikasi pembaruan
 - **No Personal Data** — Tidak menyimpan data personal pengguna di server
@@ -141,10 +142,10 @@ Si-Imsak tidak punya akun maupun database. Data yang dikirim saat aplikasi dipak
 
 | Penerima | Data | Kapan |
 |----------|------|-------|
-| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 3 desimal (±110 m) | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid |
+| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 2 desimal (±1 km) untuk mendeteksi kota, atau ke 3 desimal (±110 m) untuk mencari masjid | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid |
 | MyQuran | ID kota dan periode, kata kunci pencarian kota | Diteruskan oleh server, jadi MyQuran melihat server Vercel, bukan IP pengguna |
-| Nominatim (OpenStreetMap) | Koordinat yang dibulatkan | Mendeteksi kota dari GPS, lewat server |
-| Overpass (OpenStreetMap) | Koordinat yang dibulatkan dan radius pencarian | Mencari masjid, lewat server |
+| Nominatim (OpenStreetMap) | Koordinat yang dibulatkan ke 2 desimal (±1 km) | Mendeteksi kota dari GPS, lewat server |
+| Overpass (OpenStreetMap) | Koordinat yang dibulatkan ke 3 desimal (±110 m) dan radius pencarian | Mencari masjid, lewat server |
 | Vercel Analytics & Speed Insights | Kunjungan halaman dan metrik performa, tanpa cookie | Setiap kunjungan |
 | Microsoft Clarity (hanya jika `NEXT_PUBLIC_CLARITY_ID` diisi) | Rekaman interaksi dan heatmap, memakai cookie. Elemen yang memuat lokasi (pencarian dan prompt kota, nama kota di countdown, koordinat, pencarian dan daftar masjid) ditandai `data-clarity-mask` sehingga isinya tidak terekam. Saat halaman error tampil, sesinya diberi tanda `app_error` beserta digest error (kode acak tanpa data pribadi) | Setiap kunjungan |
 
@@ -178,7 +179,7 @@ API routes mengirim header `Cache-Control` dengan `s-maxage` supaya CDN Vercel m
 |-------|-----------|
 | `/api/schedule` | 24 jam + stale-while-revalidate 7 hari (bulan yang datanya tidak lengkap dikirim `no-store`) |
 | `/api/cities` | 24 jam + stale-while-revalidate 7 hari |
-| `/api/geocode` | 24 jam (koordinat dibulatkan ke 3 desimal) |
+| `/api/geocode` | 24 jam (koordinat dibulatkan ke 2 desimal) |
 | `/api/mosques` | 1 jam + stale-while-revalidate 2 jam (koordinat dibulatkan ke 3 desimal) |
 | `/api/time` | `no-store` |
 

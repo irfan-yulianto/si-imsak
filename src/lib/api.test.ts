@@ -37,6 +37,13 @@ describe("reverseGeocodeCity", () => {
     }));
     expect(await reverseGeocodeCity(-7.25, 112.43)).toBe("");
   });
+
+  it("sends the position to ~1 km only: enough to find the city", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ status: true, city: "KAB. GRESIK" }) });
+    vi.stubGlobal("fetch", mockFetch);
+    await reverseGeocodeCity(-7.251234, 112.438765);
+    expect(mockFetch).toHaveBeenCalledWith("/api/geocode?lat=-7.25&lng=112.44", expect.any(Object));
+  });
 });
 
 describe("searchCities", () => {

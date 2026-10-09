@@ -34,10 +34,17 @@ export function getScheduleYearRange(year: number = new Date().getUTCFullYear())
   return { min: year - 1, max: year + 1 };
 }
 
-/** Round a coordinate to 3 decimals (~110 m) so nearby requests share CDN cache entries. */
-export function roundCoord(value: number): number {
-  return Math.round(value * 1000) / 1000;
+/**
+ * Round a coordinate so nearby requests share CDN cache entries, and reveal no more of
+ * the position than needed: 3 decimals (~110 m) by default.
+ */
+export function roundCoord(value: number, decimals = 3): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
 }
+
+/** Finding the city needs no more than ~1 km of the position (2 decimals) */
+export const GEOCODE_DECIMALS = 2;
 
 // Indonesia geographic bounds for input validation
 export const INDONESIA_BOUNDS = {

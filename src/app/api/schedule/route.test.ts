@@ -3,8 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/rate-limit", () => ({
-  isRateLimited: vi.fn(() => false),
-  extractClientIp: vi.fn(() => "127.0.0.1"),
+  checkRateLimit: vi.fn(() => ({ ok: true })),
 }));
 
 // A fresh module per test: the outage breaker is per-instance state
@@ -50,8 +49,8 @@ beforeEach(async () => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.resetModules();
   ({ GET } = await import("./route"));
-  const { isRateLimited } = await import("@/lib/rate-limit");
-  vi.mocked(isRateLimited).mockReturnValue(false);
+  const { checkRateLimit } = await import("@/lib/rate-limit");
+  vi.mocked(checkRateLimit).mockReturnValue({ ok: true });
 });
 
 afterEach(() => {
@@ -61,11 +60,12 @@ afterEach(() => {
 
 describe("GET /api/schedule", () => {
   it("returns 429 when rate limited", async () => {
-    const { isRateLimited } = await import("@/lib/rate-limit");
-    vi.mocked(isRateLimited).mockReturnValue(true);
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockReturnValue({ ok: false, retryAfterS: 42 });
 
     const res = await GET(makeRequest(MARCH));
     expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("42");
   });
 
   it("returns 400 when city_id is missing", async () => {

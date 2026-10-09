@@ -1,5 +1,5 @@
 /**
- * In-process rate limiter using a sliding window algorithm.
+ * In-process rate limiter: a sliding one-minute window per client and route.
  *
  * ⚠️ SERVERLESS LIMITATION:
  * On Vercel (or any serverless platform), each function instance has its own
@@ -13,86 +13,71 @@
  * - a Vercel Firewall rate-limit rule on /api/* (configured in the dashboard, see README).
  */
 
-const windowMs = 60_000; // 1 minute window
-const maxRequests = 30; // max requests per window per IP
-const MAX_IPS = 10000; // max tracked IPs to prevent memory exhaustion
+const WINDOW_MS = 60_000;
+/** Requests per client and minute, for each route: one route's traffic never uses up another's */
+const LIMITS = { schedule: 30, cities: 30, geocode: 10, mosques: 10 } as const;
+export type LimitedRoute = keyof typeof LIMITS;
+/** Most clients tracked at once, so memory stays bounded */
+const MAX_KEYS = 10_000;
 
 const requests = new Map<string, number[]>();
 
-// Clean up stale entries every 5 minutes to prevent memory leak
+// Every 5 minutes, forget clients whose window has passed. unref(): this timer alone
+// never keeps a process running (tests, scripts).
 setInterval(() => {
   const now = Date.now();
   for (const [key, timestamps] of requests) {
-    const valid = timestamps.filter((t) => now - t < windowMs);
-    if (valid.length === 0) requests.delete(key);
-    else requests.set(key, valid);
+    const recent = timestamps.filter((t) => now - t < WINDOW_MS);
+    if (recent.length === 0) requests.delete(key);
+    else requests.set(key, recent);
   }
-}, 300_000);
+}, 300_000).unref?.();
 
 /**
- * Extract client IP from request.
- * On Vercel, x-vercel-forwarded-for / x-real-ip / x-forwarded-for are set by the
- * platform and overwrite client-supplied values. Elsewhere, the rightmost
- * x-forwarded-for entry (added by the nearest proxy) is used, so prepended IPs
- * can't be spoofed.
+ * The client's IP address. On Vercel, x-vercel-forwarded-for / x-real-ip /
+ * x-forwarded-for are set by the platform and overwrite client-supplied values.
+ * Elsewhere, the rightmost x-forwarded-for entry (added by the nearest proxy) is used,
+ * so prepended IPs can't be spoofed.
  */
-export function extractClientIp(request: { headers?: Headers | Record<string, string> | { get: (name: string) => string | null } } | string | null): string {
-  if (!request) return "unknown";
-
-  if (typeof request === "string") {
-    const parts = request.split(",");
-    const last = parts[parts.length - 1]?.trim();
-    return last || "unknown";
-  }
-
-  const headers = request.headers;
-  if (!headers) return "unknown";
-
-  const getHeader = (name: string): string | null => {
-    if ('get' in headers && typeof headers.get === "function") {
-      return headers.get(name) as string | null;
-    }
-    const record = headers as Record<string, string>;
-    return record[name] || record[name.toLowerCase()] || null;
-  };
-
-  const vercelIp = getHeader("x-vercel-forwarded-for")?.split(",")[0]?.trim();
+export function extractClientIp(request: { headers: Pick<Headers, "get"> }): string {
+  const { headers } = request;
+  const vercelIp = headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
   if (vercelIp) return vercelIp;
 
-  const xRealIp = getHeader("x-real-ip");
-  if (xRealIp) return xRealIp.trim();
+  const realIp = headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
 
-  const xForwardedFor = getHeader("x-forwarded-for");
-  if (xForwardedFor) {
-    const parts = xForwardedFor.split(",");
-    const last = parts[parts.length - 1]?.trim();
-    if (last) return last;
-  }
-
-  return "unknown";
+  const forwarded = headers.get("x-forwarded-for")?.split(",").pop()?.trim();
+  return forwarded || "unknown";
 }
 
-export function isRateLimited(ip: string, limit: number = maxRequests): boolean {
-  const key = limit === maxRequests ? ip : `${ip}:${limit}`;
+/**
+ * Counts this request against the client's limit for `route`. Over the limit, the
+ * request is not counted, and `retryAfterS` says when the window has room again.
+ */
+export function checkRateLimit(
+  request: { headers: Pick<Headers, "get"> },
+  route: LimitedRoute
+): { ok: true } | { ok: false; retryAfterS: number } {
+  const key = `${route}:${extractClientIp(request)}`;
   const now = Date.now();
-  const timestamps = requests.get(key) || [];
-  const valid = timestamps.filter((t) => now - t < windowMs);
+  const recent = (requests.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
 
-  if (valid.length >= limit) {
-    requests.set(key, valid);
-    return true;
+  if (recent.length >= LIMITS[route]) {
+    requests.set(key, recent);
+    return { ok: false, retryAfterS: Math.max(1, Math.ceil((recent[0] + WINDOW_MS - now) / 1000)) };
   }
 
-  // Bound memory: evict the oldest-tracked key instead of rejecting new clients
-  // (rejecting would let a flood of spoofed IPs lock everyone out).
-  if (!requests.has(key) && requests.size >= MAX_IPS) {
+  // Bound memory: evict the least recently seen client instead of rejecting new ones
+  // (rejecting would let a flood of spoofed IPs lock everyone out)
+  if (!requests.has(key) && requests.size >= MAX_KEYS) {
     const oldest = requests.keys().next().value;
     if (oldest !== undefined) requests.delete(oldest);
   }
 
-  // Re-insert so Map order tracks recency for eviction
+  // Re-insert so the Map's order follows recency
   requests.delete(key);
-  valid.push(now);
-  requests.set(key, valid);
-  return false;
+  recent.push(now);
+  requests.set(key, recent);
+  return { ok: true };
 }

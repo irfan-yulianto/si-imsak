@@ -1,128 +1,78 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Must re-import fresh for each test to reset module state
+// A fresh module for each test: the windows are module state
 let extractClientIp: typeof import("./rate-limit").extractClientIp;
-let isRateLimited: typeof import("./rate-limit").isRateLimited;
+let checkRateLimit: typeof import("./rate-limit").checkRateLimit;
 
 beforeEach(async () => {
   vi.useFakeTimers();
-  // Dynamically import to get fresh module state
   vi.resetModules();
-  const mod = await import("./rate-limit");
-  extractClientIp = mod.extractClientIp;
-  isRateLimited = mod.isRateLimited;
+  ({ extractClientIp, checkRateLimit } = await import("./rate-limit"));
 });
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
+/** A request from `ip` (as Vercel reports it) */
+const from = (ip: string) => ({ headers: new Headers({ "x-real-ip": ip }) });
+
+/** Sends `n` requests and returns the last answer */
+function send(n: number, ip: string, route: Parameters<typeof checkRateLimit>[1]) {
+  let last = checkRateLimit(from(ip), route);
+  for (let i = 1; i < n; i++) last = checkRateLimit(from(ip), route);
+  return last;
+}
+
 describe("extractClientIp", () => {
-  it("returns 'unknown' for null input", () => {
-    expect(extractClientIp(null)).toBe("unknown");
-  });
-
-  it("returns 'unknown' for empty string", () => {
-    expect(extractClientIp("")).toBe("unknown");
-  });
-
-  it("returns last IP from comma-separated string", () => {
-    expect(extractClientIp("1.2.3.4, 5.6.7.8")).toBe("5.6.7.8");
-  });
-
-  it("returns single IP string", () => {
-    expect(extractClientIp("192.168.1.1")).toBe("192.168.1.1");
-  });
-
-  it("trims whitespace in string", () => {
-    expect(extractClientIp("  10.0.0.1  , 10.0.0.2  ")).toBe("10.0.0.2");
-  });
-
   it("prefers x-vercel-forwarded-for over other headers", () => {
-    const headers: Record<string, string> = {
-      "x-vercel-forwarded-for": "10.0.0.3",
-      "x-real-ip": "10.0.0.9",
-      "x-forwarded-for": "10.0.0.8",
-    };
-    const req = { headers: { get: (name: string) => headers[name] ?? null } };
-    expect(extractClientIp(req)).toBe("10.0.0.3");
+    const headers = new Headers({ "x-vercel-forwarded-for": "10.0.0.3", "x-real-ip": "10.0.0.9", "x-forwarded-for": "10.0.0.8" });
+    expect(extractClientIp({ headers })).toBe("10.0.0.3");
   });
 
-  it("extracts from x-real-ip header", () => {
-    const req = { headers: { get: (name: string) => name === "x-real-ip" ? "10.0.0.4" : null } };
-    expect(extractClientIp(req)).toBe("10.0.0.4");
+  it("uses x-real-ip next", () => {
+    expect(extractClientIp({ headers: new Headers({ "x-real-ip": " 10.0.0.4 " }) })).toBe("10.0.0.4");
   });
 
-  it("extracts rightmost from x-forwarded-for header", () => {
-    const req = { headers: { get: (name: string) => name === "x-forwarded-for" ? "10.0.0.5, 10.0.0.6" : null } };
-    expect(extractClientIp(req)).toBe("10.0.0.6");
+  it("takes the rightmost x-forwarded-for entry, which the nearest proxy added", () => {
+    expect(extractClientIp({ headers: new Headers({ "x-forwarded-for": "6.6.6.6, 10.0.0.6" }) })).toBe("10.0.0.6");
   });
 
-  it("falls back to 'unknown' if no valid IP found in request", () => {
-    const req = { headers: { get: () => null } };
-    expect(extractClientIp(req)).toBe("unknown");
+  it("falls back to 'unknown'", () => {
+    expect(extractClientIp({ headers: new Headers() })).toBe("unknown");
   });
 });
 
-describe("isRateLimited", () => {
-  it("returns false for first request", () => {
-    expect(isRateLimited("1.1.1.1")).toBe(false);
+describe("checkRateLimit", () => {
+  it("allows 30 schedule requests a minute, then says when to come back", () => {
+    expect(send(30, "1.1.1.1", "schedule")).toEqual({ ok: true });
+    vi.advanceTimersByTime(20_000);
+    expect(checkRateLimit(from("1.1.1.1"), "schedule")).toEqual({ ok: false, retryAfterS: 40 });
+
+    // A refused request doesn't count: room again once the first ones are a minute old
+    vi.advanceTimersByTime(40_000);
+    expect(checkRateLimit(from("1.1.1.1"), "schedule")).toEqual({ ok: true });
   });
 
-  it("returns false for requests under limit", () => {
-    for (let i = 0; i < 29; i++) {
-      isRateLimited("2.2.2.2");
-    }
-    expect(isRateLimited("2.2.2.2")).toBe(false); // 30th request
+  it("allows 10 mosque and geocode requests a minute", () => {
+    expect(send(10, "2.2.2.2", "mosques")).toEqual({ ok: true });
+    expect(checkRateLimit(from("2.2.2.2"), "mosques")).toMatchObject({ ok: false });
+    expect(send(10, "2.2.2.2", "geocode")).toEqual({ ok: true });
+    expect(checkRateLimit(from("2.2.2.2"), "geocode")).toMatchObject({ ok: false });
   });
 
-  it("returns true when limit is reached", () => {
-    for (let i = 0; i < 30; i++) {
-      isRateLimited("3.3.3.3");
-    }
-    expect(isRateLimited("3.3.3.3")).toBe(true); // 31st request
+  it("counts each route and each client separately", () => {
+    send(30, "3.3.3.3", "cities");
+    expect(checkRateLimit(from("3.3.3.3"), "cities")).toMatchObject({ ok: false });
+    expect(checkRateLimit(from("3.3.3.3"), "schedule")).toEqual({ ok: true });
+    expect(checkRateLimit(from("4.4.4.4"), "cities")).toEqual({ ok: true });
   });
 
-  it("respects custom limit parameter", () => {
-    for (let i = 0; i < 10; i++) {
-      isRateLimited("4.4.4.4", 10);
-    }
-    expect(isRateLimited("4.4.4.4", 10)).toBe(true);
-  });
-
-  it("allows requests after window expires", () => {
-    // Fill up the limit
-    for (let i = 0; i < 30; i++) {
-      isRateLimited("5.5.5.5");
-    }
-    expect(isRateLimited("5.5.5.5")).toBe(true);
-
-    // Advance past the 60-second window
-    vi.advanceTimersByTime(61000);
-
-    expect(isRateLimited("5.5.5.5")).toBe(false);
-  });
-
-  it("uses namespaced key for custom limits", () => {
-    // Default limit (30) and custom limit (10) should not interfere
-    for (let i = 0; i < 10; i++) {
-      isRateLimited("6.6.6.6", 10);
-    }
-    expect(isRateLimited("6.6.6.6", 10)).toBe(true);
-    // Default limit should still have room
-    expect(isRateLimited("6.6.6.6")).toBe(false);
-  });
-
-  it("evicts the oldest client instead of rejecting new ones when the map is full", () => {
-    // Fill the tracker to its 10,000-key cap
-    for (let i = 0; i < 10000; i++) {
-      isRateLimited(`ip-${i}`);
-    }
-    // A brand-new client must still be served
-    expect(isRateLimited("new-client")).toBe(false);
-    // ...and the oldest entry was dropped, so it starts with a fresh window
-    for (let i = 0; i < 29; i++) {
-      expect(isRateLimited("ip-0")).toBe(false);
-    }
+  it("forgets the least recently seen client instead of refusing new ones when full", () => {
+    for (let i = 0; i < 10_000; i++) checkRateLimit(from(`ip-${i}`), "schedule");
+    // A brand-new client is served
+    expect(checkRateLimit(from("new-client"), "schedule")).toEqual({ ok: true });
+    // ...and the oldest entry was dropped: it starts a fresh window
+    expect(send(30, "ip-0", "schedule")).toEqual({ ok: true });
   });
 });

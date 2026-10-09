@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "@/store/useStore";
 import type { Mosque } from "@/types";
-import { formatRadius, haversineDistance } from "@/lib/mosques";
+import { formatRadius, distanceMeters } from "@/lib/mosques";
 import { MOSQUE_CACHE_MAX_AGE, roundCoord } from "@/lib/constants";
 import { KEYS, read, write } from "@/lib/storage";
 import { isMosqueList, isObject, parseMosques } from "@/lib/validate";
@@ -30,7 +30,7 @@ const ATTEMPTS = 3;
 /** Nearest first, measured from `coords` */
 function byDistance(mosques: Mosque[], coords: Coords): Mosque[] {
   return mosques
-    .map((m) => ({ ...m, distance: haversineDistance(coords.lat, coords.lng, m.lat, m.lng) }))
+    .map((m) => ({ ...m, distance: distanceMeters(coords.lat, coords.lng, m.lat, m.lng) }))
     .sort((a, b) => a.distance - b.distance);
 }
 
@@ -149,7 +149,7 @@ export function useMosqueSearch(): {
     // From a city's centre to the GPS position: always a new search, past the cache
     const toGps = area.gps && last !== null && !last.gps;
     if (last && !toGps) {
-      const moved = haversineDistance(last.coords.lat, last.coords.lng, area.coords.lat, area.coords.lng);
+      const moved = distanceMeters(last.coords.lat, last.coords.lng, area.coords.lat, area.coords.lng);
       const sharper = last.accuracy !== null && area.accuracy !== null && area.accuracy < last.accuracy * 0.5;
       if (moved < MOVED_M && !sharper && area.radius === last.radius) return;
     }
