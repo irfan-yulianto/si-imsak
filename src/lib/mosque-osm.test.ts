@@ -21,6 +21,7 @@ describe("classifyType", () => {
     "Mushalla Darussalam",
     "MUSHOLA AL-AMIN",
     "Musholā Al-Hidayah",
+    "Muslla Sumbek",
     "Langgar Kidul",
     "Surau Gadang",
     "Meunasah Gampong Baro",
@@ -55,6 +56,7 @@ describe("classifyType", () => {
   it("isn't fooled by words that only start alike", () => {
     expect(classifyType({ name: "Museum Masjid" })).toBe("masjid");
     expect(classifyType({ name: "Musalam" })).toBe("masjid");
+    expect(classifyType({ name: "Muslimat NU" })).toBe("masjid");
   });
 });
 
@@ -119,6 +121,15 @@ describe("dedupe", () => {
     const unnamed = at(undefined, 0.0003, 0.0003);
     expect(dedupe([named, unnamed])).toEqual([named]);
     expect(dedupe([at(undefined, 0), at(undefined, 0.0002)])).toHaveLength(1);
+  });
+
+  it("takes a name that starts with another's three words for the same place", () => {
+    const short = at("masjid baitul hikmah", 0);
+    expect(dedupe([short, at("Masjid Baitul Hikmah Gondolayu Lor", 0.0005)])).toEqual([short]);
+    // Two words are too common a start: "Masjid Raya" is in many names
+    expect(dedupe([at("Masjid Raya", 0), at("Masjid Raya Bintaro", 0.0005)])).toHaveLength(2);
+    // Not a start at a word's end
+    expect(dedupe([at("Masjid Al Ikhlas", 0), at("Masjid Al Ikhlasul Amal", 0.0005)])).toHaveLength(2);
   });
 
   it("keeps places that only share a name, or only stand close", () => {
