@@ -2,7 +2,17 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.1.0
+## [Belum dirilis] — v2.1.1
+
+### Ditambahkan
+- **Pipeline data masjid mingguan** (workflow **Mosque data**, `scripts/mosque-data`). Pipeline ini membangun `data/mosques.tsv` dari ekstrak OpenStreetMap Indonesia (Geofabrik), dengan aturan yang sama dengan aplikasi. Tambahannya: bangunan yang hanya bernama masjid atau musholla ikut terdata, dan masjid yang dipetakan dua kali ditulis sekali.
+- **Validasi sebelum dipakai.** Dataset ditolak bila ada ID ganda, ada titik di luar Indonesia, landmark hilang, atau jumlahnya berubah lebih dari 5% dalam seminggu.
+- **PR data mingguan.** Perubahan diajukan lewat pull request yang di-merge otomatis setelah CI hijau; dataset pertama diperiksa manual.
+- **Uji coba perubahan pipeline.** Pull request yang mengubah pipeline menjalankannya pada data sungguhan.
+- **Pengukuran Overture Places**, hanya lewat dispatch manual. Hasilnya menentukan apakah sumber itu layak digabung.
+- Data berlisensi ODbL dengan atribusi kontributor OpenStreetMap (`data/LICENSE`). Aplikasi belum memakai dataset ini; `/api/mosques` beralih ke dataset ini di versi berikutnya.
+
+## [2.1.0] — 2026-10-09 ([#489](https://github.com/irfan-yulianto/si-imsak/pull/489))
 
 Pencari masjid menemukan masjid dan musholla terdekat dari posisi GPS Anda, dengan urutan yang benar.
 

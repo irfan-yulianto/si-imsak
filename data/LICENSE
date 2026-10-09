@@ -1,0 +1,11 @@
+The mosque dataset in this directory (mosques.tsv and mosques.meta.json) is derived from
+OpenStreetMap data and is made available under the Open Database License (ODbL) 1.0:
+https://opendatacommons.org/licenses/odbl/1-0/
+
+© OpenStreetMap contributors — https://www.openstreetmap.org/copyright
+
+How it is made: scripts/mosque-data (build.sh, build.mjs) and the workflow
+.github/workflows/mosque-data.yml, which rebuilds it every week from Geofabrik's
+extract of Indonesia (https://download.geofabrik.de/asia/indonesia.html).
+
+Data masjid di direktori ini berasal dari OpenStreetMap dan tersedia dengan lisensi ODbL 1.0.

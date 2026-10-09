@@ -1,0 +1,35 @@
+# osmium tags-filter expressions (scripts/mosque-data/build.sh): what may be a masjid or
+# a musholla. Generous on purpose: build.mjs keeps only what isMosque() in
+# src/lib/mosque-osm.ts accepts. Patterns are case-sensitive, and a trailing * matches a
+# name's start.
+
+# Places of worship of any religion, mosque and musalla buildings, and the
+# place_of_worship tag on its own
+nwr/amenity=place_of_worship
+nwr/building=mosque,musalla
+nwr/place_of_worship
+
+# Anything named like a masjid or a musholla, in the usual cases
+nwr/name=Masjid*
+nwr/name=MASJID*
+nwr/name=masjid*
+nwr/name=Mesjid*
+nwr/name=MESJID*
+nwr/name=mesjid*
+nwr/name=Mus*
+nwr/name=MUS*
+nwr/name=mus*
+nwr/name=Langgar*
+nwr/name=LANGGAR*
+nwr/name=langgar*
+nwr/name=Surau*
+nwr/name=SURAU*
+nwr/name=surau*
+nwr/name=Meunasah*
+nwr/name=MEUNASAH*
+nwr/name=meunasah*
+nwr/name=Tajug*
+nwr/name=TAJUG*
+nwr/name=tajug*
+nwr/name=مسجد*
+nwr/name=مصل*

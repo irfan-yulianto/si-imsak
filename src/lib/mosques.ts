@@ -1,5 +1,5 @@
 import type { Mosque } from "@/types";
-import { classifyType, dedupe, displayName, distanceMeters, osmName } from "@/lib/mosque-osm";
+import { classifyType, completeness, dedupe, displayName, distanceMeters, osmName } from "@/lib/mosque-osm";
 
 export { distanceMeters } from "@/lib/mosque-osm";
 
@@ -86,11 +86,6 @@ function getCenter(element: OverpassElement): Coords | null {
     return { lat: element.center.lat, lng: element.center.lon };
   }
   return null;
-}
-
-/** How much an entry tells: of two describing one place, the fuller one is kept */
-function completeness(tags: Record<string, string>): number {
-  return (osmName(tags) ? 4 : 0) + (tags["addr:street"] || tags["addr:full"] ? 2 : 0) + (tags.amenity ? 1 : 0);
 }
 
 /**

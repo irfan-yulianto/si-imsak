@@ -121,6 +121,7 @@ src/
 │   ├── messages.ts              # Pesan error dan status untuk pengguna (pencari masjid: mosque-messages.ts)
 │   ├── mosque-osm.ts            # Nama, jenis (masjid/musholla), dan duplikat dari tag OpenStreetMap; tanpa import
 │   ├── mosques.ts               # Overpass query builder + response parser, radius pencarian, aturan cakupan
+│   ├── mosque-tsv.ts            # Format data/mosques.tsv dan validasinya; tanpa import
 │   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window per route)
 │   ├── report-error.ts          # Laporan error dari halaman error
 │   ├── storage.ts               # Satu-satunya akses localStorage/sessionStorage (envelope, migrasi, eviction)
@@ -143,6 +144,8 @@ public/
 └── .well-known/security.txt
 e2e/                             # Tes Playwright + mock upstream (mock-upstream.mjs)
 scripts/                         # Anggaran bundle, diff screenshot, screenshot PWA, synthetic monitoring
+└── mosque-data/                 # Pembangun data/mosques.tsv dari OpenStreetMap (lihat "Data masjid")
+data/                            # data/mosques.tsv (ODbL, data/LICENSE), diperbarui workflow Mosque data
 ```
 
 ## Keamanan
@@ -282,6 +285,34 @@ Runner GitHub berjalan di IP datacenter, sehingga Vercel Firewall bisa menantang
 Monitor hanya mengirim header itu ke situs ini, tidak ke MyQuran, Nominatim, atau Overpass. Bila tantangan datang dari mitigasi DDoS tingkat platform, aturan bypass tidak berlaku; cek tab Firewall dan hubungi dukungan Vercel.
 
 GitHub mematikan workflow terjadwal setelah 60 hari tanpa aktivitas di repo. Bila itu terjadi, aktifkan lagi dari tab Actions.
+
+### Data masjid
+
+Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/mosques.tsv`, yaitu masjid dan musholla di Indonesia dari OpenStreetMap. Datanya diambil dari ekstrak Geofabrik dan diperbarui setiap Selasa pukul 02.23 WIB. Workflow ini juga bisa dijalankan manual dari tab Actions.
+
+**Cara dataset dibangun** (`scripts/mosque-data/build.sh`):
+1. `osmium tags-filter` menyaring calon dengan `filters.txt`.
+2. `osmium export` mengubahnya menjadi GeoJSON.
+3. `build.mjs` memakai aturan yang sama dengan aplikasi (`src/lib/mosque-osm.ts`):
+   - tempat ibadah Muslim, bangunan masjid, dan bangunan yang bernama masjid atau musholla ikut;
+   - masjid yang dipetakan sebagai titik sekaligus bangunan ditulis sekali.
+
+**Validasi** (`validate.mjs`) menolak dataset bila:
+- ada ID ganda;
+- ada titik di luar Indonesia;
+- Istiqlal, Baiturrahman, atau Al-Akbar hilang;
+- jumlahnya berubah lebih dari 5% dalam seminggu.
+
+**Publikasi.** Bila datanya berubah, `publish.sh` membuka pull request dari branch `data/mosques`, menjalankan CI di atasnya, lalu me-merge-nya bila hijau.
+- Dataset pertama tidak di-merge otomatis.
+- PR data juga menunggu pemilik bila ruleset mewajibkan review atau check `screenshots (base vs head)` (check itu tidak jalan untuk PR buatan workflow).
+- Supaya workflow boleh membuka pull request, aktifkan **Allow GitHub Actions to create and approve pull requests** (Settings → Actions → General → Workflow permissions).
+
+**Overture Places.** Dari tab Actions, centang **overture** untuk mengukur tambahan dari Overture Places dibanding OpenStreetMap; hasilnya hanya ditulis di ringkasan job.
+
+**Uji coba perubahan.** Pull request yang mengubah pipeline ini juga menjalankan build dan validasi pada data sungguhan, tanpa membuka PR data. Datasetnya bisa diunduh dari artifact `mosques`.
+
+**Lisensi.** Datanya © kontributor OpenStreetMap, berlisensi ODbL 1.0 (`data/LICENSE`).
 
 ### Dependensi
 

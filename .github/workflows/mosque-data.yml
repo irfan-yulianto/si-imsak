@@ -1,0 +1,117 @@
+name: Mosque data
+
+# The mosques and mushollas of Indonesia in OpenStreetMap, as data/mosques.tsv, built
+# from Geofabrik's daily extract (scripts/mosque-data/build.sh). Every week, or by hand,
+# a change becomes a pull request from the branch data/mosques, which this workflow
+# merges once CI passes; the first dataset waits for a person (publish.sh). On a pull
+# request that changes the build, it only builds and checks: the change meets real data
+# before it is merged.
+on:
+  schedule:
+    # Tuesdays, 02:23 WIB
+    - cron: "23 19 * * 1"
+  workflow_dispatch:
+    inputs:
+      overture:
+        description: "Also measure what Overture Places would add (job summary only)"
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - ".github/workflows/mosque-data.yml"
+      - "scripts/mosque-data/**"
+      - "src/lib/mosque-osm.ts"
+      - "src/lib/mosque-tsv.ts"
+
+concurrency:
+  group: mosque-data-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Nothing by default; each job asks for what it needs
+permissions: {}
+
+jobs:
+  build:
+    name: build dataset
+    # Not in forks: they would open pull requests against themselves every week
+    if: github.repository == 'irfan-yulianto/si-imsak'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write # push the branch data/mosques
+      pull-requests: write # open and merge its pull request
+      actions: write # start CI on it
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Only publish.sh pushes, and it doesn't run on pull requests
+          persist-credentials: ${{ github.event_name != 'pull_request' }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install osmium
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+
+      - name: Download Geofabrik's extract of Indonesia
+        working-directory: ${{ runner.temp }}
+        run: |
+          url=https://download.geofabrik.de/asia/indonesia-latest.osm.pbf
+          curl -fsSL --retry 3 --retry-delay 30 -o indonesia-latest.osm.pbf "$url"
+          curl -fsSL --retry 3 --retry-delay 30 -o indonesia-latest.osm.pbf.md5 "$url.md5"
+          md5sum -c indonesia-latest.osm.pbf.md5
+          ls -lh indonesia-latest.osm.pbf
+
+      - name: Build
+        run: |
+          git show HEAD:data/mosques.tsv > "$RUNNER_TEMP/previous.tsv" 2>/dev/null || rm -f "$RUNNER_TEMP/previous.tsv"
+          scripts/mosque-data/build.sh "$RUNNER_TEMP/indonesia-latest.osm.pbf" "$RUNNER_TEMP"
+
+      - name: Check
+        run: |
+          status=0
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/mosque-data/validate.mjs \
+            data/mosques.tsv "$RUNNER_TEMP/previous.tsv" "$RUNNER_TEMP/summary.md" || status=$?
+          { echo "### Mosque data"; echo; cat "$RUNNER_TEMP/summary.md"; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Keep the dataset for a look
+        if: always() && hashFiles('data/mosques.tsv') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mosques
+          path: |
+            data/mosques.tsv
+            data/mosques.meta.json
+          retention-days: 14
+
+      - name: Pull request
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/mosque-data/publish.sh
+
+  overture:
+    name: measure Overture Places
+    if: github.repository == 'irfan-yulianto/si-imsak' && github.event_name == 'workflow_dispatch' && inputs.overture
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the Overture client and DuckDB
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "overturemaps>=0.10" "duckdb>=1.1"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+
+      - name: Download Overture's places in Indonesia
+        run: overturemaps download --bbox=95,-11,141,6 -f geoparquet --type=place -o "$RUNNER_TEMP/places.parquet"
+
+      - name: Measure
+        run: python3 scripts/mosque-data/overture-measure.py "$RUNNER_TEMP/places.parquet" data/mosques.tsv >> "$GITHUB_STEP_SUMMARY"
