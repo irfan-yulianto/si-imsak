@@ -15,7 +15,7 @@
 #   SITE_URL       the deployed site
 #   MYQURAN_API    MyQuran's prayer-schedule API
 #   NOMINATIM_URL  Nominatim reverse geocoding
-#   OVERPASS_URLS  Overpass mirrors, space-separated (the app asks all of them)
+#   OVERPASS_URLS  Overpass mirrors, space-separated (the ones the app asks, in turn)
 #   EXPECT_REGION  Vercel function region; empty skips the check (local runs)
 #   SYNTHETIC_TOKEN  sent to the site only, as the x-synthetic-monitor header, so a
 #                  Vercel Firewall bypass rule can let the monitor through (README)
@@ -25,7 +25,7 @@ MODE="${1:-hourly}"
 SITE_URL="${SITE_URL:-https://si-imsak.vercel.app}"
 MYQURAN_API="${MYQURAN_API:-https://api.myquran.com/v3/sholat}"
 NOMINATIM_URL="${NOMINATIM_URL:-https://nominatim.openstreetmap.org/reverse}"
-OVERPASS_URLS="${OVERPASS_URLS:-https://overpass.kumi.systems/api/interpreter https://overpass-api.de/api/interpreter https://overpass.openstreetmap.ru/api/interpreter}"
+OVERPASS_URLS="${OVERPASS_URLS:-https://overpass.private.coffee/api/interpreter https://overpass-api.de/api/interpreter}"
 EXPECT_REGION="${EXPECT_REGION-sin1}"
 
 UA="Si-Imsak-Synthetic/1.0 (+https://github.com/irfan-yulianto/si-imsak)"
@@ -252,7 +252,7 @@ nominatim() {
   ok "$(jq -r '.address.city // .address.state' "$TMP/body")"
 }
 
-# The app asks every mirror at once; one answering is enough
+# The app asks the mirrors in turn; one answering is enough
 overpass() {
   CHECK="Overpass"
   local query url answering=0 notes=()

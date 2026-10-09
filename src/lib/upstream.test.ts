@@ -14,7 +14,10 @@ describe("upstream addresses", () => {
     const upstream = await import("./upstream");
     expect(upstream.MYQURAN_API_BASE).toBe("https://api.myquran.com/v3/sholat");
     expect(upstream.NOMINATIM_REVERSE_URL).toBe("https://nominatim.openstreetmap.org/reverse");
-    expect(upstream.OVERPASS_ENDPOINTS).toHaveLength(3);
+    expect(upstream.OVERPASS_ENDPOINTS).toEqual([
+      "https://overpass.private.coffee/api/interpreter",
+      "https://overpass-api.de/api/interpreter",
+    ]);
   });
 
   it("can be pointed at a local mock through the environment", async () => {

@@ -1,9 +1,10 @@
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildOverpassQuery, parseOverpassResponse, SEARCH_RADII } from "@/lib/mosques";
-import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
+import { CDN_CACHE_DAY, CDN_CACHE_SHORT, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
 import { OVERPASS_ENDPOINTS } from "@/lib/upstream";
 import { json, tooManyRequests, upstreamFetch } from "@/lib/http";
 import { log, errorMessage } from "@/lib/log";
+import { isObject } from "@/lib/validate";
 import type { MosqueSearchResponse } from "@/types";
 import type { NextRequest } from "next/server";
 
@@ -14,6 +15,8 @@ const MIRROR_TIMEOUT_MS = 10_000;
 /** A mirror that hasn't answered by then is joined by the next one */
 const HEDGE_MS = 3_000;
 const ALL_FAILED = "All Overpass endpoints failed";
+/** How Overpass reports a query that ran out of time or memory */
+const RUNTIME_ERROR = /runtime error|timed out|out of memory/i;
 
 /** One mirror's answer, read in full */
 async function askMirror(endpoint: string, query: string, signal: AbortSignal): Promise<unknown> {
@@ -25,11 +28,17 @@ async function askMirror(endpoint: string, query: string, signal: AbortSignal): 
     timeoutMs: MIRROR_TIMEOUT_MS,
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  let data: unknown;
   try {
-    return await res.json();
+    data = await res.json();
   } catch {
     throw new Error("invalid JSON");
   }
+  // A query that ran out of time or memory still answers 200, with a remark and no (or
+  // only some) elements: read as an answer, it would say there is no mosque nearby
+  const remark = isObject(data) && typeof data.remark === "string" ? data.remark : "";
+  if (RUNTIME_ERROR.test(remark)) throw new Error(remark);
+  return data;
 }
 
 /**
@@ -109,7 +118,12 @@ export async function GET(request: NextRequest) {
     const qLng = roundCoord(lngNum);
     const data = await fetchOverpass(buildOverpassQuery(qLat, qLng, radiusNum), request.signal);
     const mosques = parseOverpassResponse(data as Parameters<typeof parseOverpassResponse>[0], qLat, qLng);
-    return json<MosqueSearchResponse>({ status: true, data: mosques }, { cache: CDN_CACHE_HOUR });
+    // Mosques change rarely. Nothing found is kept briefly: a mirror can lag behind
+    // OpenStreetMap, and a place can be mapped in the meantime
+    return json<MosqueSearchResponse>(
+      { status: true, data: mosques },
+      { cache: mosques.length > 0 ? CDN_CACHE_DAY : CDN_CACHE_SHORT }
+    );
   } catch (err) {
     const message = errorMessage(err);
     log("error", { route: "mosques", error: message });

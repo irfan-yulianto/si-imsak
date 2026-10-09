@@ -2,7 +2,21 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.0.1
+## [Belum dirilis] — v2.0.2
+
+### Diperbaiki
+- Pencari masjid kembali mendapat jawaban.
+  - Mirror Overpass yang dipakai kini `overpass.private.coffee` (pengganti `overpass.kumi.systems`) dan `overpass-api.de`.
+  - `overpass.openstreetmap.ru`, yang sudah tidak menjawab, dihapus.
+- Query yang kehabisan waktu atau memori di Overpass tidak lagi tampil sebagai "Tidak ada masjid ditemukan", dan tidak di-cache.
+  - Mirror berikutnya yang ditanya.
+  - Bila semua gagal, pengguna diminta mencoba lagi.
+- Batas pencarian masjid naik dari 10 menjadi 20 per menit per IP, karena banyak pengguna seluler berbagi satu IP.
+
+### Diubah
+- CDN menyimpan hasil pencarian masjid 24 jam, dan tetap melayaninya sampai 7 hari bila Overpass gagal. Hasil kosong hanya disimpan 10 menit.
+
+## [2.0.1] — 2026-10-09 ([#485](https://github.com/irfan-yulianto/si-imsak/pull/485))
 
 ### Diperbaiki
 - Link "Masjid Terdekat" di header memindahkan fokus keyboard dan screen reader ke pencari masjid, bukan hanya menggulir layar.
