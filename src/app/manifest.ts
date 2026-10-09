@@ -7,10 +7,13 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Si-Imsak",
     description:
       "Jadwal Imsakiyah dan waktu sholat untuk seluruh kota di Indonesia",
+    lang: "id",
+    dir: "ltr",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    orientation: "portrait-primary",
+    // Phones turned sideways, tablets and desktop windows all have a layout
+    orientation: "any",
     // The default (dark) theme's background, as the page sets theme-color to
     background_color: "#0A0E13",
     theme_color: "#0A0E13",
@@ -38,11 +41,30 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
       },
     ],
+    // The install dialog shows these; scripts/pwa-screenshots.mjs takes them
+    screenshots: [
+      {
+        src: "/screenshots/narrow.png",
+        sizes: "780x1688",
+        type: "image/png",
+        form_factor: "narrow",
+        label: "Hitung mundur ke waktu sholat berikutnya dan jadwal hari ini",
+      },
+      {
+        src: "/screenshots/wide.png",
+        sizes: "1280x800",
+        type: "image/png",
+        form_factor: "wide",
+        label: "Hitung mundur, jadwal hari ini dan jadwal sebulan",
+      },
+    ],
+    // The schedule is the start page; a shortcut to it would only repeat start_url
     shortcuts: [
       {
-        name: "Jadwal Sholat",
-        short_name: "Jadwal",
-        url: "/",
+        name: "Masjid Terdekat",
+        short_name: "Masjid",
+        description: "Cari masjid di sekitar Anda",
+        url: "/?tab=masjid",
         icons: [
           {
             src: "/icons/icon-192x192.png",

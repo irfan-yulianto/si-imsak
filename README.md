@@ -251,6 +251,15 @@ Bila Chromium sudah terpasang di mesin, arahkan `PW_CHROMIUM_PATH` ke file execu
 
 Workflow **Visual** (`.github/workflows/visual.yml`) mem-build `main` dan pull request, memotret skenario yang sama dari keduanya, lalu membandingkannya piksel per piksel. Selisih membuat job gagal, kecuali pull request diberi label **`visual-change`**: selisihnya tetap dilaporkan di ringkasan job, dan gambarnya tersedia sebagai artefak.
 
+Screenshot untuk dialog install PWA (`public/screenshots/`, dicantumkan di `src/app/manifest.ts`) dibuat ulang setelah perubahan tampilan, dengan data dari fixture E2E dan jam tetap:
+
+```bash
+npm run build && npx next start -p 3100   # di terminal lain
+node scripts/pwa-screenshots.mjs
+```
+
+`src/app/manifest.test.ts` memastikan ukuran di manifest sama dengan ukuran file-nya.
+
 ### Synthetic monitoring
 
 Workflow **Synthetic** (`.github/workflows/synthetic.yml`, skrip `scripts/synthetic.sh`) memeriksa production tiap jam di menit ke-17: header keamanan, region function (`sin1`), jadwal bulan berjalan, file statis, dan kontrak API MyQuran. Sekali sehari ia juga memeriksa Nominatim dan Overpass, lalu membuka situs di Chromium dengan skrip Clarity dan Vercel yang asli untuk menangkap pelanggaran CSP. Kegagalan membuka issue berlabel `synthetic-failure`, yang tertutup sendiri saat pemeriksaan kembali lulus. Workflow ini juga bisa dijalankan manual dari tab Actions.
