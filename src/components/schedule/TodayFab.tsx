@@ -6,28 +6,28 @@ import { CalendarIcon } from "@/components/ui/Icons";
 import Button from "@/components/ui/Button";
 
 /**
- * The floating "Hari Ini" button, shown while today's card is scrolled out of view. It
- * watches the card on its own, so scrolling re-renders the button, never the month.
+ * The floating "Hari Ini" button (phones), shown while today's row is scrolled out of
+ * view. It watches the row on its own, so scrolling re-renders the button, never the month.
  */
 export default function TodayFab({ todayRef, todayDate, active }: {
-  /** Today's card */
-  todayRef: RefObject<HTMLDivElement | null>;
-  /** Today's date: at midnight the next card becomes today's */
+  /** Today's row */
+  todayRef: RefObject<HTMLElement | null>;
+  /** Today's date: at midnight the next row becomes today's */
   todayDate: string;
-  /** Today's card is on screen: the month shown is loaded and contains today */
+  /** Today's row is on screen: the month shown is loaded and contains today */
   active: boolean;
 }) {
-  const [cardVisible, setCardVisible] = useState(true);
+  const [rowVisible, setRowVisible] = useState(true);
 
   useEffect(() => {
-    const card = todayRef.current;
-    if (!card || !active) return;
-    const observer = new IntersectionObserver(([entry]) => setCardVisible(entry.isIntersecting), { threshold: 0.1 });
-    observer.observe(card);
+    const row = todayRef.current;
+    if (!row || !active) return;
+    const observer = new IntersectionObserver(([entry]) => setRowVisible(entry.isIntersecting), { threshold: 0.1 });
+    observer.observe(row);
     return () => observer.disconnect();
   }, [todayRef, todayDate, active]);
 
-  const dock = active && !cardVisible ? document.getElementById("dock") : null;
+  const dock = active && !rowVisible ? document.getElementById("dock") : null;
   if (!dock) return null;
   return createPortal(
     <Button

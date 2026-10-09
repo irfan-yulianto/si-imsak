@@ -53,6 +53,8 @@
   /* Two rows on phones (the city search gets its own), one from the sm breakpoint */
   --header-h: 7rem;
   --nav-h: 3.5rem;
+  /* The month bar above the table, sticky on wide screens */
+  --monthnav-h: 3.75rem;
   --row-h: 2.5rem;
 }
 

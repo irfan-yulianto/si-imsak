@@ -6,8 +6,8 @@ import { JAKARTA, monthDays, resetStore, seedCity, seedMonth } from "@/__tests__
 
 vi.mock("@/lib/api", () => ({ getSchedule: vi.fn(() => new Promise(() => {})) }));
 
-// Every table row and card reads its day's dateNum once when it renders: counting the
-// reads per day counts the renders
+// Every table row reads its day's dateNum once when it renders: counting the reads per
+// day counts the renders
 const renders = vi.hoisted(() => new Map<string, number>());
 vi.mock("./schedule-days", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./schedule-days")>();
@@ -21,7 +21,7 @@ vi.mock("./schedule-days", async (importOriginal) => {
   return { ...actual, toTableDays: (days: Parameters<typeof actual.toTableDays>[0]) => actual.toTableDays(days).map(counted) };
 });
 
-/** Tells the "Hari Ini" button whether today's card is in view */
+/** Tells the "Hari Ini" button whether today's row is in view */
 let reportCardVisible: (visible: boolean) => void = () => {};
 
 class FakeIntersectionObserver {
@@ -56,10 +56,9 @@ afterEach(() => {
 });
 
 describe("ScheduleTable renders", () => {
-  it("leaves the month alone while today's card scrolls out of view and back", () => {
+  it("leaves the month alone while today's row scrolls out of view and back", () => {
     render(<ScheduleTable />);
-    // Each day once as a table row and once as a card
-    expect(renders.get("2024-03-01")).toBe(2);
+    expect(renders.get("2024-03-01")).toBe(1);
     const before = totalRenders();
 
     act(() => reportCardVisible(false));
@@ -77,7 +76,7 @@ describe("ScheduleTable renders", () => {
     act(() => {
       vi.advanceTimersByTime(30_100);
     });
-    expect(Object.fromEntries(renders)).toEqual({ "2024-03-12": 2, "2024-03-13": 2 });
-    expect(document.querySelectorAll('[aria-current="date"]')[0]).toHaveTextContent("Rab, 13");
+    expect(Object.fromEntries(renders)).toEqual({ "2024-03-12": 1, "2024-03-13": 1 });
+    expect(document.querySelector('[aria-current="date"]')).toHaveTextContent("Rab 13");
   });
 });

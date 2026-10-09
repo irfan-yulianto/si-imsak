@@ -52,9 +52,9 @@ describe("Home", () => {
     expect(within(countdown).getByText("KOTA BANDUNG")).toBeInTheDocument();
 
     expect(screen.getByText("Minggu, 15 Maret 2026")).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "Jadwal imsakiyah Maret 2026" });
+    const table = screen.getByRole("table", { name: /^Jadwal imsakiyah Maret 2026, KOTA BANDUNG/ });
     expect(within(table).getAllByRole("row")).toHaveLength(1 + 31);
-    expect(table.querySelector('[aria-current="date"]')).toHaveTextContent("Min, 15");
+    expect(table.querySelector('[aria-current="date"]')).toHaveTextContent("Min 15");
 
     // One request for the city's month, from the start-up
     expect(requested.filter((url) => url.startsWith("/api/schedule"))).toEqual([
