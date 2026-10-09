@@ -237,6 +237,14 @@ Workflow **Visual** (`.github/workflows/visual.yml`) mem-build `main` dan pull r
 
 Workflow **Synthetic** (`.github/workflows/synthetic.yml`, skrip `scripts/synthetic.sh`) memeriksa production tiap jam di menit ke-17: header keamanan, region function (`sin1`), jadwal bulan berjalan, file statis, dan kontrak API MyQuran. Sekali sehari ia juga memeriksa Nominatim dan Overpass, lalu membuka situs di Chromium dengan skrip Clarity dan Vercel yang asli untuk menangkap pelanggaran CSP. Kegagalan membuka issue berlabel `synthetic-failure`, yang tertutup sendiri saat pemeriksaan kembali lulus. Workflow ini juga bisa dijalankan manual dari tab Actions.
 
+Runner GitHub berjalan di IP datacenter, sehingga Vercel Firewall bisa menantangnya dengan halaman "Security Checkpoint" (HTTP 429). Monitor melaporkannya sebagai kegagalan tersendiri, dan situs tidak ikut diperiksa. Agar monitor bisa lewat:
+
+1. Buat token acak, misalnya dengan `openssl rand -hex 32`.
+2. Simpan sebagai secret repo **`SYNTHETIC_TOKEN`** (Settings → Secrets and variables → Actions).
+3. Di **Vercel → Project → Firewall → Configure → New Rule**, buat aturan: **If** *Request Header* `x-synthetic-monitor` *Equals* token tadi, **Then** *Bypass*.
+
+Monitor hanya mengirim header itu ke situs ini, tidak ke MyQuran, Nominatim, atau Overpass. Bila tantangan datang dari mitigasi DDoS tingkat platform, aturan bypass tidak berlaku; cek tab Firewall dan hubungi dukungan Vercel.
+
 GitHub mematikan workflow terjadwal setelah 60 hari tanpa aktivitas di repo. Bila itu terjadi, aktifkan lagi dari tab Actions.
 
 ### Dependensi

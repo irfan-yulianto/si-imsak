@@ -17,6 +17,8 @@
 #   NOMINATIM_URL  Nominatim reverse geocoding
 #   OVERPASS_URLS  Overpass mirrors, space-separated (the app asks all of them)
 #   EXPECT_REGION  Vercel function region; empty skips the check (local runs)
+#   SYNTHETIC_TOKEN  sent to the site only, as the x-synthetic-monitor header, so a
+#                  Vercel Firewall bypass rule can let the monitor through (README)
 set -uo pipefail
 
 MODE="${1:-hourly}"
@@ -45,6 +47,10 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 FAILED=0
 CHECK=""
+SITE_HEADERS=()
+if [[ -n "${SYNTHETIC_TOKEN:-}" ]]; then
+  SITE_HEADERS=(-H "x-synthetic-monitor: $SYNTHETIC_TOKEN")
+fi
 
 days_in() { date -d "$1-01 +1 month -1 day" +%-d; }
 
@@ -58,6 +64,19 @@ get() {
 }
 
 header() { grep -i "^$1:" "$TMP/headers" | tail -n 1 | cut -d' ' -f2- | tr -d '\r'; }
+
+# site PATH [curl options…]: get() on the site, with the monitor's bypass header
+site() {
+  local path=$1
+  shift
+  get "$SITE_URL$path" ${SITE_HEADERS[@]+"${SITE_HEADERS[@]}"} "$@"
+}
+
+# The Vercel firewall answers clients it doesn't trust with a challenge page
+challenged() {
+  [[ -n $(header x-vercel-mitigated) ]] ||
+    { [[ $STATUS == 429 || $STATUS == 403 ]] && grep -q "Vercel Security Checkpoint" "$TMP/body"; }
+}
 
 # The start of the last body, safe to quote in Markdown
 snippet() { head -c 160 "$TMP/body" | tr -d '\r`' | tr '\n|' '  ' | tr -cd '[:print:]'; }
@@ -91,7 +110,11 @@ bad() {
 
 site_page() {
   CHECK="page and headers"
-  get "$SITE_URL/"
+  site "/"
+  if challenged; then
+    bad "the Vercel firewall challenged the monitor (HTTP $STATUS, x-vercel-mitigated: $(header x-vercel-mitigated)), so the site itself was not checked. Add the bypass rule from README → Synthetic monitoring"
+    return 1
+  fi
   [[ $STATUS == 200 ]] || { bad "HTTP $STATUS"; return; }
   local missing=() csp
   csp=$(header content-security-policy)
@@ -115,7 +138,7 @@ site_time() {
   CHECK="server time and region"
   local before after now skew id region
   before=$(date +%s%3N)
-  get "$SITE_URL/api/time"
+  site "/api/time"
   after=$(date +%s%3N)
   [[ $STATUS == 200 ]] || { bad "HTTP $STATUS"; return; }
   now=$(jq -e '.now | numbers' "$TMP/body" 2>/dev/null) || { bad "no time in \`$(snippet)\`"; return; }
@@ -135,7 +158,7 @@ site_schedule() {
   CHECK="schedule API"
   local days
   days=$(days_in "$THIS_MONTH")
-  get "$SITE_URL/api/schedule?city_id=$JAKARTA&year=${THIS_MONTH:0:4}&month=$((10#${THIS_MONTH:5:2}))"
+  site "/api/schedule?city_id=$JAKARTA&year=${THIS_MONTH:0:4}&month=$((10#${THIS_MONTH:5:2}))"
   [[ $STATUS == 200 ]] || { bad "HTTP $STATUS: \`$(snippet)\`"; return; }
   jq -e --argjson days "$days" "
     .status == true and (.partial | not) and (.data.jadwal | length == \$days)
@@ -149,13 +172,13 @@ site_schedule() {
 site_files() {
   CHECK="static files"
   local problems=() expires
-  get "$SITE_URL/sw.js"
+  site "/sw.js"
   [[ $STATUS == 200 ]] && grep -q "si-imsak-" "$TMP/body" || problems+=("sw.js (HTTP $STATUS)")
-  get "$SITE_URL/manifest.webmanifest"
+  site "/manifest.webmanifest"
   [[ $STATUS == 200 ]] && jq -e '.name and (.icons | length > 0)' "$TMP/body" >/dev/null 2>&1 || problems+=("manifest (HTTP $STATUS)")
-  get "$SITE_URL/opengraph-image"
+  site "/opengraph-image"
   [[ $STATUS == 200 && $(header content-type) == image/png* ]] || problems+=("opengraph-image (HTTP $STATUS)")
-  get "$SITE_URL/.well-known/security.txt"
+  site "/.well-known/security.txt"
   if [[ $STATUS == 200 ]] && grep -q "^Contact:" "$TMP/body"; then
     # RFC 9116: the file is void once Expires has passed
     expires=$(grep -i "^Expires:" "$TMP/body" | cut -d' ' -f2 | tr -d '\r')
@@ -256,10 +279,12 @@ fi
 
 case $MODE in
   hourly)
-    site_page
-    site_time
-    site_schedule
-    site_files
+    # A firewall challenge on the page means the other site checks would see the same
+    if site_page; then
+      site_time
+      site_schedule
+      site_files
+    fi
     myquran_month "MyQuran month" "$THIS_MONTH"
     # Late in the month the app already shows next month (in December: next year's January)
     if ((DAY_OF_MONTH > 20)); then myquran_month "MyQuran next month" "$NEXT_MONTH"; fi
