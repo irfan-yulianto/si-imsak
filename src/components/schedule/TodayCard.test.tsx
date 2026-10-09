@@ -1,8 +1,7 @@
 import { render, screen, act } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import TodayCard from "./TodayCard";
-import { useStore } from "@/store/useStore";
-import { BUILD_DATE } from "@/lib/city-time";
 import { getHijriDate } from "@/lib/hijri";
 import { DENPASAR, JAKARTA, day, resetStore, seedCity, seedMonth } from "@/__tests__/store";
 
@@ -50,20 +49,36 @@ describe("TodayCard", () => {
     }
   });
 
-  it("follows the city's today in the store, not the device's date", () => {
-    // The device is already on 16 June; the city's today is still the 15th
-    vi.setSystemTime(new Date("2025-06-16T05:00:00Z"));
+  it("follows the city's calendar, not the UTC date", () => {
+    // 17:30 UTC on the 15th is already 00:30 on the 16th in Jakarta
+    vi.setSystemTime(new Date("2025-06-15T17:30:00Z"));
+    seedMonth(2025, 6, [JUNE_15, day("2025-06-16", { dzuhur: "11:46" })]);
+    render(<TodayCard />);
+    expect(screen.getByText(/16 Juni 2025/)).toBeInTheDocument();
+    expect(screen.getByText("11:46")).toBeInTheDocument();
+  });
+
+  it("moves to the next day at the city's midnight", () => {
+    vi.setSystemTime(new Date("2025-06-15T16:59:30Z")); // 23:59:30 WIB
     seedMonth(2025, 6, [JUNE_15, day("2025-06-16", { dzuhur: "11:46" })]);
     render(<TodayCard />);
     expect(screen.getByText(/15 Juni 2025/)).toBeInTheDocument();
-    expect(screen.getByText("11:45")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(screen.getByText(/16 Juni 2025/)).toBeInTheDocument();
   });
 
-  it("uses the build date before hydration, like the server render", () => {
-    useStore.setState({ todayDateStr: "", viewYear: BUILD_DATE.year, viewMonth: BUILD_DATE.month });
-    seedMonth(BUILD_DATE.year, BUILD_DATE.month, [day(BUILD_DATE.iso, { dzuhur: "11:33" })]);
-    render(<TodayCard />);
-    expect(screen.getByText("11:33")).toBeInTheDocument();
+  it("renders the same skeleton on the server whatever the clock says, so hydration matches", () => {
+    // The server has no saved city, cache or clock: the client fills the card in after hydrating
+    seedMonth(2025, 6, [JUNE_15]);
+    const html = renderToString(<TodayCard />);
+    expect(html).toContain('aria-label="Memuat jadwal hari ini"');
+    expect(html).not.toContain("aria-current");
+
+    vi.setSystemTime(new Date("2025-07-01T05:00:00Z"));
+    expect(renderToString(<TodayCard />)).toBe(html);
   });
 
   it("highlights the time in progress and marks earlier ones as past", () => {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { selectCurrentMonth, useCountdownDays, useCurrentMonth, useStore } from "@/store/useStore";
+import { useStore } from "@/store/useStore";
+import { currentMonthOf, useCountdownDays, useCurrentMonth } from "@/hooks/useSchedule";
 import { addDays, cityDate } from "@/lib/city-time";
 import { PRAYER_ICON_MAP, MapPinIcon, RefreshIcon } from "@/components/ui/Icons";
 import type { PrayerKey } from "@/types";
@@ -33,7 +34,6 @@ export default function CountdownTimer() {
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
   const loadCountdownMonths = useStore((s) => s.loadCountdownMonths);
-  const setTodayDateStr = useStore((s) => s.setTodayDateStr);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [prayerArrived, setPrayerArrived] = useState<{ name: string; key: PrayerKey } | null>(null);
@@ -132,7 +132,6 @@ export default function CountdownTimer() {
         }
       }
       lastDateRef.current = currentDateStr;
-      setTodayDateStr(currentDateStr);
 
       const state = useStore.getState();
       const current = state.location;
@@ -174,7 +173,7 @@ export default function CountdownTimer() {
       nextPrayerRef.current = null;
       setNextPrayer(null);
       if (refetchingRef.current || document.visibilityState === "hidden") return;
-      const month = selectCurrentMonth(state);
+      const month = currentMonthOf(state, currentDateStr);
       if (countdownSchedule.length === 0 && (!month || month.status === "loading")) return;
       // Retry pauses follow the device clock, not the server-corrected one
       const wallMs = Date.now();
@@ -194,7 +193,7 @@ export default function CountdownTimer() {
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
-  }, [countdownSchedule, timeOffset, tz, loadCountdownMonths, setTodayDateStr, announceArrival]);
+  }, [countdownSchedule, timeOffset, tz, loadCountdownMonths, announceArrival]);
 
   // Fast countdown tick — only updates display, no state recalculation
   useEffect(() => {

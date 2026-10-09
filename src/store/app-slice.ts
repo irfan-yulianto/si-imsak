@@ -6,6 +6,7 @@ import { cityDate } from "@/lib/city-time";
 import { getTimezone } from "@/lib/timezone";
 import { KEYS, read, readJson, readRaw, remove, writeRaw } from "@/lib/storage";
 import { isLocation, isScheduleData } from "@/lib/validate";
+import { setClockOffset } from "@/lib/clock";
 import { monthId } from "./schedule-slice";
 
 export interface AppSlice {
@@ -16,12 +17,6 @@ export interface AppSlice {
   /** Server clock minus device clock (ms) */
   timeOffset: number;
   setTimeOffset: (offset: number) => void;
-  /**
-   * Today (YYYY-MM-DD) in the city's time zone, kept current by the countdown so views
-   * roll over at midnight. Empty until hydration: views use the build date until then.
-   */
-  todayDateStr: string;
-  setTodayDateStr: (date: string) => void;
   /**
    * Load the saved city, its cached month and the theme. Called once after mount (in a
    * layout effect), so the first client render still matches the server HTML.
@@ -66,11 +61,9 @@ export const createAppSlice: StateCreator<AppState, [], [], AppSlice> = (set, ge
   setIsOffline: (offline) => set({ isOffline: offline }),
 
   timeOffset: 0,
-  setTimeOffset: (offset) => set({ timeOffset: offset }),
-
-  todayDateStr: "",
-  setTodayDateStr: (date) => {
-    if (get().todayDateStr !== date) set({ todayDateStr: date });
+  setTimeOffset: (offset) => {
+    setClockOffset(offset);
+    set({ timeOffset: offset });
   },
 
   hydrateFromCache: () => {
@@ -87,7 +80,6 @@ export const createAppSlice: StateCreator<AppState, [], [], AppSlice> = (set, ge
       location,
       viewYear: today.year,
       viewMonth: today.month,
-      todayDateStr: today.iso,
       locationPrompt: shouldShowLocationPrompt(saved !== null),
       ...(cached && cached.jadwal.length > 0 && {
         months: { ...s.months, [id]: { days: cached.jadwal, status: "ready" as const, error: null } },

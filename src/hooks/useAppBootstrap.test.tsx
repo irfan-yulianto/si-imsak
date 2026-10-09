@@ -104,7 +104,7 @@ describe("useAppBootstrap", () => {
     });
     expect(getSchedule).toHaveBeenCalledTimes(2);
     expect(getSchedule).toHaveBeenLastCalledWith(DENPASAR.cityId, 2026, 11);
-    expect(useStore.getState()).toMatchObject({ viewMonth: 11, todayDateStr: "2026-11-01" });
+    expect(useStore.getState()).toMatchObject({ viewMonth: 11 });
   });
 
   it("checks the month as soon as a locked phone is used again", async () => {

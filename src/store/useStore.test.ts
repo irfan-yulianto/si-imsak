@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
 import { getSchedule } from "@/lib/api";
-import { useStore, useCountdownDays, useCurrentMonth, useViewSchedule } from "./useStore";
+import { useStore } from "./useStore";
 import {
   BANDUNG,
   DENPASAR,
@@ -59,7 +58,7 @@ describe("initial state", () => {
     vi.useFakeTimers({ now: new Date("2026-11-20T08:00:00Z"), toFake: ["Date"] });
     const { useStore: fresh } = await import("./useStore");
     const state = fresh.getState();
-    expect(state).toMatchObject({ viewYear: 2026, viewMonth: 10, todayDateStr: "", locationPrompt: false, months: {} });
+    expect(state).toMatchObject({ viewYear: 2026, viewMonth: 10, locationPrompt: false, months: {} });
     expect(state.location.cityName).toBe("KOTA JAKARTA");
   });
 });
@@ -80,7 +79,7 @@ describe("hydrateFromCache", () => {
 
     const state = useStore.getState();
     expect(state.location).toEqual(DENPASAR);
-    expect(state).toMatchObject({ viewYear: 2026, viewMonth: 10, todayDateStr: "2026-10-01" });
+    expect(state).toMatchObject({ viewYear: 2026, viewMonth: 10 });
     expect(monthOf(2026, 10)).toEqual({ days: [day("2026-10-01")], status: "ready", error: null });
   });
 
@@ -89,11 +88,11 @@ describe("hydrateFromCache", () => {
     vi.setSystemTime(new Date("2026-09-30T16:30:00Z"));
     localStorage.setItem("selectedLocation", JSON.stringify(asCity(JAYAPURA)));
     useStore.getState().hydrateFromCache();
-    expect(useStore.getState().todayDateStr).toBe("2026-10-01");
+    expect(useStore.getState()).toMatchObject({ viewYear: 2026, viewMonth: 10 });
 
     localStorage.setItem("selectedLocation", JSON.stringify(asCity(JAKARTA)));
     useStore.getState().hydrateFromCache();
-    expect(useStore.getState()).toMatchObject({ todayDateStr: "2026-09-30", viewMonth: 9 });
+    expect(useStore.getState()).toMatchObject({ viewYear: 2026, viewMonth: 9 });
   });
 
   it("ignores an expired cached month", () => {
@@ -178,15 +177,6 @@ describe("simple setters", () => {
       locationPrompt: true,
     });
   });
-
-  it("changes today's date only when it differs", () => {
-    const listener = vi.fn();
-    const unsubscribe = useStore.subscribe(listener);
-    useStore.getState().setTodayDateStr("2026-10-09");
-    useStore.getState().setTodayDateStr("2026-10-09");
-    expect(listener).toHaveBeenCalledTimes(1);
-    unsubscribe();
-  });
 });
 
 describe("selectCity", () => {
@@ -204,7 +194,7 @@ describe("selectCity", () => {
     const result = useStore.getState().selectCity(asCity(JAYAPURA));
 
     // Already 1 October in Jayapura; nothing of Jakarta's is shown under its name
-    expect(useStore.getState()).toMatchObject({ location: JAYAPURA, viewYear: 2026, viewMonth: 10, todayDateStr: "2026-10-01" });
+    expect(useStore.getState()).toMatchObject({ location: JAYAPURA, viewYear: 2026, viewMonth: 10 });
     expect(getSchedule).toHaveBeenCalledWith(JAYAPURA.cityId, 2026, 10);
     expect(monthOf(2026, 10)).toEqual({ days: [], status: "loading", error: null });
 
@@ -390,44 +380,5 @@ describe("the month cache", () => {
     expect(ids).toContain(`${JAKARTA.cityId}:2026-10`);
     expect(ids).toContain(`${JAKARTA.cityId}:2024-01`);
     expect(ids).not.toContain(`${JAKARTA.cityId}:2025-01`);
-  });
-});
-
-describe("hooks", () => {
-  beforeEach(() => {
-    seedCity(JAKARTA, "2026-10-31");
-  });
-
-  it("give the table its month, and the countdown this month plus next month once loaded", () => {
-    seedMonth(2026, 10, [day("2026-10-31")]);
-    const table = renderHook(() => useViewSchedule());
-    const countdown = renderHook(() => useCountdownDays());
-    const current = renderHook(() => useCurrentMonth());
-
-    expect(table.result.current).toEqual({ data: [day("2026-10-31")], loading: false, error: null });
-    expect(countdown.result.current).toEqual([day("2026-10-31")]);
-    expect(current.result.current?.status).toBe("ready");
-
-    act(() => seedMonth(2026, 11, [day("2026-11-01")]));
-    expect(countdown.result.current).toEqual([day("2026-10-31"), day("2026-11-01")]);
-    // Re-rendering without a change keeps the same arrays
-    const before = countdown.result.current;
-    countdown.rerender();
-    expect(countdown.result.current).toBe(before);
-  });
-
-  it("show a month that hasn't loaded yet as loading, and a failed one with its error", () => {
-    const table = renderHook(() => useViewSchedule());
-    expect(table.result.current).toEqual({ data: [], loading: true, error: null });
-    act(() => seedMonth(2026, 10, [], { status: "error", error: "Gagal memuat jadwal. Coba lagi nanti." }));
-    expect(table.result.current).toEqual({ data: [], loading: false, error: "Gagal memuat jadwal. Coba lagi nanti." });
-  });
-
-  it("follow the selected city", () => {
-    seedMonth(2026, 10, [day("2026-10-31")], { cityId: BANDUNG.cityId });
-    const countdown = renderHook(() => useCountdownDays());
-    expect(countdown.result.current).toEqual([]);
-    act(() => useStore.setState({ location: BANDUNG }));
-    expect(countdown.result.current).toEqual([day("2026-10-31")]);
   });
 });

@@ -77,14 +77,12 @@ export function resetStore() {
   useStore.setState(initialState, true);
 }
 
-/** The selected city and today's date in it; the table shows today's month */
+/**
+ * The selected city, with the table on the month of `today`. "Today" itself comes from
+ * the clock: fake it to match (vi.useFakeTimers / vi.setSystemTime).
+ */
 export function seedCity(location: LocationState, today: string) {
-  useStore.setState({
-    location,
-    todayDateStr: today,
-    viewYear: Number(today.slice(0, 4)),
-    viewMonth: Number(today.slice(5, 7)),
-  });
+  useStore.setState({ location, viewYear: Number(today.slice(0, 4)), viewMonth: Number(today.slice(5, 7)) });
 }
 
 /** A month as if it had been loaded (or were loading, or had failed) */

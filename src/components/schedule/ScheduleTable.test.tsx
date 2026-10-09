@@ -13,7 +13,8 @@ const MARCH_12 = day("2024-03-12", { imsak: "04:32", isya: "19:18" });
 beforeEach(() => {
   resetStore();
   vi.mocked(getSchedule).mockReset().mockReturnValue(new Promise(() => {}));
-  // The city's today: 12 March 2024, so the table may move from 2023 to 2025
+  // The city's today: 12 March 2024 (noon WIB), so the table may move from 2023 to 2025
+  vi.useFakeTimers({ now: new Date("2024-03-12T05:00:00Z"), toFake: ["Date"] });
   seedCity(JAKARTA, "2024-03-12");
 });
 
@@ -73,14 +74,15 @@ describe("ScheduleTable", () => {
   });
 
   it("goes back to the city's current month with 'Hari Ini', whatever the device date", () => {
-    vi.useFakeTimers({ now: new Date("2024-04-01T00:30:00Z"), toFake: ["Date"] });
+    // Still 31 March in UTC (and on a device in Los Angeles), already 1 April in Jakarta
+    vi.setSystemTime(new Date("2024-03-31T17:30:00Z"));
     useStore.setState({ viewMonth: 2 });
     seedMonth(2024, 2, [day("2024-02-12")]);
     render(<ScheduleTable />);
 
     fireEvent.click(screen.getByRole("button", { name: "Hari Ini" }));
-    expect(useStore.getState().viewMonth).toBe(3);
-    expect(getSchedule).toHaveBeenLastCalledWith(JAKARTA.cityId, 2024, 3);
+    expect(useStore.getState().viewMonth).toBe(4);
+    expect(getSchedule).toHaveBeenLastCalledWith(JAKARTA.cityId, 2024, 4);
   });
 
   it("stops at the years the API serves", () => {

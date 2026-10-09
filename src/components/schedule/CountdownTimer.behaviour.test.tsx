@@ -195,14 +195,4 @@ describe("CountdownTimer arrivals", () => {
     expect(screen.getByText("Menuju Imsak Besok")).toBeInTheDocument();
     expect(screen.getByText("04:29 WIB")).toBeInTheDocument();
   });
-
-  it("keeps today's date in the store current, also without schedule data", async () => {
-    vi.setSystemTime(new Date("2026-03-15T16:59:58Z")); // 23:59:58 WIB
-    seedMonth(2026, 3, [], { status: "loading" });
-    render(<CountdownTimer />);
-    expect(useStore.getState().todayDateStr).toBe("2026-03-15");
-
-    await wait(3_000);
-    expect(useStore.getState().todayDateStr).toBe("2026-03-16");
-  });
 });

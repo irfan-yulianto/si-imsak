@@ -43,15 +43,14 @@ export const monthId = (cityId: string, year: number, month: number) => `${cityI
 
 /** The months nothing may evict: the table's, and the countdown's current and next month */
 function pinnedMonths(state: AppState): Set<string> {
-  const { cityId } = state.location;
-  const pinned = new Set([monthId(cityId, state.viewYear, state.viewMonth)]);
-  if (state.todayDateStr) {
-    const year = Number(state.todayDateStr.slice(0, 4));
-    const month = Number(state.todayDateStr.slice(5, 7));
-    const next = shiftMonth(year, month, 1);
-    pinned.add(monthId(cityId, year, month)).add(monthId(cityId, next.year, next.month));
-  }
-  return pinned;
+  const { cityId, timezone } = state.location;
+  const today = cityDate(Date.now() + state.timeOffset, timezone);
+  const next = shiftMonth(today.year, today.month, 1);
+  return new Set([
+    monthId(cityId, state.viewYear, state.viewMonth),
+    monthId(cityId, today.year, today.month),
+    monthId(cityId, next.year, next.month),
+  ]);
 }
 
 /** `months` with `entry` as its most recent month, trimmed to MAX_MONTHS */

@@ -61,7 +61,6 @@ export const createCitySlice: StateCreator<AppState, [], [], CitySlice> = (set, 
       location: { cityId: city.id, cityName: city.lokasi, province: daerah, timezone },
       viewYear: today.year,
       viewMonth: today.month,
-      todayDateStr: today.iso,
     });
 
     const result = await get().loadMonth(today.year, today.month, { cityId: city.id });

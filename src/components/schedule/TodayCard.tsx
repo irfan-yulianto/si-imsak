@@ -1,83 +1,46 @@
 "use client";
 
-import { useCountdownDays, useCurrentMonth, useStore } from "@/store/useStore";
+import { useCountdownDays, useCurrentMonth } from "@/hooks/useSchedule";
+import { useCityMinute, useCityToday } from "@/hooks/useCityClock";
 import { getHijriDate } from "@/lib/hijri";
-import { BUILD_DATE, citySecondsOfDay, formatLongDate } from "@/lib/city-time";
+import { formatLongDate } from "@/lib/city-time";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo } from "react";
 
 export default function TodayCard() {
   const countdownSchedule = useCountdownDays();
   const currentMonth = useCurrentMonth();
   const loading = !currentMonth || currentMonth.status === "loading";
-  const location = useStore((s) => s.location);
-  const timeOffset = useStore((s) => s.timeOffset);
-  // Kept current by the countdown, so the card rolls over at midnight
-  const storeTodayDateStr = useStore((s) => s.todayDateStr);
-  const tz = location.timezone;
+  // Both follow the city's clock; the build date (and no time) while hydrating
+  const todayDateStr = useCityToday();
+  const minuteOfDay = useCityMinute();
 
-  const { todaySchedule, hijriDate, todayDateStr } = useMemo(() => {
-    // Before hydration the store has no "today" yet: the build date keeps the first
-    // client render identical to the server HTML
-    const dateStr = storeTodayDateStr || BUILD_DATE.iso;
-    const today = countdownSchedule.find((s) => s.date === dateStr);
-    const hijri = getHijriDate(dateStr);
-    return { todaySchedule: today, hijriDate: hijri, todayDateStr: dateStr };
-  }, [countdownSchedule, storeTodayDateStr]);
+  const todaySchedule = useMemo(
+    () => countdownSchedule.find((s) => s.date === todayDateStr),
+    [countdownSchedule, todayDateStr]
+  );
+  const hijriDate = useMemo(() => getHijriDate(todayDateStr), [todayDateStr]);
 
-  // Active prayer highlight — only re-renders when prayer actually transitions
-  const [currentPrayerIdx, setCurrentPrayerIdx] = useState(-1);
-  const lastPrayerIdxRef = useRef(-1);
-
-  // Pre-compute prayer minutes to avoid parsing strings every minute in the interval
-  const prayerMinutesArray = useMemo(() => {
+  // Each time as minutes since midnight
+  const prayerMinutes = useMemo(() => {
     if (!todaySchedule) return [];
     return PRAYER_KEYS.map((key) => {
-      const timeStr = todaySchedule[key];
-      if (timeStr && timeStr.includes(":")) {
-        const [h, m] = timeStr.split(":").map(Number);
-        if (!isNaN(h) && !isNaN(m)) {
-          return h * 60 + m;
-        }
-      }
-      return null;
+      const [h, m] = todaySchedule[key].split(":").map(Number);
+      return h * 60 + m;
     });
   }, [todaySchedule]);
 
-  useEffect(() => {
-    function computeIdx() {
-      if (!todaySchedule) return;
-      const currentMinutes = Math.floor(citySecondsOfDay(Date.now() + timeOffset, tz) / 60);
-
-      let newIdx = -1;
-      for (let i = prayerMinutesArray.length - 1; i >= 0; i--) {
-        const pm = prayerMinutesArray[i];
-        if (pm !== null && currentMinutes >= pm) {
-          newIdx = i;
-          break;
-        }
-      }
-
-      if (newIdx !== lastPrayerIdxRef.current) {
-        lastPrayerIdxRef.current = newIdx;
-        setCurrentPrayerIdx(newIdx);
+  // The time in progress: the last one that has begun
+  let currentPrayerIdx = -1;
+  if (minuteOfDay !== null) {
+    for (let i = prayerMinutes.length - 1; i >= 0; i--) {
+      if (minuteOfDay >= prayerMinutes[i]) {
+        currentPrayerIdx = i;
+        break;
       }
     }
-
-    // Re-check right after each minute boundary so the highlight switches on time
-    let timer: ReturnType<typeof setTimeout>;
-    function scheduleNextCheck() {
-      const msIntoMinute = (Date.now() + timeOffset) % 60000;
-      timer = setTimeout(() => {
-        computeIdx();
-        scheduleNextCheck();
-      }, 60000 - msIntoMinute + 50);
-    }
-    computeIdx();
-    scheduleNextCheck();
-    return () => clearTimeout(timer);
-  }, [todaySchedule, timeOffset, tz, prayerMinutesArray]);
+  }
 
   if (!todaySchedule) {
     if (loading) {

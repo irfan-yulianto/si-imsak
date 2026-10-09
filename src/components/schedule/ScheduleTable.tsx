@@ -1,9 +1,11 @@
 "use client";
 
-import { useStore, useViewSchedule } from "@/store/useStore";
+import { useStore } from "@/store/useStore";
+import { useViewSchedule } from "@/hooks/useSchedule";
+import { useCityToday } from "@/hooks/useCityClock";
 import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
 import { getScheduleYearRange } from "@/lib/constants";
-import { BUILD_DATE, MONTH_NAMES, monthKey, shiftMonth } from "@/lib/city-time";
+import { MONTH_NAMES, monthKey, shiftMonth } from "@/lib/city-time";
 import { ScheduleDay } from "@/types";
 import React, { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "@/components/ui/Icons";
@@ -218,11 +220,8 @@ export default function ScheduleTable() {
     todayRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
-  // todayDateStr is kept current by the countdown, so "today" rolls over at midnight
-  const storeTodayDateStr = useStore((s) => s.todayDateStr);
-  // Before hydration the store has no "today" yet: use the build date, which the server
-  // render used too, so the first client render matches the HTML.
-  const todayDate = storeTodayDateStr || BUILD_DATE.iso;
+  // The city's today; the build date in the server render and while hydrating
+  const todayDate = useCityToday();
 
   const processedSchedule = useMemo(() => {
     return schedule.data.map(day => {
