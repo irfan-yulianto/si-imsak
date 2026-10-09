@@ -13,13 +13,6 @@ export const BUILD_TIME = Number(process.env.NEXT_PUBLIC_BUILD_TIME) || Date.now
 // Identifies the deploy; the service worker URL carries it so each deploy gets a fresh worker.
 export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 
-// API base URL (v3 LTS)
-export const MYQURAN_API_BASE = "https://api.myquran.com/v3/sholat";
-
-// Sent with every upstream request (MyQuran, Nominatim, Overpass). Nominatim's usage
-// policy requires an identifying User-Agent with a way to reach the operator.
-export const UPSTREAM_USER_AGENT = "Si-Imsak/1.0 (+https://github.com/irfan-yulianto/si-imsak)";
-
 // Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
 export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
 

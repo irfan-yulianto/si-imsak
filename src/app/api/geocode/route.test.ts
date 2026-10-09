@@ -22,10 +22,10 @@ function makeRequest(params: Record<string, string>) {
 }
 
 const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 beforeEach(async () => {
-  vi.restoreAllMocks();
+  // Stubbed per test: globals are restored before every test (vitest.config.ts)
+  vi.stubGlobal("fetch", mockFetch);
   const rl = await import("@/lib/rate-limit");
   vi.mocked(rl.isRateLimited).mockReturnValue(false);
   const geo = await import("@/lib/geocode");

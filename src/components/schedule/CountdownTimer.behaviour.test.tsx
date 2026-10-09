@@ -169,6 +169,18 @@ describe("CountdownTimer arrivals", () => {
     expect(screen.getByText("Waktunya Dzuhur!")).toBeInTheDocument();
   });
 
+  it("announces a time even when the 3 s check sees it pass before the 1 s tick does", async () => {
+    // Mounted at 12:04:57.5: at 12:05:00.5 (Dzuhur) the check, created first, and the tick
+    // are due together, and the check would otherwise move on to Ashar unannounced
+    vi.setSystemTime(new Date("2026-03-15T05:04:57.500Z"));
+    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    render(<CountdownTimer />);
+    expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
+
+    await wait(3_000);
+    expect(screen.getByText("Waktunya Dzuhur!")).toBeInTheDocument();
+  });
+
   it("doesn't announce a time that passed while the phone was asleep", async () => {
     vi.setSystemTime(new Date("2026-03-15T05:04:50Z")); // 12:04:50 WIB, Dzuhur in 10 s
     useStore.setState({ countdownSchedule: [day("2026-03-15")] });

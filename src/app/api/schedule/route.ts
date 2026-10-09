@@ -1,10 +1,6 @@
-import {
-  CDN_CACHE_DAY,
-  MYQURAN_API_BASE,
-  NO_STORE,
-  UPSTREAM_USER_AGENT,
-  getScheduleYearRange,
-} from "@/lib/constants";
+import { CDN_CACHE_DAY, NO_STORE, getScheduleYearRange } from "@/lib/constants";
+import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
+import { log, errorMessage } from "@/lib/log";
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { PRAYER_KEYS, type ScheduleDay } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
@@ -94,10 +90,10 @@ async function fetchPeriod(
   cityId: string,
   period: string,
   deadline: AbortSignal,
-  log: RequestLog
+  entry: RequestLog
 ): Promise<Outcome> {
   if (deadline.aborted) return { kind: "unavailable" };
-  log.calls++;
+  entry.calls++;
   try {
     // No Next.js data cache: a cached `{status:false}` body would outlive an upstream
     // hiccup by a day. The CDN caches our own response instead.
@@ -122,12 +118,12 @@ async function fetchPeriodRetrying(
   cityId: string,
   period: string,
   deadline: AbortSignal,
-  log: RequestLog
+  entry: RequestLog
 ): Promise<Outcome> {
-  const first = await fetchPeriod(cityId, period, deadline, log);
+  const first = await fetchPeriod(cityId, period, deadline, entry);
   if (first.kind !== "unavailable" || deadline.aborted) return first;
   await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
-  return fetchPeriod(cityId, period, deadline, log);
+  return fetchPeriod(cityId, period, deadline, entry);
 }
 
 /** An upstream day with all eight times as HH:MM, in our format — or null */
@@ -204,20 +200,20 @@ export async function GET(request: NextRequest) {
   const dates = Array.from({ length: getDaysInMonth(yearNum, monthNum) }, (_, i) =>
     formatDate(yearNum, monthNum, i + 1)
   );
-  const log: RequestLog = {
+  const entry: RequestLog = {
     route: "schedule", city: cityId, month: monthPeriod, monthly: "", calls: 0,
     days: 0, of: dates.length, status: 0, ms: 0,
   };
   // One structured line per request — searchable in the Vercel logs
   const finish = (res: NextResponse) => {
-    log.status = res.status;
-    log.ms = Date.now() - started;
-    console.log(JSON.stringify(log));
+    entry.status = res.status;
+    entry.ms = Date.now() - started;
+    log("info", { ...entry });
     return res;
   };
 
   if (Date.now() < breakerOpenUntil) {
-    log.monthly = "breaker";
+    entry.monthly = "breaker";
     return finish(unavailable(Math.ceil((breakerOpenUntil - Date.now()) / 1000)));
   }
 
@@ -236,15 +232,15 @@ export async function GET(request: NextRequest) {
     const missingDates = () => dates.filter((date) => !days.has(date));
 
     // The whole month in one upstream call
-    const monthly = await fetchPeriodRetrying(cityId, monthPeriod, deadline, log);
+    const monthly = await fetchPeriodRetrying(cityId, monthPeriod, deadline, entry);
     take(monthly, dates);
-    log.monthly = monthly.kind === "ok" ? (days.size === dates.length ? "ok" : "incomplete") : monthly.kind;
+    entry.monthly = monthly.kind === "ok" ? (days.size === dates.length ? "ok" : "incomplete") : monthly.kind;
 
     if (days.size === 0) {
       // Nothing usable for the month: check that upstream answers for a single day
       // before asking it for every day of the month
       const probeDate = dates[0];
-      const probe = await fetchPeriod(cityId, probeDate, deadline, log);
+      const probe = await fetchPeriod(cityId, probeDate, deadline, entry);
       take(probe, [probeDate]);
       if (probe.kind === "unavailable") {
         // A visitor who gave up waiting says nothing about upstream
@@ -273,14 +269,14 @@ export async function GET(request: NextRequest) {
     if (missing.length > 0) {
       await withConcurrency(
         missing.map((date) => async () => {
-          take(await fetchPeriodRetrying(cityId, date, deadline, log), [date]);
+          take(await fetchPeriodRetrying(cityId, date, deadline, entry), [date]);
         }),
         DAY_CONCURRENCY
       );
     }
 
     const jadwal = dates.flatMap((date) => days.get(date) ?? []);
-    log.days = jadwal.length;
+    entry.days = jadwal.length;
     // A month with gaps must not be cached (CDN, service worker or localStorage),
     // otherwise the gaps stick around long after upstream recovers.
     const partial = jadwal.length < dates.length;
@@ -301,7 +297,7 @@ export async function GET(request: NextRequest) {
       )
     );
   } catch (err) {
-    console.error("[schedule] Failed:", err instanceof Error ? err.message : err);
+    log("error", { route: "schedule", error: errorMessage(err) });
     return finish(
       NextResponse.json(
         { status: false, error: "Failed to fetch schedule" },

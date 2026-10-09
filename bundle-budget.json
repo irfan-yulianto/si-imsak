@@ -1,0 +1,6 @@
+{
+  "$comment": "Gzip sizes of what the home page loads up front, checked by scripts/check-bundle-size.mjs after `next build`. Most of the JavaScript is the framework (Next.js 16.4 / React 19.3).",
+  "initialJsKb": 200,
+  "cssKb": 13,
+  "htmlKb": 9.5
+}

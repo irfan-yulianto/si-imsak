@@ -1,9 +1,9 @@
 import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
 import { extractCityFromNominatim, normalizeToMyquranName } from "@/lib/geocode";
-import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, UPSTREAM_USER_AGENT, roundCoord } from "@/lib/constants";
+import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
+import { NOMINATIM_REVERSE_URL, UPSTREAM_USER_AGENT } from "@/lib/upstream";
+import { log, errorMessage } from "@/lib/log";
 import { NextRequest, NextResponse } from "next/server";
-
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse";
 
 export async function GET(request: NextRequest) {
   const ip = extractClientIp(request);
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // City-level lookup: ~110 m precision is plenty and lets nearby users share cache entries
-    const url = `${NOMINATIM_URL}?lat=${roundCoord(latNum)}&lon=${roundCoord(lngNum)}&format=json&zoom=10&addressdetails=1&accept-language=id`;
+    const url = `${NOMINATIM_REVERSE_URL}?lat=${roundCoord(latNum)}&lon=${roundCoord(lngNum)}&format=json&zoom=10&addressdetails=1&accept-language=id`;
     const res = await fetch(url, {
       headers: { "User-Agent": UPSTREAM_USER_AGENT },
       signal: controller.signal,
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      console.error("[geocode] Upstream HTTP", res.status);
+      log("error", { route: "geocode", upstreamStatus: res.status });
       return NextResponse.json(
         { status: false, city: "" },
         { status: 502, headers: { "Cache-Control": NO_STORE } }
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (err) {
     clearTimeout(timeout);
-    console.error("[geocode] Failed:", err instanceof Error ? err.message : err);
+    log("error", { route: "geocode", error: errorMessage(err) });
     return NextResponse.json(
       { status: false, city: "" },
       { status: 502, headers: { "Cache-Control": NO_STORE } }

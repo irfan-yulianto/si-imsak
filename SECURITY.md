@@ -1,21 +1,35 @@
-# Security Policy
+# Kebijakan Keamanan
 
-## Supported Versions
+*To report a vulnerability, please use GitHub's [private vulnerability reporting](https://github.com/irfan-yulianto/si-imsak/security/advisories/new). Reports in English or Indonesian are welcome.*
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Versi yang didukung
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Hanya versi yang sedang berjalan di [si-imsak.vercel.app](https://si-imsak.vercel.app), yaitu branch `main`, yang menerima perbaikan keamanan.
 
-## Reporting a Vulnerability
+## Melaporkan kerentanan
 
-Use this section to tell people how to report a vulnerability.
+Jangan laporkan kerentanan lewat issue, diskusi, atau pull request publik. Kirim laporan secara privat lewat **[private vulnerability reporting](https://github.com/irfan-yulianto/si-imsak/security/advisories/new)** GitHub.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Sertakan:
+
+- bagian yang terdampak (halaman, route API, service worker, dependensi);
+- langkah untuk mereproduksi, atau bukti konsep;
+- dampak yang Anda perkirakan.
+
+Yang bisa Anda harapkan:
+
+- tanggapan pertama dalam 7 hari;
+- kabar perkembangan sampai laporan selesai ditangani;
+- nama Anda dicantumkan di advisory bila Anda mau.
+
+## Cakupan
+
+Termasuk: kode di repositori ini dan deployment-nya di si-imsak.vercel.app, misalnya XSS, kebocoran data lokasi, penyalahgunaan route `/api/*` untuk menyerang pihak lain, atau celah di service worker.
+
+Tidak termasuk:
+
+- kerentanan di layanan pihak ketiga (MyQuran, OpenStreetMap, Vercel, Microsoft Clarity); laporkan langsung ke pemiliknya;
+- serangan volumetrik (DoS);
+- temuan pemindai otomatis tanpa dampak yang bisa ditunjukkan.
+
+Lihat juga [`/.well-known/security.txt`](https://si-imsak.vercel.app/.well-known/security.txt).

@@ -112,6 +112,18 @@ export default function CountdownTimer() {
     }
   }, [isRefreshing]);
 
+  // "Waktunya …" for 30 s. Called by whichever timer sees the time arrive first: the
+  // 3 s check can get there before the 1 s tick, and would otherwise skip the announcement.
+  const announceArrival = useCallback((prayer: NextPrayer) => {
+    if (hoursRef.current) hoursRef.current.textContent = "00";
+    if (minutesRef.current) minutesRef.current.textContent = "00";
+    if (secondsRef.current) secondsRef.current.textContent = "00";
+    nextPrayerRef.current = null;
+    setPrayerArrived({ name: prayer.name, key: prayer.key });
+    if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
+    arrivedTimerRef.current = setTimeout(() => setPrayerArrived(null), 30000);
+  }, []);
+
   // Recompute which prayer is next (only when schedule/offset changes or date rolls over)
   useEffect(() => {
     // Reset stale ref immediately on schedule change (e.g. city switch)
@@ -144,6 +156,13 @@ export default function CountdownTimer() {
       if (retry.cityId !== current.cityId) {
         retryRef.current = { cityId: current.cityId, attempts: 0, nextAt: 0 };
         setLoadError(false);
+      }
+
+      // The current target passed since the last tick: announce it before moving on
+      const previous = nextPrayerRef.current;
+      if (previous?.targetMs) {
+        const late = now.getTime() - previous.targetMs;
+        if (late >= 0 && late <= STALE_ARRIVAL_MS) announceArrival(previous);
       }
 
       const next = getNextPrayerCyclic(countdownSchedule, now, utcOffset);
@@ -189,7 +208,7 @@ export default function CountdownTimer() {
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
-  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule, setTodayDateStr]);
+  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule, setTodayDateStr, announceArrival]);
 
   // Fast countdown tick — only updates display, no state recalculation
   useEffect(() => {
@@ -208,14 +227,7 @@ export default function CountdownTimer() {
         return;
       }
       if (remainingMs <= 0) {
-        if (hoursRef.current) hoursRef.current.textContent = "00";
-        if (minutesRef.current) minutesRef.current.textContent = "00";
-        if (secondsRef.current) secondsRef.current.textContent = "00";
-        const arrived = ref;
-        nextPrayerRef.current = null;
-        setPrayerArrived({ name: arrived.name, key: arrived.key });
-        if (arrivedTimerRef.current) clearTimeout(arrivedTimerRef.current);
-        arrivedTimerRef.current = setTimeout(() => setPrayerArrived(null), 30000);
+        announceArrival(ref);
         return;
       }
       const formatted = formatCountdown(remainingMs);
@@ -224,7 +236,7 @@ export default function CountdownTimer() {
       if (secondsRef.current) secondsRef.current.textContent = formatted.seconds;
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeOffset]);
+  }, [timeOffset, announceArrival]);
 
   const PrayerIcon = nextPrayer ? PRAYER_ICON_MAP[nextPrayer.key] : null;
   const ArrivedIcon = prayerArrived ? PRAYER_ICON_MAP[prayerArrived.key] : null;
