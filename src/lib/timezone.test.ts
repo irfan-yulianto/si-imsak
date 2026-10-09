@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { getTimezone, getUtcOffset } from "./timezone";
+import { describe, it, expect, vi } from "vitest";
+import { getTimezone, getUtcOffset, normalizeProvince } from "./timezone";
+import { TIMEZONE_MAP } from "./constants";
 
 describe("getTimezone", () => {
   // WIB provinces
@@ -19,6 +20,9 @@ describe("getTimezone", () => {
     "JAWA TIMUR",
     "BANTEN",
     "KALIMANTAN BARAT",
+    "KALIMANTAN TENGAH",
+    "KEP. BANGKA BELITUNG",
+    "KEP. RIAU",
   ])("returns WIB for %s", (province) => {
     expect(getTimezone(province)).toBe("WIB");
   });
@@ -28,7 +32,6 @@ describe("getTimezone", () => {
     "BALI",
     "NUSA TENGGARA BARAT",
     "NUSA TENGGARA TIMUR",
-    "KALIMANTAN TENGAH",
     "KALIMANTAN SELATAN",
     "KALIMANTAN TIMUR",
     "KALIMANTAN UTARA",
@@ -65,8 +68,36 @@ describe("getTimezone", () => {
     expect(getTimezone("  BALI  ")).toBe("WITA");
   });
 
-  it("returns WIB as default for unknown province", () => {
+  it("returns WIB as default for unknown province and warns once", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(getTimezone("UNKNOWN")).toBe("WIB");
+    expect(getTimezone("unknown")).toBe("WIB");
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("covers all 38 provinces: 18 WIB, 12 WITA, 8 WIT", () => {
+    const zones = Object.values(TIMEZONE_MAP);
+    expect(zones).toHaveLength(38);
+    expect(zones.filter((z) => z === "WIB")).toHaveLength(18);
+    expect(zones.filter((z) => z === "WITA")).toHaveLength(12);
+    expect(zones.filter((z) => z === "WIT")).toHaveLength(8);
+  });
+
+  it.each([
+    ["Kepulauan Riau", "WIB"],
+    ["Kepulauan Bangka Belitung", "WIB"],
+    ["D.I. Yogyakarta", "WIB"],
+    ["Daerah Istimewa Yogyakarta", "WIB"],
+    ["Daerah Khusus Ibukota Jakarta", "WIB"],
+    ["Kalimantan  Tengah", "WIB"],
+    ["Sulawesi Barat", "WITA"],
+    ["Papua Barat Daya", "WIT"],
+  ])("resolves spelling variant %s → %s", (province, tz) => {
+    expect(getTimezone(province)).toBe(tz);
+  });
+
+  it("normalizes punctuation and spacing", () => {
+    expect(normalizeProvince(" Kep. Bangka  Belitung ")).toBe("KEP BANGKA BELITUNG");
   });
 
   it("returns WIB for empty string", () => {
