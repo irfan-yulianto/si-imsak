@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { Location, LocationState, ScheduleDay, TimezoneLabel } from "@/types";
 import { DEFAULT_LOCATION, SCHEDULE_CACHE_MAX_AGE } from "@/lib/constants";
-import { BUILD_DATE, cityDate, daysInMonth } from "@/lib/city-time";
+import { BUILD_DATE, cityDate, daysInMonth, shiftMonth } from "@/lib/city-time";
 import { getSchedule } from "@/lib/api";
 import { getTimezone } from "@/lib/timezone";
 
@@ -277,10 +277,9 @@ export const useStore = create<AppState>((set, get) => ({
       // Last day of the month: after Isya the countdown targets tomorrow's Imsak,
       // which lives in next month's data.
       if (day === daysInMonth(year, month)) {
-        const nextYear = month === 12 ? year + 1 : year;
-        const nextMonth = month === 12 ? 1 : month + 1;
+        const following = shiftMonth(year, month, 1);
         try {
-          const next = await getSchedule(cityId, nextYear, nextMonth);
+          const next = await getSchedule(cityId, following.year, following.month);
           if (next.status && next.data?.jadwal) jadwal = [...jadwal, ...next.data.jadwal];
         } catch (e) {
           console.warn("Failed to fetch next month for countdown:", e);

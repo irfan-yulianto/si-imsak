@@ -3,15 +3,10 @@
 import { useStore } from "@/store/useStore";
 import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
 import { getScheduleYearRange } from "@/lib/constants";
-import { BUILD_DATE } from "@/lib/city-time";
+import { BUILD_DATE, MONTH_NAMES, monthKey, shiftMonth } from "@/lib/city-time";
 import { ScheduleDay } from "@/types";
 import React, { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "@/components/ui/Icons";
-
-const MONTH_NAMES = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
 
 const TIME_COLUMNS = [
   { key: "imsak", label: "Imsak", isImsak: true },
@@ -243,7 +238,7 @@ export default function ScheduleTable() {
   }, [schedule.data]);
 
   const isCurrentMonth = useMemo(
-    () => todayDate.startsWith(`${viewYear}-${String(viewMonth).padStart(2, "0")}-`),
+    () => todayDate.startsWith(`${monthKey(viewYear, viewMonth)}-`),
     [todayDate, viewMonth, viewYear]
   );
 
@@ -268,15 +263,13 @@ export default function ScheduleTable() {
   const canGoNext = viewYear < yearRange.max || (viewYear === yearRange.max && viewMonth < 12);
 
   const goToPrevMonth = useCallback(() => {
-    const prev = viewMonth === 1 ? 12 : viewMonth - 1;
-    const prevYear = viewMonth === 1 ? viewYear - 1 : viewYear;
-    fetchScheduleForMonth(prevYear, prev);
+    const prev = shiftMonth(viewYear, viewMonth, -1);
+    fetchScheduleForMonth(prev.year, prev.month);
   }, [viewMonth, viewYear, fetchScheduleForMonth]);
 
   const goToNextMonth = useCallback(() => {
-    const next = viewMonth === 12 ? 1 : viewMonth + 1;
-    const nextYear = viewMonth === 12 ? viewYear + 1 : viewYear;
-    fetchScheduleForMonth(nextYear, next);
+    const next = shiftMonth(viewYear, viewMonth, 1);
+    fetchScheduleForMonth(next.year, next.month);
   }, [viewMonth, viewYear, fetchScheduleForMonth]);
 
   const goToCurrentMonth = useCallback(() => {

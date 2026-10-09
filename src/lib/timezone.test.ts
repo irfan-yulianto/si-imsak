@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { getTimezone, getUtcOffset, normalizeProvince } from "./timezone";
+import { getTimezone, normalizeProvince } from "./timezone";
 import { TIMEZONE_MAP } from "./constants";
 
 describe("getTimezone", () => {
@@ -102,23 +102,5 @@ describe("getTimezone", () => {
 
   it("returns WIB for empty string", () => {
     expect(getTimezone("")).toBe("WIB");
-  });
-});
-
-describe("getUtcOffset", () => {
-  it("returns 7 for WIB", () => {
-    expect(getUtcOffset("WIB")).toBe(7);
-  });
-
-  it("returns 8 for WITA", () => {
-    expect(getUtcOffset("WITA")).toBe(8);
-  });
-
-  it("returns 9 for WIT", () => {
-    expect(getUtcOffset("WIT")).toBe(9);
-  });
-
-  it("returns 7 for unknown timezone", () => {
-    expect(getUtcOffset("UNKNOWN" as "WIB")).toBe(7);
   });
 });

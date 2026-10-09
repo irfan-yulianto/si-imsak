@@ -2,9 +2,7 @@
 
 import { useStore } from "@/store/useStore";
 import { getHijriDate } from "@/lib/hijri";
-import { getAdjustedTime } from "@/lib/time";
-import { getUtcOffset } from "@/lib/timezone";
-import { BUILD_DATE } from "@/lib/city-time";
+import { BUILD_DATE, citySecondsOfDay, formatLongDate } from "@/lib/city-time";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -16,7 +14,7 @@ export default function TodayCard() {
   const timeOffset = useStore((s) => s.timeOffset);
   // Kept current by the countdown, so the card rolls over at midnight
   const storeTodayDateStr = useStore((s) => s.todayDateStr);
-  const utcOffset = getUtcOffset(location.timezone);
+  const tz = location.timezone;
 
   const { todaySchedule, hijriDate, todayDateStr } = useMemo(() => {
     // Before hydration the store has no "today" yet: the build date keeps the first
@@ -49,10 +47,7 @@ export default function TodayCard() {
   useEffect(() => {
     function computeIdx() {
       if (!todaySchedule) return;
-      const now = getAdjustedTime(timeOffset);
-      const localTime = new Date(now.getTime() + utcOffset * 3600000);
-      const currentMinutes =
-        localTime.getUTCHours() * 60 + localTime.getUTCMinutes();
+      const currentMinutes = Math.floor(citySecondsOfDay(Date.now() + timeOffset, tz) / 60);
 
       let newIdx = -1;
       for (let i = prayerMinutesArray.length - 1; i >= 0; i--) {
@@ -81,7 +76,7 @@ export default function TodayCard() {
     computeIdx();
     scheduleNextCheck();
     return () => clearTimeout(timer);
-  }, [todaySchedule, timeOffset, utcOffset, prayerMinutesArray]);
+  }, [todaySchedule, timeOffset, tz, prayerMinutesArray]);
 
   if (!todaySchedule) {
     if (schedule.loading) {
@@ -131,12 +126,7 @@ export default function TodayCard() {
 
       <div className="p-4">
         <p className="mb-3 text-center text-xs text-slate-500 dark:text-slate-400">
-          {dayName},{" "}
-          {new Date(todayDateStr + "T12:00:00").toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
+          {dayName}, {formatLongDate(todayDateStr)}
         </p>
 
         {/* Prayer times — 4-col grid (2 rows on mobile, 1 row on desktop) */}

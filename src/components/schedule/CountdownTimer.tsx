@@ -2,19 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStore } from "@/store/useStore";
-import { syncServerTime, getAdjustedTime } from "@/lib/time";
-import { getUtcOffset } from "@/lib/timezone";
+import { syncServerTime } from "@/lib/time";
+import { addDays, cityDate } from "@/lib/city-time";
 import { PRAYER_ICON_MAP, MapPinIcon, RefreshIcon } from "@/components/ui/Icons";
 import { detectAndUpdateLocation } from "@/lib/detect-location";
 import type { PrayerKey } from "@/types";
-import {
-  type NextPrayer,
-  getLocalDate,
-  getDateStr,
-  getTomorrowSchedule,
-  getNextPrayerCyclic,
-  formatCountdown,
-} from "@/lib/countdown-helpers";
+import { type NextPrayer, findDay, getNextPrayer, formatCountdown } from "@/lib/countdown-helpers";
 
 // Pause between attempts to load missing countdown data: right away, then 3 s, 10 s,
 // 30 s and every minute after that (only while the app is visible)
@@ -98,7 +91,7 @@ export default function CountdownTimer() {
     };
   }, []);
 
-  const utcOffset = getUtcOffset(location.timezone);
+  const tz = location.timezone;
 
   const handleRefreshLocation = useCallback(async () => {
     if (isRefreshing) return;
@@ -131,9 +124,8 @@ export default function CountdownTimer() {
     nextPrayerRef.current = null;
 
     function checkAndRefetch() {
-      const now = getAdjustedTime(timeOffset);
-      const localTime = getLocalDate(now, utcOffset);
-      const currentDateStr = getDateStr(localTime);
+      const nowMs = Date.now() + timeOffset;
+      const currentDateStr = cityDate(nowMs, tz).iso;
 
       if (
         countdownSchedule.length > 0 &&
@@ -141,8 +133,7 @@ export default function CountdownTimer() {
         lastDateRef.current !== currentDateStr &&
         !refetchingRef.current
       ) {
-        const tomorrowSchedule = getTomorrowSchedule(countdownSchedule, now, utcOffset);
-        if (!tomorrowSchedule) {
+        if (!findDay(countdownSchedule, addDays(currentDateStr, 1))) {
           refetchingRef.current = true;
           refetchSchedule().finally(() => {
             refetchingRef.current = false;
@@ -161,12 +152,12 @@ export default function CountdownTimer() {
 
       // The current target passed since the last tick: announce it before moving on
       const previous = nextPrayerRef.current;
-      if (previous?.targetMs) {
-        const late = now.getTime() - previous.targetMs;
+      if (previous) {
+        const late = nowMs - previous.targetMs;
         if (late >= 0 && late <= STALE_ARRIVAL_MS) announceArrival(previous);
       }
 
-      const next = getNextPrayerCyclic(countdownSchedule, now, utcOffset);
+      const next = getNextPrayer(countdownSchedule, nowMs, tz);
       if (next) {
         retryRef.current.attempts = 0;
         retryRef.current.nextAt = 0;
@@ -192,11 +183,12 @@ export default function CountdownTimer() {
       setNextPrayer(null);
       if (refetchingRef.current || document.visibilityState === "hidden") return;
       if (countdownSchedule.length === 0 && schedule.loading) return;
-      const nowMs = Date.now();
-      if (nowMs < retryRef.current.nextAt) return;
+      // Retry pauses follow the device clock, not the server-corrected one
+      const wallMs = Date.now();
+      if (wallMs < retryRef.current.nextAt) return;
       const attempt = retryRef.current.attempts;
       retryRef.current.attempts = attempt + 1;
-      retryRef.current.nextAt = nowMs + RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+      retryRef.current.nextAt = wallMs + RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
       // An earlier attempt already came back without today's times
       if (attempt > 0) setLoadError(true);
       refetchingRef.current = true;
@@ -209,13 +201,13 @@ export default function CountdownTimer() {
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
-  }, [countdownSchedule, timeOffset, utcOffset, refetchSchedule, setTodayDateStr, announceArrival]);
+  }, [countdownSchedule, timeOffset, tz, refetchSchedule, setTodayDateStr, announceArrival]);
 
   // Fast countdown tick — only updates display, no state recalculation
   useEffect(() => {
     const interval = setInterval(() => {
       const ref = nextPrayerRef.current;
-      if (!ref || !ref.targetMs) return;
+      if (!ref) return;
       // Optimization: avoid allocating new Date() in the hot path
       const nowMs = Date.now() + timeOffset;
 

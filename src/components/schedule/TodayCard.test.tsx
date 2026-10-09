@@ -1,23 +1,12 @@
 import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import TodayCard from "./TodayCard";
-import { getAdjustedTime } from "@/lib/time";
 import { BUILD_DATE } from "@/lib/city-time";
 
 // Mock zustand store
 const mockUseStore = vi.fn();
 vi.mock("@/store/useStore", () => ({
   useStore: (selector: (state: unknown) => unknown) => selector(mockUseStore()),
-}));
-
-// Mock time utils
-vi.mock("@/lib/time", () => ({
-  getAdjustedTime: vi.fn(() => new Date("2025-06-15T12:00:00Z")), // Default mock time
-}));
-
-// Mock timezone util
-vi.mock("@/lib/timezone", () => ({
-  getUtcOffset: vi.fn(() => 7), // WIB by default
 }));
 
 // Mock hijri util
@@ -54,7 +43,7 @@ describe("TodayCard", () => {
   };
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ now: new Date("2025-06-15T12:00:00Z") });
     mockUseStore.mockReturnValue(defaultStoreState);
   });
 
@@ -78,10 +67,7 @@ describe("TodayCard", () => {
   });
 
   it("renders today's schedule properly", () => {
-    // Mock the current time to 2025-06-15T12:00:00Z (UTC)
-    // For WIB (+7), this is 2025-06-15 19:00:00 local time
-    // But let's mock the getAdjustedTime to something specific and we'll see
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T05:00:00Z")); // UTC
+    vi.setSystemTime(new Date("2025-06-15T05:00:00Z"));
 
     // Local time = 12:00:00 WIB (past Dzuhur, before Ashar)
     const todayStr = "2025-06-15";
@@ -124,7 +110,7 @@ describe("TodayCard", () => {
 
   it("shows the store's today, not the device clock's date", () => {
     // The device clock says 16 June, but the city's today (from the store) is 15 June
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-16T05:00:00Z"));
+    vi.setSystemTime(new Date("2025-06-16T05:00:00Z"));
     mockUseStore.mockReturnValue({
       ...defaultStoreState,
       countdownSchedule: [
@@ -155,8 +141,6 @@ describe("TodayCard", () => {
     // Setup time so current local time is 12:30 WIB (past Dzuhur 11:45, before Ashar 15:05)
     // 12:30 WIB = 05:30 UTC
     vi.setSystemTime(new Date("2025-06-15T05:30:00Z"));
-
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T05:30:00Z"));
 
     const todayStr = "2025-06-15";
     const mockCountdownSchedule = [
@@ -199,8 +183,6 @@ describe("TodayCard", () => {
     // Start at 11:40 WIB (Before Dzuhur, Dhuha is active)
     vi.setSystemTime(new Date("2025-06-15T04:40:00Z"));
 
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T04:40:00Z"));
-
     const todayStr = "2025-06-15";
     const mockCountdownSchedule = [
       {
@@ -228,11 +210,9 @@ describe("TodayCard", () => {
     const dhuhaLabel = screen.getByText("Dhuha");
     expect(dhuhaLabel.closest("div")).toHaveClass("animate-pulse-glow");
 
-    // Fast forward to 11:46 WIB (Dzuhur is now active)
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T04:46:00Z"));
-
+    // Five minutes later, 11:45 WIB has passed: Dzuhur is now active
     act(() => {
-      vi.advanceTimersByTime(61000); // past the next minute-boundary re-check
+      vi.advanceTimersByTime(6 * 60_000);
     });
 
     // Now Dzuhur should be highlighted

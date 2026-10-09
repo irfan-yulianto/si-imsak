@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Location } from "@/types";
 import { searchCities } from "@/lib/api";
-import { cityDate } from "@/lib/city-time";
+import { cityDate, monthKey } from "@/lib/city-time";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
 import { detectAndUpdateLocation } from "@/lib/detect-location";
@@ -74,7 +74,7 @@ export default function LocationSearch() {
     const currentMonth = () => {
       const { location: current, timeOffset } = useStore.getState();
       const today = cityDate(Date.now() + timeOffset, current.timezone);
-      return `${today.year}-${today.month}`;
+      return monthKey(today.year, today.month);
     };
     let lastMonth = currentMonth();
     const checkMonth = () => {

@@ -14,14 +14,6 @@ vi.mock("@/lib/hijri", () => ({
   getHijriMonthsForGregorianMonth: vi.fn().mockReturnValue([{ monthName: "Ramadhan", year: 1445 }]),
 }));
 
-vi.mock("@/lib/time", () => ({
-  getAdjustedTime: vi.fn().mockReturnValue(new Date("2024-03-12T12:00:00Z")),
-}));
-
-vi.mock("@/lib/timezone", () => ({
-  getUtcOffset: vi.fn().mockReturnValue(7),
-}));
-
 const mockFetchScheduleForMonth = vi.fn();
 const CURRENT_YEAR = new Date().getFullYear();
 

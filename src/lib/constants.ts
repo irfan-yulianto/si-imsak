@@ -92,9 +92,3 @@ export const TIMEZONE_MAP = {
   "PAPUA PEGUNUNGAN": "WIT",
   "PAPUA SELATAN": "WIT",
 } as const satisfies Record<string, TimezoneLabel>;
-
-export const TIMEZONE_OFFSETS: Record<string, number> = {
-  WIB: 7,
-  WITA: 8,
-  WIT: 9,
-};

@@ -65,25 +65,3 @@ async function fetchServerTimeOffset(): Promise<number | null> {
     clearTimeout(timeout);
   }
 }
-
-/**
- * Get current time adjusted by server offset
- */
-export function getAdjustedTime(offset: number): Date {
-  return new Date(Date.now() + offset);
-}
-
-/**
- * Parse a time string (HH:MM) and a date string (YYYY-MM-DD) into a Date object
- */
-export function parseScheduleTime(
-  dateStr: string,
-  timeStr: string,
-  utcOffset: number // 7 for WIB, 8 for WITA, 9 for WIT
-): Date {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  const date = new Date(dateStr);
-  // Set time in UTC, then subtract the timezone offset to get the correct UTC time
-  date.setUTCHours(hours - utcOffset, minutes, 0, 0);
-  return date;
-}

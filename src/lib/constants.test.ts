@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_LOCATION, TIMEZONE_MAP, TIMEZONE_OFFSETS } from "./constants";
+import { DEFAULT_LOCATION, TIMEZONE_MAP } from "./constants";
 
 describe("DEFAULT_LOCATION", () => {
   it("has a 32-char hex id (MD5)", () => {
@@ -32,19 +32,5 @@ describe("TIMEZONE_MAP", () => {
     for (const [, tz] of Object.entries(TIMEZONE_MAP)) {
       expect(["WIB", "WITA", "WIT"]).toContain(tz);
     }
-  });
-});
-
-describe("TIMEZONE_OFFSETS", () => {
-  it("WIB is 7", () => {
-    expect(TIMEZONE_OFFSETS.WIB).toBe(7);
-  });
-
-  it("WITA is 8", () => {
-    expect(TIMEZONE_OFFSETS.WITA).toBe(8);
-  });
-
-  it("WIT is 9", () => {
-    expect(TIMEZONE_OFFSETS.WIT).toBe(9);
   });
 });
