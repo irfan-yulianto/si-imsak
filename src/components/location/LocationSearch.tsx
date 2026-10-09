@@ -6,7 +6,6 @@ import { searchCities } from "@/lib/api";
 import { cityDate, monthKey } from "@/lib/city-time";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
-import { detectAndUpdateLocation } from "@/lib/detect-location";
 import { KEYS, writeJson, writeRaw } from "@/lib/storage";
 
 export default function LocationSearch() {
@@ -20,7 +19,7 @@ export default function LocationSearch() {
   const location = useStore((s) => s.location);
   const showLocationPrompt = useStore((s) => s.locationPrompt);
   const setLocationPrompt = useStore((s) => s.setLocationPrompt);
-  const loadCitySchedule = useStore((s) => s.loadCitySchedule);
+  const selectCity = useStore((s) => s.selectCity);
   const setIsOffline = useStore((s) => s.setIsOffline);
 
   // Online/offline detection
@@ -39,7 +38,7 @@ export default function LocationSearch() {
   const detectLocation = useCallback(async () => {
     setIsDetecting(true);
     setPromptError("");
-    const result = await detectAndUpdateLocation();
+    const result = await useStore.getState().detectCity();
     setIsDetecting(false);
     if (result.success || result.superseded) {
       setLocationPrompt(false);
@@ -66,8 +65,8 @@ export default function LocationSearch() {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
     const { location: current } = useStore.getState();
-    loadCitySchedule({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
-  }, [loadCitySchedule]);
+    selectCity({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
+  }, [selectCity]);
 
   // Reload when the month changes in the city's time zone: checked hourly, and whenever
   // the app comes back to the foreground (timers are suspended while a phone is locked).
@@ -83,7 +82,7 @@ export default function LocationSearch() {
       if (month === lastMonth) return;
       lastMonth = month;
       const { location: current } = useStore.getState();
-      loadCitySchedule({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
+      selectCity({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
     };
     const onVisible = () => {
       if (document.visibilityState === "visible") checkMonth();
@@ -94,7 +93,7 @@ export default function LocationSearch() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadCitySchedule]);
+  }, [selectCity]);
 
   // Typing updates the "searching" state right away; the debounced request below fills results
   const handleQueryChange = (value: string) => {
@@ -128,7 +127,7 @@ export default function LocationSearch() {
     handleQueryChange("");
     setLocationPrompt(false);
     writeJson(KEYS.location, city);
-    loadCitySchedule(city);
+    selectCity(city);
   };
 
   const handleDismissPrompt = () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/store/useStore";
+import { useStore, useViewSchedule } from "@/store/useStore";
 import { getHijriParts, getHijriMonthsForGregorianMonth } from "@/lib/hijri";
 import { getScheduleYearRange } from "@/lib/constants";
 import { BUILD_DATE, MONTH_NAMES, monthKey, shiftMonth } from "@/lib/city-time";
@@ -205,10 +205,10 @@ function MonthNav({ viewMonth, viewYear, isCurrentMonth, canGoPrev, canGoNext, o
 }
 
 export default function ScheduleTable() {
-  const schedule = useStore((s) => s.schedule);
+  const schedule = useViewSchedule();
   const viewMonth = useStore((s) => s.viewMonth);
   const viewYear = useStore((s) => s.viewYear);
-  const fetchScheduleForMonth = useStore((s) => s.fetchScheduleForMonth);
+  const showMonth = useStore((s) => s.showMonth);
   const todayRef = useRef<HTMLDivElement>(null);
   // Skeletons only on a cold load; revalidating cached data keeps it on screen
   const showSkeleton = schedule.loading && schedule.data.length === 0;
@@ -264,18 +264,18 @@ export default function ScheduleTable() {
 
   const goToPrevMonth = useCallback(() => {
     const prev = shiftMonth(viewYear, viewMonth, -1);
-    fetchScheduleForMonth(prev.year, prev.month);
-  }, [viewMonth, viewYear, fetchScheduleForMonth]);
+    showMonth(prev.year, prev.month);
+  }, [viewMonth, viewYear, showMonth]);
 
   const goToNextMonth = useCallback(() => {
     const next = shiftMonth(viewYear, viewMonth, 1);
-    fetchScheduleForMonth(next.year, next.month);
-  }, [viewMonth, viewYear, fetchScheduleForMonth]);
+    showMonth(next.year, next.month);
+  }, [viewMonth, viewYear, showMonth]);
 
   const goToCurrentMonth = useCallback(() => {
     // The city's current month, not the device's
-    fetchScheduleForMonth(Number(todayDate.slice(0, 4)), Number(todayDate.slice(5, 7)));
-  }, [fetchScheduleForMonth, todayDate]);
+    showMonth(Number(todayDate.slice(0, 4)), Number(todayDate.slice(5, 7)));
+  }, [showMonth, todayDate]);
 
   if (schedule.error) {
     return (
@@ -294,7 +294,7 @@ export default function ScheduleTable() {
           <p className="text-sm text-red-700 dark:text-red-300">{schedule.error}</p>
           <button
             type="button"
-            onClick={() => fetchScheduleForMonth(viewYear, viewMonth)}
+            onClick={() => showMonth(viewYear, viewMonth)}
             aria-label={`Coba lagi memuat jadwal ${MONTH_NAMES[viewMonth - 1]} ${viewYear}`}
             className="focus-ring mt-3 min-h-11 cursor-pointer rounded-lg bg-red-100 px-4 text-sm font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
           >

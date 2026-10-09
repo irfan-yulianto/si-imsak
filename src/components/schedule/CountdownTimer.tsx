@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useStore } from "@/store/useStore";
+import { selectCurrentMonth, useCountdownDays, useCurrentMonth, useStore } from "@/store/useStore";
 import { syncServerTime } from "@/lib/time";
 import { addDays, cityDate } from "@/lib/city-time";
 import { PRAYER_ICON_MAP, MapPinIcon, RefreshIcon } from "@/components/ui/Icons";
-import { detectAndUpdateLocation } from "@/lib/detect-location";
 import type { PrayerKey } from "@/types";
 import { type NextPrayer, findDay, getNextPrayer, formatCountdown } from "@/lib/countdown-helpers";
 
@@ -30,12 +29,12 @@ export function arrivalMessage(key: PrayerKey, name: string): { title: string; s
 }
 
 export default function CountdownTimer() {
-  const countdownSchedule = useStore((s) => s.countdownSchedule);
-  const tableError = useStore((s) => s.schedule.error);
+  const countdownSchedule = useCountdownDays();
+  const currentFailed = useCurrentMonth()?.status === "error";
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
   const setTimeOffset = useStore((s) => s.setTimeOffset);
-  const refetchSchedule = useStore((s) => s.refetchSchedule);
+  const loadCountdownMonths = useStore((s) => s.loadCountdownMonths);
   const setTodayDateStr = useStore((s) => s.setTodayDateStr);
   const [nextPrayer, setNextPrayer] = useState<NextPrayer | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -97,7 +96,7 @@ export default function CountdownTimer() {
     if (isRefreshing) return;
     setIsRefreshing(true);
     setRefreshError("");
-    const result = await detectAndUpdateLocation();
+    const result = await useStore.getState().detectCity();
     setIsRefreshing(false);
     if (!result.success && result.error) {
       setRefreshError(result.error);
@@ -135,7 +134,7 @@ export default function CountdownTimer() {
       ) {
         if (!findDay(countdownSchedule, addDays(currentDateStr, 1))) {
           refetchingRef.current = true;
-          refetchSchedule().finally(() => {
+          loadCountdownMonths({ background: true }).finally(() => {
             refetchingRef.current = false;
           });
         }
@@ -143,7 +142,8 @@ export default function CountdownTimer() {
       lastDateRef.current = currentDateStr;
       setTodayDateStr(currentDateStr);
 
-      const { location: current, schedule } = useStore.getState();
+      const state = useStore.getState();
+      const current = state.location;
       const retry = retryRef.current;
       if (retry.cityId !== current.cityId) {
         retryRef.current = { cityId: current.cityId, attempts: 0, nextAt: 0 };
@@ -182,7 +182,8 @@ export default function CountdownTimer() {
       nextPrayerRef.current = null;
       setNextPrayer(null);
       if (refetchingRef.current || document.visibilityState === "hidden") return;
-      if (countdownSchedule.length === 0 && schedule.loading) return;
+      const month = selectCurrentMonth(state);
+      if (countdownSchedule.length === 0 && (!month || month.status === "loading")) return;
       // Retry pauses follow the device clock, not the server-corrected one
       const wallMs = Date.now();
       if (wallMs < retryRef.current.nextAt) return;
@@ -192,7 +193,7 @@ export default function CountdownTimer() {
       // An earlier attempt already came back without today's times
       if (attempt > 0) setLoadError(true);
       refetchingRef.current = true;
-      refetchSchedule().finally(() => {
+      loadCountdownMonths({ background: true }).finally(() => {
         refetchingRef.current = false;
       });
     }
@@ -201,7 +202,7 @@ export default function CountdownTimer() {
     checkAndRefetch();
     const interval = setInterval(checkAndRefetch, 3000);
     return () => clearInterval(interval);
-  }, [countdownSchedule, timeOffset, tz, refetchSchedule, setTodayDateStr, announceArrival]);
+  }, [countdownSchedule, timeOffset, tz, loadCountdownMonths, setTodayDateStr, announceArrival]);
 
   // Fast countdown tick — only updates display, no state recalculation
   useEffect(() => {
@@ -235,7 +236,7 @@ export default function CountdownTimer() {
   const ArrivedIcon = prayerArrived ? PRAYER_ICON_MAP[prayerArrived.key] : null;
   const arrived = prayerArrived ? arrivalMessage(prayerArrived.key, prayerArrived.name) : null;
   // No times to show: the countdown's own retries failed, or the city's first load did
-  const showError = !nextPrayer && (loadError || (countdownSchedule.length === 0 && !!tableError));
+  const showError = !nextPrayer && (loadError || (countdownSchedule.length === 0 && currentFailed));
   const nextLabel = nextPrayer
     ? nextPrayer.isTomorrow
       ? "Menuju Imsak Besok"

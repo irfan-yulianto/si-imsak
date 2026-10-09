@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/store/useStore";
+import { useCountdownDays, useCurrentMonth, useStore } from "@/store/useStore";
 import { getHijriDate } from "@/lib/hijri";
 import { BUILD_DATE, citySecondsOfDay, formatLongDate } from "@/lib/city-time";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
@@ -8,8 +8,9 @@ import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
 import { useMemo, useState, useEffect, useRef } from "react";
 
 export default function TodayCard() {
-  const countdownSchedule = useStore((s) => s.countdownSchedule);
-  const schedule = useStore((s) => s.schedule);
+  const countdownSchedule = useCountdownDays();
+  const currentMonth = useCurrentMonth();
+  const loading = !currentMonth || currentMonth.status === "loading";
   const location = useStore((s) => s.location);
   const timeOffset = useStore((s) => s.timeOffset);
   // Kept current by the countdown, so the card rolls over at midnight
@@ -79,7 +80,7 @@ export default function TodayCard() {
   }, [todaySchedule, timeOffset, tz, prayerMinutesArray]);
 
   if (!todaySchedule) {
-    if (schedule.loading) {
+    if (loading) {
       return (
         <div role="status" aria-label="Memuat jadwal hari ini" className="min-h-[160px] rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
           <div className="h-9 animate-shimmer rounded-t-2xl" />

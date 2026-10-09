@@ -2,6 +2,7 @@ import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import CountdownTimer from "./CountdownTimer";
 import { useStore } from "@/store/useStore";
+import { BANDUNG, JAKARTA, monthOf, resetStore, seedCity, seedMonth } from "@/__tests__/store";
 import { getSchedule } from "@/lib/api";
 import type { ScheduleDay } from "@/types";
 
@@ -11,9 +12,6 @@ vi.mock("@/lib/time", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/time")>()),
   syncServerTime: vi.fn(() => Promise.resolve(0)),
 }));
-vi.mock("@/lib/detect-location", () => ({ detectAndUpdateLocation: vi.fn() }));
-
-const JAKARTA = { cityId: "jkt", cityName: "KOTA JAKARTA", province: "DKI JAKARTA", timezone: "WIB" as const };
 
 function day(date: string, overrides: Partial<ScheduleDay> = {}): ScheduleDay {
   return {
@@ -23,7 +21,7 @@ function day(date: string, overrides: Partial<ScheduleDay> = {}): ScheduleDay {
 }
 
 function monthResponse(jadwal: ScheduleDay[]) {
-  return { status: true, data: { id: "jkt", lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA", jadwal } };
+  return { status: true, data: { id: JAKARTA.cityId, lokasi: "KOTA JAKARTA", daerah: "DKI JAKARTA", jadwal } };
 }
 
 /** Let fake time pass, running timers and the promise callbacks they start */
@@ -33,22 +31,16 @@ async function wait(ms: number) {
   });
 }
 
-const FAILED_LOAD = { data: [], loading: false, error: "Gagal memuat jadwal. Coba lagi nanti." };
+/** The city's first load of this month failed */
+const failedLoad = () => seedMonth(2026, 3, [], { status: "error", error: "Gagal memuat jadwal. Coba lagi nanti." });
 
 beforeEach(() => {
+  resetStore();
   // 15 March 2026, 12:00 WIB
   vi.useFakeTimers({ now: new Date("2026-03-15T05:00:00Z") });
   vi.mocked(getSchedule).mockReset();
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  useStore.setState({
-    location: JAKARTA,
-    countdownSchedule: [],
-    schedule: { data: [], loading: false, error: null },
-    timeOffset: 0,
-    todayDateStr: "",
-    viewYear: 2026,
-    viewMonth: 3,
-  });
+  seedCity(JAKARTA, "2026-03-15");
 });
 
 afterEach(() => {
@@ -59,7 +51,7 @@ afterEach(() => {
 describe("CountdownTimer recovery", () => {
   it("keeps retrying an empty countdown with growing pauses after the first load failed", async () => {
     vi.mocked(getSchedule).mockRejectedValue(new TypeError("Failed to fetch"));
-    useStore.setState({ schedule: FAILED_LOAD });
+    failedLoad();
 
     render(<CountdownTimer />);
     await wait(0);
@@ -85,32 +77,32 @@ describe("CountdownTimer recovery", () => {
     vi.mocked(getSchedule)
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockResolvedValue(monthResponse([day("2026-03-15")]));
-    useStore.setState({ schedule: FAILED_LOAD });
+    failedLoad();
 
     render(<CountdownTimer />);
     await wait(3_000);
 
     expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
     expect(screen.queryByText("Jadwal Tidak Tersedia")).not.toBeInTheDocument();
-    expect(useStore.getState().schedule).toEqual({ data: [day("2026-03-15")], loading: false, error: null });
+    expect(monthOf(2026, 3)).toEqual({ days: [day("2026-03-15")], status: "ready", error: null });
   });
 
   it("recovers when 'Coba Lagi' on the table loads the current month", async () => {
     vi.mocked(getSchedule).mockRejectedValue(new TypeError("Failed to fetch"));
-    useStore.setState({ schedule: FAILED_LOAD });
+    failedLoad();
     render(<CountdownTimer />);
     await wait(0);
     expect(screen.getByText("Jadwal Tidak Tersedia")).toBeInTheDocument();
 
     vi.mocked(getSchedule).mockResolvedValue(monthResponse([day("2026-03-15")]));
-    await act(() => useStore.getState().fetchScheduleForMonth(2026, 3));
+    await act(() => useStore.getState().showMonth(2026, 3));
 
     expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
   });
 
   it("tries again right away when the connection comes back", async () => {
     vi.mocked(getSchedule).mockRejectedValue(new TypeError("Failed to fetch"));
-    useStore.setState({ schedule: FAILED_LOAD });
+    failedLoad();
     render(<CountdownTimer />);
     await wait(3_000);
     expect(getSchedule).toHaveBeenCalledTimes(2);
@@ -125,7 +117,7 @@ describe("CountdownTimer recovery", () => {
   });
 
   it("waits for the city's own load instead of requesting the same month twice", async () => {
-    useStore.setState({ schedule: { data: [], loading: true, error: null } });
+    seedMonth(2026, 3, [], { status: "loading" });
     render(<CountdownTimer />);
     await wait(9_000);
     expect(getSchedule).not.toHaveBeenCalled();
@@ -133,16 +125,13 @@ describe("CountdownTimer recovery", () => {
   });
 
   it("doesn't keep showing the previous city's countdown while a new city loads", async () => {
-    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    seedMonth(2026, 3, [day("2026-03-15")]);
     render(<CountdownTimer />);
     expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
 
     act(() => {
-      useStore.setState({
-        location: { cityId: "bdg", cityName: "KOTA BANDUNG", province: "JAWA BARAT", timezone: "WIB" },
-        countdownSchedule: [],
-        schedule: { data: [], loading: true, error: null },
-      });
+      useStore.setState({ location: BANDUNG });
+      seedMonth(2026, 3, [], { cityId: BANDUNG.cityId, status: "loading" });
     });
 
     expect(screen.queryByText("Menuju Waktu Dzuhur")).not.toBeInTheDocument();
@@ -152,7 +141,7 @@ describe("CountdownTimer recovery", () => {
 
 describe("CountdownTimer privacy", () => {
   it("keeps the city name out of Clarity recordings", () => {
-    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    seedMonth(2026, 3, [day("2026-03-15")]);
     render(<CountdownTimer />);
     expect(screen.getByRole("button", { name: /KOTA JAKARTA/ })).toHaveAttribute("data-clarity-mask", "True");
   });
@@ -161,7 +150,7 @@ describe("CountdownTimer privacy", () => {
 describe("CountdownTimer arrivals", () => {
   it("announces a time that arrives while the app is open", async () => {
     vi.setSystemTime(new Date("2026-03-15T05:04:58Z")); // 12:04:58 WIB
-    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    seedMonth(2026, 3, [day("2026-03-15")]);
     render(<CountdownTimer />);
     expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
 
@@ -173,7 +162,7 @@ describe("CountdownTimer arrivals", () => {
     // Mounted at 12:04:57.5: at 12:05:00.5 (Dzuhur) the check, created first, and the tick
     // are due together, and the check would otherwise move on to Ashar unannounced
     vi.setSystemTime(new Date("2026-03-15T05:04:57.500Z"));
-    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    seedMonth(2026, 3, [day("2026-03-15")]);
     render(<CountdownTimer />);
     expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
 
@@ -183,7 +172,7 @@ describe("CountdownTimer arrivals", () => {
 
   it("doesn't announce a time that passed while the phone was asleep", async () => {
     vi.setSystemTime(new Date("2026-03-15T05:04:50Z")); // 12:04:50 WIB, Dzuhur in 10 s
-    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    seedMonth(2026, 3, [day("2026-03-15")]);
     render(<CountdownTimer />);
     expect(screen.getByText("Menuju Waktu Dzuhur")).toBeInTheDocument();
 
@@ -200,19 +189,20 @@ describe("CountdownTimer arrivals", () => {
     vi.mocked(getSchedule).mockImplementation(async (_id, _year, month) =>
       monthResponse(month === 3 ? [day("2026-03-31")] : [day("2026-04-01", { imsak: "04:29" })])
     );
-    useStore.setState({ countdownSchedule: [day("2026-03-31")] });
+    seedCity(JAKARTA, "2026-03-31");
+    seedMonth(2026, 3, [day("2026-03-31")]);
 
     render(<CountdownTimer />);
     await wait(0);
 
-    expect(getSchedule).toHaveBeenCalledWith("jkt", 2026, 4);
+    expect(getSchedule).toHaveBeenCalledWith(JAKARTA.cityId, 2026, 4);
     expect(screen.getByText("Menuju Imsak Besok")).toBeInTheDocument();
     expect(screen.getByText("04:29 WIB")).toBeInTheDocument();
   });
 
   it("keeps today's date in the store current, also without schedule data", async () => {
     vi.setSystemTime(new Date("2026-03-15T16:59:58Z")); // 23:59:58 WIB
-    useStore.setState({ schedule: { data: [], loading: true, error: null } });
+    seedMonth(2026, 3, [], { status: "loading" });
     render(<CountdownTimer />);
     expect(useStore.getState().todayDateStr).toBe("2026-03-15");
 

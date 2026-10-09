@@ -1,219 +1,103 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import ScheduleTable from "./ScheduleTable";
+import { getSchedule } from "@/lib/api";
 import { useStore } from "@/store/useStore";
+import { JAKARTA, day, resetStore, seedCity, seedMonth } from "@/__tests__/store";
 
-// Mock the store
-vi.mock("@/store/useStore", () => ({
-  useStore: vi.fn(),
-}));
+// Real store; only the network is replaced
+vi.mock("@/lib/api", () => ({ getSchedule: vi.fn() }));
 
-// Mock the dependencies
-vi.mock("@/lib/hijri", () => ({
-  getHijriParts: vi.fn().mockReturnValue({ day: 1, monthName: "Ramadhan", year: 1445 }),
-  getHijriMonthsForGregorianMonth: vi.fn().mockReturnValue([{ monthName: "Ramadhan", year: 1445 }]),
-}));
+const MARCH_12 = day("2024-03-12", { imsak: "04:32", isya: "19:18" });
 
-const mockFetchScheduleForMonth = vi.fn();
-const CURRENT_YEAR = new Date().getFullYear();
+beforeEach(() => {
+  resetStore();
+  vi.mocked(getSchedule).mockReset().mockReturnValue(new Promise(() => {}));
+  // The city's today: 12 March 2024, so the table may move from 2023 to 2025
+  seedCity(JAKARTA, "2024-03-12");
+});
 
-const defaultStoreState = {
-  schedule: {
-    data: [],
-    loading: false,
-    error: null,
-  },
-  location: {
-    cityId: "1301",
-    cityName: "Kota Jakarta",
-    province: "DKI Jakarta",
-    timezone: "WIB",
-  },
-  timeOffset: 0,
-  viewMonth: 3,
-  viewYear: 2024,
-  fetchScheduleForMonth: mockFetchScheduleForMonth,
-};
+afterEach(() => {
+  vi.useRealTimers();
+});
 
-describe("ScheduleTable Component", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector(defaultStoreState)
-    );
+describe("ScheduleTable", () => {
+  it("shows skeleton rows while a month loads for the first time", () => {
+    const { container } = render(<ScheduleTable />);
+    expect(container.querySelectorAll(".animate-shimmer").length).toBeGreaterThan(0);
+    expect(screen.getByRole("status")).toHaveTextContent("Memuat jadwal...");
   });
 
-  it("renders empty state when no schedule is selected", () => {
+  it("shows the month's days, in the table and as cards", () => {
+    seedMonth(2024, 3, [MARCH_12]);
+    render(<ScheduleTable />);
+    expect(screen.getByText("Maret 2024")).toBeInTheDocument();
+    expect(screen.getAllByText("04:32")).toHaveLength(2);
+    expect(screen.getAllByText("19:18")).toHaveLength(2);
+    // Today is marked in both
+    expect(document.querySelectorAll('[aria-current="date"]')).toHaveLength(2);
+  });
+
+  it("keeps the days on screen while the month reloads", () => {
+    seedMonth(2024, 3, [MARCH_12], { status: "loading" });
+    render(<ScheduleTable />);
+    expect(screen.getAllByText("12:05").length).toBeGreaterThan(0);
+  });
+
+  it("asks for a city when a month has no days", () => {
+    seedMonth(2024, 3, []);
     render(<ScheduleTable />);
     expect(screen.getByText("Pilih kota untuk melihat jadwal sholat.")).toBeInTheDocument();
   });
 
-  it("renders error state when schedule fetch fails", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        schedule: { data: [], loading: false, error: "Gagal memuat jadwal" },
-      })
-    );
-
+  it("shows a failed month's error, and 'Coba Lagi' loads it again", () => {
+    seedMonth(2024, 3, [], { status: "error", error: "Gagal memuat jadwal. Coba lagi nanti." });
     render(<ScheduleTable />);
-    expect(screen.getByText("Gagal memuat jadwal")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Gagal memuat jadwal. Coba lagi nanti.");
 
-    const retryButton = screen.getByRole("button", { name: /coba lagi/i });
-    expect(retryButton).toBeInTheDocument();
-
-    fireEvent.click(retryButton);
-    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(2024, 3);
+    fireEvent.click(screen.getByRole("button", { name: "Coba lagi memuat jadwal Maret 2024" }));
+    expect(getSchedule).toHaveBeenCalledWith(JAKARTA.cityId, 2024, 3);
   });
 
-  it("renders skeleton rows when loading", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        schedule: { data: [], loading: true, error: null },
-      })
-    );
-
-    const { container } = render(<ScheduleTable />);
-
-    // Skeleton should be visible instead of actual data rows
-    // It's rendered in two places: MobileSkeletonCards and SkeletonRows
-    const skeletons = container.querySelectorAll(".animate-shimmer");
-    expect(skeletons.length).toBeGreaterThan(0);
-  });
-
-  it("renders schedule data correctly", () => {
-    const mockData = [
-      {
-        tanggal: "Selasa, 12/03/2024",
-        date: "2024-03-12",
-        imsak: "04:32",
-        subuh: "04:42",
-        terbit: "05:54",
-        dhuha: "06:21",
-        dzuhur: "12:05",
-        ashar: "15:10",
-        maghrib: "18:10",
-        isya: "19:18",
-      },
-    ];
-
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        schedule: { data: mockData, loading: false, error: null },
-      })
-    );
-
+  it("moves to the previous and next month", () => {
+    seedMonth(2024, 3, [MARCH_12]);
     render(<ScheduleTable />);
 
-    // Should render month navigation info
-    expect(screen.getByText("Maret 2024")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bulan sebelumnya" }));
+    expect(useStore.getState()).toMatchObject({ viewYear: 2024, viewMonth: 2 });
+    expect(getSchedule).toHaveBeenLastCalledWith(JAKARTA.cityId, 2024, 2);
 
-    // Check if data is displayed
-    const imsakTime = screen.getAllByText("04:32");
-    expect(imsakTime.length).toBeGreaterThan(0); // Should appear in table and mobile card
-
-    const isyaTime = screen.getAllByText("19:18");
-    expect(isyaTime.length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Bulan berikutnya" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bulan berikutnya" }));
+    expect(getSchedule).toHaveBeenLastCalledWith(JAKARTA.cityId, 2024, 4);
   });
 
-  it("allows navigating to previous and next month", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        viewYear: CURRENT_YEAR, // navigation is limited to last..next year
-        schedule: { data: [{
-          tanggal: "Selasa, 12/03/2024",
-          date: "2024-03-12",
-          imsak: "04:32",
-          subuh: "04:42",
-          terbit: "05:54",
-          dhuha: "06:21",
-          dzuhur: "12:05",
-          ashar: "15:10",
-          maghrib: "18:10",
-          isya: "19:18",
-        }], loading: false, error: null },
-      })
-    );
-
+  it("goes back to the city's current month with 'Hari Ini', whatever the device date", () => {
+    vi.useFakeTimers({ now: new Date("2024-04-01T00:30:00Z"), toFake: ["Date"] });
+    useStore.setState({ viewMonth: 2 });
+    seedMonth(2024, 2, [day("2024-02-12")]);
     render(<ScheduleTable />);
 
-    const prevButton = screen.getByLabelText("Bulan sebelumnya");
-    const nextButton = screen.getByLabelText("Bulan berikutnya");
-
-    fireEvent.click(prevButton);
-    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(CURRENT_YEAR, 2);
-
-    fireEvent.click(nextButton);
-    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(CURRENT_YEAR, 4);
+    fireEvent.click(screen.getByRole("button", { name: "Hari Ini" }));
+    expect(useStore.getState().viewMonth).toBe(3);
+    expect(getSchedule).toHaveBeenLastCalledWith(JAKARTA.cityId, 2024, 3);
   });
 
-  it("navigates to the city's current month when 'Hari Ini' is clicked", () => {
-     (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        todayDateStr: "2024-03-12", // the city's today, kept current by the store
-        viewMonth: 2, // Not current month
-        schedule: { data: [{
-          tanggal: "Selasa, 12/02/2024",
-          date: "2024-02-12",
-          imsak: "04:32",
-          subuh: "04:42",
-          terbit: "05:54",
-          dhuha: "06:21",
-          dzuhur: "12:05",
-          ashar: "15:10",
-          maghrib: "18:10",
-          isya: "19:18",
-        }], loading: false, error: null },
-      })
-    );
-
-    // The device clock is already in April; the city's today decides the month
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2024-04-01T00:30:00Z"));
-
+  it("stops at the years the API serves", () => {
+    useStore.setState({ viewYear: 2023, viewMonth: 1 });
+    seedMonth(2023, 1, [day("2023-01-01")]);
     render(<ScheduleTable />);
+    expect(screen.getByRole("button", { name: "Bulan sebelumnya" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toBeEnabled();
 
-    const todayButton = screen.getByRole("button", { name: "Hari Ini" });
-    fireEvent.click(todayButton);
-
-    expect(mockFetchScheduleForMonth).toHaveBeenCalledWith(2024, 3);
-
-    vi.useRealTimers();
+    act(() => useStore.setState({ viewYear: 2025, viewMonth: 12 }));
+    act(() => seedMonth(2025, 12, [day("2025-12-01")]));
+    expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toBeDisabled();
   });
 
-  it("disables month navigation outside the supported year range", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        viewYear: CURRENT_YEAR - 1,
-        viewMonth: 1,
-        schedule: { data: [{ date: "2024-01-01", tanggal: "Senin, 01/01/2024" }], loading: false, error: null },
-      })
-    );
+  it("never shows another city's month", () => {
+    seedMonth(2024, 3, [MARCH_12], { cityId: "ffffffffffffffffffffffffffffffff" });
     render(<ScheduleTable />);
-    expect(screen.getByLabelText("Bulan sebelumnya")).toBeDisabled();
-    expect(screen.getByLabelText("Bulan berikutnya")).not.toBeDisabled();
-  });
-
-  it("keeps cached rows visible while revalidating", () => {
-    (useStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) =>
-      selector({
-        ...defaultStoreState,
-        schedule: {
-          data: [{
-            tanggal: "Selasa, 12/03/2024", date: "2024-03-12", imsak: "04:32", subuh: "04:42",
-            terbit: "05:54", dhuha: "06:21", dzuhur: "12:05", ashar: "15:10", maghrib: "18:10", isya: "19:18",
-          }],
-          loading: true,
-          error: null,
-        },
-      })
-    );
-    render(<ScheduleTable />);
-    expect(screen.getAllByText("12:05").length).toBeGreaterThan(0);
+    expect(screen.queryByText("04:32")).not.toBeInTheDocument();
   });
 });
