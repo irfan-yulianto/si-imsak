@@ -2,7 +2,13 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
-## [Belum dirilis] — v2.3.1
+## [Belum dirilis] — v2.3.2
+
+### Diperbaiki
+- **Halaman masjid terkenal.** Masjid terkenal punya banyak halaman di Overture, dan pinnya bisa di mana saja di kotanya. Contohnya, setelah v2.3.1 masih ada "Masjid Istiqlal Jakarta Pusat" 1,3 km dari Istiqlal dan "Masjid Istiqlal,jakarta" 3,2 km jauhnya. Untuk masjid yang di OpenStreetMap bertag `wikidata` atau `wikipedia`, tempat Overture sejenis yang namanya diawali nama masjid itu dalam 10 km kini dilewati. Aturan ini tidak berlaku bila nama itu dipakai lebih dari 50 tempat, supaya jaringan seperti Al-Azhar tidak terhapus.
+- Log build mencatat berapa masjid OpenStreetMap yang dianggap terkenal.
+
+## [2.3.1] — 2026-10-09 ([#496](https://github.com/irfan-yulianto/si-imsak/pull/496))
 
 Sebelum data gabungan pertama dipakai, pemeriksaan sampel menemukan sebagian tempat dari Overture yang salah posisi. Contohnya halaman "Masjid Istiqlal - Jakarta" yang dipasangi pin di Monas, 700 m dari masjidnya. Aturan penggabungan diperketat.
 

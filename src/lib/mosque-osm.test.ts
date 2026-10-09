@@ -217,6 +217,14 @@ describe("placeFromFeature", () => {
     expect(building!.lng).toBeCloseTo(106.801, 6);
   });
 
+  it("knows a mosque OpenStreetMap links to Wikidata or Wikipedia as well-known", () => {
+    const at = { type: "Point", coordinates: [106.8312, -6.1703] };
+    expect(placeFromFeature({ id: "r1", geometry: at, properties: { building: "mosque", name: "Masjid Istiqlal", wikidata: "Q211581" } })).toMatchObject({
+      notable: true,
+    });
+    expect(placeFromFeature({ id: "r1", geometry: at, properties: { building: "mosque", name: "Masjid Al-Amin" } })).not.toHaveProperty("notable");
+  });
+
   it("skips what isn't a mosque, or has no position", () => {
     expect(placeFromFeature({ id: "n1", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { shop: "bakery" } })).toBeNull();
     expect(placeFromFeature({ id: "n1", geometry: null, properties: { building: "mosque" } })).toBeNull();
@@ -276,7 +284,8 @@ describe("placeFromOverture", () => {
 describe("addMissing", () => {
   // ~11 m per 0.0001°
   const at = (name: string | undefined, dLat: number, type: "masjid" | "musholla" = "masjid") => ({ name, type, lat: -6.2 + dLat, lng: 106.8 });
-  const add = (listed: ReturnType<typeof at>[], others: ReturnType<typeof at>[]) => addMissing(listed, others, (place) => place.name);
+  type At = ReturnType<typeof at> & { notable?: boolean };
+  const add = (listed: At[], others: At[]) => addMissing(listed, others, (place) => place.name);
 
   it("adds what isn't listed nearby", () => {
     const other = at("Masjid Nurul Huda", 0.001);
@@ -313,6 +322,24 @@ describe("addMissing", () => {
     const listed = [at("Masjid Al-Ikhlas", 0), ...elsewhere];
     expect(add(listed, [at("Masjid Al-Ikhlas", 0.0063)])).toEqual([]);
     expect(add(listed, [at("Masjid Al-Ikhlas", -0.0099)])).toHaveLength(1);
+  });
+
+  it("leaves out the pages of a well-known mosque pinned across its town", () => {
+    const istiqlal = [{ ...at("Masjid Istiqlal", 0), notable: true }];
+    // ~1.3 km and ~3.2 km off, with the town after the name
+    expect(add(istiqlal, [at("Masjid Istiqlal Jakarta Pusat", 0.012), at("Mesjid Istiqlal,jakarta", -0.029)])).toEqual([]);
+    // Another town's, and a musholla of that name
+    expect(add(istiqlal, [at("Masjid Istiqlal Bekasi", 0.12)])).toHaveLength(1);
+    expect(add(istiqlal, [at("Musholla Istiqlal", 0.012, "musholla")])).toHaveLength(1);
+    // A mosque not known beyond its street keeps its namesakes 1.3 km off
+    expect(add([at("Masjid Istiqlal", 0)], [at("Masjid Istiqlal Jakarta Pusat", 0.012)])).toHaveLength(1);
+  });
+
+  it("doesn't take a well-known mosque's name for its own when many carry it", () => {
+    // 51 "Al-Azhar" in the country: a campus's mosque 2 km from the well-known one is another
+    const elsewhere = Array.from({ length: 50 }, (_, i) => at("Masjid Al-Azhar", (i + 1) * 0.1));
+    const listed = [{ ...at("Masjid Al-Azhar", 0), notable: true }, ...elsewhere];
+    expect(add(listed, [at("Masjid Al-Azhar Rawamangun", 0.018)])).toHaveLength(1);
   });
 
   it("adds a place the other source has twice once, the first given", () => {
