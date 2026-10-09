@@ -9,15 +9,15 @@ vi.mock("@/components/ui/Icons", () => ({
   MapPinIcon: () => <div data-testid="map-pin-icon" />,
   SearchIcon: () => <div data-testid="search-icon" />,
   CrosshairIcon: () => <div data-testid="crosshair-icon" />,
-  ExternalLinkIcon: () => <div data-testid="external-link-icon" />
+  ExternalLinkIcon: () => <div data-testid="external-link-icon" />,
+  XIcon: () => <div data-testid="x-icon" />,
 }));
 
 // Mock CITIES to prevent heavy filtering during tests
-vi.mock("@/lib/cities", () => ({
-  CITIES: [
-    { id: "test-city", name: "TEST CITY", lat: -6.2, lng: 106.8 }
-  ]
-}));
+vi.mock("@/lib/cities", () => {
+  const CITIES = [{ id: "test-city", name: "TEST CITY", lat: -6.2, lng: 106.8 }];
+  return { CITIES, CITY_MAP: new Map(CITIES.map((c) => [c.name, c])) };
+});
 
 // Mock mosques utils to return a predictable distance
 vi.mock("@/lib/mosques", async (importOriginal) => {
@@ -49,6 +49,9 @@ global.fetch = vi.fn();
 describe("MosqueFinder Component - U6 Fixes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Also drops queued one-off implementations a failed test may have left behind
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global.fetch as any).mockReset();
     localStorage.clear();
 
     // Reset store state
@@ -144,6 +147,79 @@ describe("MosqueFinder Component - U6 Fixes", () => {
     expect(screen.getByText("Masjid Raya").closest(masked)).not.toBeNull();
     expect(screen.getByText(/^Lokasi GPS \(/).closest(masked)).not.toBeNull();
     expect(screen.getByRole("combobox").closest(masked)).not.toBeNull();
+  });
+
+  const okResponse = (mosques: object[]) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ status: true, data: mosques }),
+  });
+  const mosque = (id: string, name: string, lng = 106.8) => ({ id, name, lat: -6.2, lng, type: "masjid", distance: 0 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fetchMock = () => global.fetch as any;
+  const requestedRadius = (call: number) => new URL(fetchMock().mock.calls[call][0], "http://x").searchParams.get("radius");
+
+  it("keeps the wider radius for 'Muat Ulang' after 'Perluas Pencarian'", async () => {
+    fetchMock().mockImplementation(async () => okResponse([mosque("m1", "Masjid Raya")]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(screen.getByText("Masjid Raya")).toBeInTheDocument());
+    expect(requestedRadius(0)).toBe("2000");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Perluas Pencarian/ }));
+    });
+    await waitFor(() => expect(fetchMock()).toHaveBeenCalledTimes(2));
+    expect(requestedRadius(1)).toBe("4000");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Muat ulang daftar masjid" }));
+    });
+    await waitFor(() => expect(fetchMock()).toHaveBeenCalledTimes(3));
+    expect(requestedRadius(2)).toBe("4000");
+    expect(screen.getByRole("button", { name: /Perluas Pencarian \(4 km → 8 km\)/ })).toBeInTheDocument();
+  });
+
+  it("never lets a slow older search replace a newer one", async () => {
+    let finishFirst!: (v: unknown) => void;
+    fetchMock()
+      .mockImplementationOnce(() => new Promise((r) => { finishFirst = r; }))
+      .mockImplementationOnce(async () => okResponse([mosque("new", "Masjid Baru")]));
+    render(<MosqueFinder />);
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // A newer search (here: the user switches to a city) finishes first
+    const input = screen.getByRole("combobox");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "TEST" } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("option", { name: "TEST CITY" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Muat ulang daftar masjid" }));
+    });
+    await waitFor(() => expect(screen.getByText("Masjid Baru")).toBeInTheDocument());
+
+    await act(async () => {
+      finishFirst(okResponse([mosque("old", "Masjid Lama")]));
+    });
+    expect(screen.queryByText("Masjid Lama")).not.toBeInTheDocument();
+    expect(screen.getByText("Masjid Baru")).toBeInTheDocument();
+  });
+
+  it("measures cached results from the current position", async () => {
+    // Cached by a visit ~1 km away, when this mosque was 5 m from the user
+    localStorage.setItem(
+      "mosques_-6.20_106.80_r2000",
+      JSON.stringify({ data: [{ ...mosque("m1", "Masjid Dekat", 106.81), distance: 5 }], ts: Date.now() })
+    );
+    render(<MosqueFinder />);
+
+    await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
+    expect(fetchMock()).not.toHaveBeenCalled();
+    expect(screen.getByText("1.1 km")).toBeInTheDocument();
   });
 
   it("displays distinct 'network error' message when fetch throws", async () => {
