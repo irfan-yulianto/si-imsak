@@ -7,7 +7,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **Countdown Real-time** — Timer mundur menuju waktu sholat berikutnya dengan sinkronisasi waktu server, berjalan 24/7 secara siklis (termasuk transisi Isya ke Imsak besok). Menggunakan DOM refs untuk performa optimal tanpa re-render React setiap detik
 - **Jadwal Hari Ini** — Kartu waktu sholat hari ini dengan highlight otomatis waktu sholat yang sedang berlaku
 - **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, tampilan tabel (desktop) dan kartu per hari (mobile)
-- **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`)
+- **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`), dihitung di perangkat sehingga tetap jalan offline. Tanggal resmi di Indonesia mengikuti sidang isbat Kemenag, jadi di sekitar awal bulan Hijriyah tanggalnya bisa berbeda satu hari. Endpoint kalender MyQuran v3 sudah dicek sebagai alternatif: metodenya perhitungan "standar", bukan hasil isbat, jadi tidak lebih akurat
 - **Pencari Masjid Terdekat** — Cari masjid di sekitar lokasi GPS atau kota pilihan via OpenStreetMap Overpass API, dengan navigasi langsung ke Google Maps
 - **Deteksi Lokasi** — Geolocation otomatis dengan reverse geocoding sampai tingkat kota/kabupaten, database 514 kota/kabupaten di seluruh Indonesia
 - **Pencarian Kota** — Cari kota/kabupaten dari database Kemenag RI via MyQuran API v3
@@ -89,30 +89,45 @@ src/
 │   └── globals.css              # Global styles, animasi, Islamic geometric background
 ├── components/
 │   ├── layout/                  # Header (+ tombol tema), Footer, CurrentYear
-│   ├── location/                # LocationSearch: pencarian kota, GPS, status offline
-│   ├── mosque/                  # MosqueFinder: masjid terdekat (GPS atau kota)
+│   ├── location/                # LocationSearch: pencarian kota dan prompt lokasi
+│   ├── mosque/                  # MosqueFinder = MosqueControls + MosqueList (+ ikon khusus masjid)
 │   ├── pwa/                     # InstallBanner, UpdateToast (notifikasi versi baru)
-│   ├── schedule/                # CountdownTimer, TodayCard, ScheduleTable
+│   ├── schedule/                # CountdownTimer (LocationBadge, ArrivalNotice), TodayCard,
+│   │                            # ScheduleTable (MonthNav, DesktopTable, MobileCards, TodayFab)
 │   └── ui/                      # CityCombobox, Icons
+├── hooks/
+│   ├── useAppBootstrap.ts       # Start-up: migrasi dan hydrate cache, kota, online/offline, jam server
+│   ├── useCityClock.ts          # useCityToday / useCityMinute: tanggal dan menit di kota terpilih
+│   ├── useSchedule.ts           # Bulan untuk tabel dan countdown, dari cache bulan di store
+│   ├── useNextPrayer.ts         # Waktu sholat berikutnya, pengumuman, dan retry data yang hilang
+│   ├── useCountdownTicker.ts    # Digit countdown, ditulis langsung ke DOM tiap detik
+│   ├── useGeolocationWatch.ts   # GPS untuk pencari masjid (berhenti di akurasi 100 m atau 15 detik)
+│   └── useMosqueSearch.ts       # Pencarian masjid (cache, retry, pembatalan)
 ├── lib/
 │   ├── api.ts                   # Client API (fetch + timeout + offline cache)
-│   ├── city-time.ts             # Tanggal di zona waktu kota, aman untuk prerender
+│   ├── city-time.ts             # Satu-satunya tempat untuk tanggal dan jam kota (aman untuk prerender)
 │   ├── cities.ts                # Database 514 kota/kabupaten dengan koordinat
+│   ├── clock.ts                 # Satu timer bersama yang berdetak di setiap pergantian menit
 │   ├── constants.ts             # Konfigurasi (lokasi default, cache, batas wilayah)
 │   ├── countdown-helpers.ts     # Penentuan waktu sholat berikutnya
-│   ├── detect-location.ts       # Deteksi lokasi otomatis (GPS + reverse geocoding)
 │   ├── geocode.ts               # Nama kota Nominatim → nama kota MyQuran
 │   ├── hijri.ts                 # Konversi kalender Hijriyah (Intl.DateTimeFormat)
-│   ├── log.ts                   # Log JSON satu baris untuk route API
-│   ├── mosques.ts               # Overpass query builder + response parser
 │   ├── http.ts                  # Jawaban JSON, panggilan upstream, gerbang 1 req/detik untuk Nominatim
+│   ├── log.ts                   # Log JSON satu baris untuk route API
+│   ├── messages.ts              # Pesan error dan status untuk pengguna (pencari masjid: mosque-messages.ts)
+│   ├── mosques.ts               # Overpass query builder + response parser, radius pencarian
 │   ├── rate-limit.ts            # Rate limiter untuk API routes (sliding window per route)
 │   ├── report-error.ts          # Laporan error dari halaman error
+│   ├── storage.ts               # Satu-satunya akses localStorage/sessionStorage (envelope, migrasi, eviction)
 │   ├── time.ts                  # Sinkronisasi waktu server (NTP-style)
 │   ├── timezone.ts              # Mapping timezone Indonesia (WIB/WITA/WIT)
-│   └── upstream.ts              # Alamat MyQuran, Nominatim, Overpass (bisa diganti lewat env)
+│   ├── upstream.ts              # Alamat MyQuran, Nominatim, Overpass (bisa diganti lewat env)
+│   └── validate.ts              # Guard untuk semua data dari luar (API, upstream, storage)
 ├── store/
-│   └── useStore.ts              # Zustand store (location, schedule, countdown, UI)
+│   ├── useStore.ts              # Zustand store dari tiga slice
+│   ├── app-slice.ts             # Tema, offline, selisih jam, hydrate dari cache
+│   ├── city-slice.ts            # Kota terpilih, selectCity, detectCity (GPS → kota)
+│   └── schedule-slice.ts        # Cache bulan per kota (LRU 12), loadMonth, showMonth
 ├── types/
 │   └── index.ts                 # TypeScript types & interfaces
 └── instrumentation.ts           # Log saat server mulai dan saat request error

@@ -1,3 +1,8 @@
+// Hijri dates by the Umm al-Qura calendar, computed on the device (no network, works
+// offline). Indonesia's official dates follow the Ministry of Religious Affairs' sighting
+// (isbat), so around the start of a Hijri month this can be a day off. MyQuran's v3
+// calendar endpoint was checked as an alternative (2026): it reports a calculated
+// "standar" method, not the isbat decision, so it would be no closer.
 import { daysInMonth, isoDate } from "@/lib/city-time";
 
 const HIJRI_MONTH_NAMES: Record<number, string> = {
