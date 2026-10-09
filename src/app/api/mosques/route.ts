@@ -1,137 +1,122 @@
-import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
-import { buildOverpassQuery, parseOverpassResponse } from "@/lib/mosques";
-import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, roundCoord } from "@/lib/constants";
-import { OVERPASS_ENDPOINTS, UPSTREAM_USER_AGENT } from "@/lib/upstream";
-import { log } from "@/lib/log";
-import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { buildOverpassQuery, parseOverpassResponse, SEARCH_RADII } from "@/lib/mosques";
+import { CDN_CACHE_HOUR, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
+import { OVERPASS_ENDPOINTS } from "@/lib/upstream";
+import { json, tooManyRequests, upstreamFetch } from "@/lib/http";
+import { log, errorMessage } from "@/lib/log";
+import type { MosqueSearchResponse } from "@/types";
+import type { NextRequest } from "next/server";
 
 export const maxDuration = 25;
 
-const FETCH_TIMEOUT = 10000;
+/** Each mirror's own time limit */
+const MIRROR_TIMEOUT_MS = 10_000;
+/** A mirror that hasn't answered by then is joined by the next one */
+const HEDGE_MS = 3_000;
+const ALL_FAILED = "All Overpass endpoints failed";
 
-async function fetchSingleEndpoint(endpoint: string, query: string, signal: AbortSignal): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
-  const onRaceSettled = () => controller.abort();
-  signal.addEventListener("abort", onRaceSettled, { once: true });
+/** One mirror's answer, read in full */
+async function askMirror(endpoint: string, query: string, signal: AbortSignal): Promise<unknown> {
+  const res = await upstreamFetch(endpoint, {
+    method: "POST",
+    body: `data=${encodeURIComponent(query)}`,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    signal,
+    timeoutMs: MIRROR_TIMEOUT_MS,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      body: `data=${encodeURIComponent(query)}`,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": UPSTREAM_USER_AGENT,
-      },
-      signal: controller.signal,
-    });
-    if (res.ok) return res;
-    throw new Error(`HTTP ${res.status}`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "unknown error";
-    throw new Error(`${endpoint}: ${msg}`);
-  } finally {
-    clearTimeout(timeout);
-    signal.removeEventListener("abort", onRaceSettled);
+    return await res.json();
+  } catch {
+    throw new Error("invalid JSON");
   }
 }
 
 /**
- * Race all mirrors and use the first success. The losing requests are aborted
- * once a winner is in, so each search costs the public mirrors one full query.
+ * Asks the Overpass mirrors in turn: the next one starts when the one before fails, or
+ * hasn't answered within 3 s. The first answer wins and the others are cancelled, so a
+ * search usually costs the public mirrors a single query (all three ran at once before).
  */
-async function fetchOverpass(query: string): Promise<unknown> {
-  const race = new AbortController();
-  try {
-    return await Promise.any(
-      OVERPASS_ENDPOINTS.map(async (ep) => {
-        const res = await fetchSingleEndpoint(ep, query, race.signal);
-        // Read the body before aborting the others — abort would cancel this stream too
-        try {
-          return await res.json();
-        } catch {
-          throw new Error(`${ep}: invalid JSON`);
+function fetchOverpass(query: string, signal: AbortSignal): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    if (OVERPASS_ENDPOINTS.length === 0) return reject(new Error(`${ALL_FAILED}: none configured`));
+    if (signal.aborted) return reject(signal.reason);
+
+    const mirrors = new AbortController();
+    const errors: string[] = [];
+    let started = 0;
+    let settled = false;
+    let hedge: ReturnType<typeof setTimeout> | undefined;
+
+    const settle = (outcome: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hedge);
+      mirrors.abort();
+      signal.removeEventListener("abort", onAbort);
+      outcome();
+    };
+    const onAbort = () => settle(() => reject(signal.reason));
+
+    const startNext = () => {
+      clearTimeout(hedge);
+      if (settled || started === OVERPASS_ENDPOINTS.length) return;
+      const endpoint = OVERPASS_ENDPOINTS[started++];
+      hedge = setTimeout(startNext, HEDGE_MS);
+      askMirror(endpoint, query, mirrors.signal).then(
+        (data) => settle(() => resolve(data)),
+        (err) => {
+          errors.push(`${endpoint}: ${errorMessage(err)}`);
+          if (errors.length === OVERPASS_ENDPOINTS.length) settle(() => reject(new Error(`${ALL_FAILED}: ${errors.join("; ")}`)));
+          else startNext();
         }
-      })
-    );
-  } catch (err) {
-    if (err instanceof AggregateError) {
-      const details = err.errors.map((e: Error) => e.message).join("; ");
-      throw new Error(`All Overpass endpoints failed: ${details}`);
-    }
-    throw err;
-  } finally {
-    race.abort();
-  }
+      );
+    };
+
+    signal.addEventListener("abort", onAbort, { once: true });
+    startNext();
+  });
 }
 
+const fail = (error: string, status: number) => json<MosqueSearchResponse>({ status: false, error }, { status });
+
 export async function GET(request: NextRequest) {
-  const ip = extractClientIp(request);
-  if (isRateLimited(ip, 10)) {
-    return NextResponse.json(
-      { status: false, error: "Too many requests" },
-      { status: 429 }
-    );
-  }
+  const limit = checkRateLimit(request, "mosques");
+  if (!limit.ok) return tooManyRequests<MosqueSearchResponse>({ status: false, error: "Too many requests" }, limit.retryAfterS);
 
   const lat = request.nextUrl.searchParams.get("lat");
   const lng = request.nextUrl.searchParams.get("lng");
   const radius = request.nextUrl.searchParams.get("radius") || "2000";
-
-  if (!lat || !lng) {
-    return NextResponse.json(
-      { status: false, error: "Missing lat/lng parameters" },
-      { status: 400 }
-    );
-  }
+  if (!lat || !lng) return fail("Missing lat/lng parameters", 400);
 
   const latNum = parseFloat(lat);
   const lngNum = parseFloat(lng);
   const radiusNum = parseInt(radius, 10);
-
   if (isNaN(latNum) || latNum < INDONESIA_BOUNDS.latMin || latNum > INDONESIA_BOUNDS.latMax) {
-    return NextResponse.json(
-      { status: false, error: "Invalid latitude" },
-      { status: 400 }
-    );
+    return fail("Invalid latitude", 400);
   }
   if (isNaN(lngNum) || lngNum < INDONESIA_BOUNDS.lngMin || lngNum > INDONESIA_BOUNDS.lngMax) {
-    return NextResponse.json(
-      { status: false, error: "Invalid longitude" },
-      { status: 400 }
-    );
+    return fail("Invalid longitude", 400);
   }
-  if (isNaN(radiusNum) || radiusNum < 100 || radiusNum > 10000) {
-    return NextResponse.json(
-      { status: false, error: "Invalid radius (100-10000m)" },
-      { status: 400 }
-    );
+  if (!SEARCH_RADII.includes(radiusNum)) {
+    return fail(`Invalid radius (one of ${SEARCH_RADII.join(", ")} m)`, 400);
   }
 
   try {
-    // ~110 m precision: the client recomputes exact distances, and rounding keeps
-    // nearby users on the same CDN cache entry.
+    // ~110 m precision: the client measures exact distances itself, and rounding keeps
+    // nearby users on the same CDN cache entry
     const qLat = roundCoord(latNum);
     const qLng = roundCoord(lngNum);
-    const query = buildOverpassQuery(qLat, qLng, radiusNum);
-    const data = await fetchOverpass(query);
+    const data = await fetchOverpass(buildOverpassQuery(qLat, qLng, radiusNum), request.signal);
     const mosques = parseOverpassResponse(data as Parameters<typeof parseOverpassResponse>[0], qLat, qLng);
-
-    return NextResponse.json(
-      { status: true, data: mosques },
-      {
-        headers: {
-          "Cache-Control": CDN_CACHE_HOUR,
-        },
-      }
-    );
+    return json<MosqueSearchResponse>({ status: true, data: mosques }, { cache: CDN_CACHE_HOUR });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const message = errorMessage(err);
     log("error", { route: "mosques", error: message });
-
-    const isUpstream = message.includes("Overpass endpoints failed");
-    return NextResponse.json(
-      { status: false, error: isUpstream ? "Upstream mosque service unavailable" : "Failed to fetch mosques", retryable: isUpstream },
-      { status: isUpstream ? 502 : 500 }
+    const upstreamDown = message.startsWith(ALL_FAILED);
+    return json<MosqueSearchResponse>(
+      { status: false, error: upstreamDown ? "Upstream mosque service unavailable" : "Failed to fetch mosques", retryable: upstreamDown },
+      { status: upstreamDown ? 502 : 500, cache: NO_STORE }
     );
   }
 }

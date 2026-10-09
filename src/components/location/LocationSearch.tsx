@@ -3,15 +3,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Location } from "@/types";
 import { searchCities } from "@/lib/api";
-import { cityDate } from "@/lib/city-time";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
-import { detectAndUpdateLocation } from "@/lib/detect-location";
+import { KEYS, writeJson, writeRaw } from "@/lib/storage";
+import { MESSAGES, detectFailedMessage } from "@/lib/messages";
 
 export default function LocationSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  // The last search failed (network, server): not the same as "no such city"
+  const [searchFailed, setSearchFailed] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [promptError, setPromptError] = useState("");
   const promptButtonRef = useRef<HTMLButtonElement>(null);
@@ -19,37 +21,18 @@ export default function LocationSearch() {
   const location = useStore((s) => s.location);
   const showLocationPrompt = useStore((s) => s.locationPrompt);
   const setLocationPrompt = useStore((s) => s.setLocationPrompt);
-  const loadCitySchedule = useStore((s) => s.loadCitySchedule);
-  const setIsOffline = useStore((s) => s.setIsOffline);
-
-  // Online/offline detection
-  useEffect(() => {
-    const goOnline = () => setIsOffline(false);
-    const goOffline = () => setIsOffline(true);
-    setIsOffline(!navigator.onLine);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-  }, [setIsOffline]);
+  const selectCity = useStore((s) => s.selectCity);
 
   const detectLocation = useCallback(async () => {
     setIsDetecting(true);
     setPromptError("");
-    const result = await detectAndUpdateLocation();
+    const result = await useStore.getState().detectCity();
     setIsDetecting(false);
     if (result.success || result.superseded) {
       setLocationPrompt(false);
     } else {
       // Keep the prompt open and explain — the schedule already on screen stays usable
-      const reason = (result.error || "Lokasi tidak dapat dideteksi").replace(/\.+$/, "");
-      setPromptError(
-        result.error?.includes("ditolak")
-          ? "Izin lokasi ditolak. Ketik nama kotamu di kolom pencarian."
-          : `${reason}. Ketik nama kotamu di kolom pencarian.`
-      );
+      setPromptError(detectFailedMessage(result.error));
     }
   }, [setLocationPrompt]);
 
@@ -57,43 +40,6 @@ export default function LocationSearch() {
   useEffect(() => {
     if (showLocationPrompt) promptButtonRef.current?.focus();
   }, [showLocationPrompt]);
-
-  // Load the city restored from cache by the page's hydrateFromCache() (or the default
-  // city). Layout effects run before this passive effect, so the store already holds it.
-  const hasInitialized = useRef(false);
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-    const { location: current } = useStore.getState();
-    loadCitySchedule({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
-  }, [loadCitySchedule]);
-
-  // Reload when the month changes in the city's time zone: checked hourly, and whenever
-  // the app comes back to the foreground (timers are suspended while a phone is locked).
-  useEffect(() => {
-    const currentMonth = () => {
-      const { location: current, timeOffset } = useStore.getState();
-      const today = cityDate(Date.now() + timeOffset, current.timezone);
-      return `${today.year}-${today.month}`;
-    };
-    let lastMonth = currentMonth();
-    const checkMonth = () => {
-      const month = currentMonth();
-      if (month === lastMonth) return;
-      lastMonth = month;
-      const { location: current } = useStore.getState();
-      loadCitySchedule({ id: current.cityId, lokasi: current.cityName, daerah: current.province });
-    };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") checkMonth();
-    };
-    const interval = setInterval(checkMonth, 3600000); // 1 hour
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [loadCitySchedule]);
 
   // Typing updates the "searching" state right away; the debounced request below fills results
   const handleQueryChange = (value: string) => {
@@ -110,9 +56,13 @@ export default function LocationSearch() {
     const timer = setTimeout(async () => {
       try {
         const res = await searchCities(q, controller.signal);
-        if (!controller.signal.aborted) setResults(res.status && res.data ? res.data : []);
+        if (controller.signal.aborted) return;
+        setResults(res.status && res.data ? res.data : []);
+        setSearchFailed(false);
       } catch {
-        if (!controller.signal.aborted) setResults([]);
+        if (controller.signal.aborted) return;
+        setResults([]);
+        setSearchFailed(true);
       } finally {
         if (!controller.signal.aborted) setIsSearching(false);
       }
@@ -126,22 +76,13 @@ export default function LocationSearch() {
   const handleSelect = (city: Location) => {
     handleQueryChange("");
     setLocationPrompt(false);
-    try {
-      localStorage.setItem("selectedLocation", JSON.stringify(city));
-      localStorage.removeItem("detectedKecamatan"); // clean up legacy key
-    } catch (e) {
-      console.warn("Failed to save selected location", e);
-    }
-    loadCitySchedule(city);
+    writeJson(KEYS.location, city);
+    selectCity(city);
   };
 
   const handleDismissPrompt = () => {
     setLocationPrompt(false);
-    try {
-      localStorage.setItem("locationPermissionDismissed", String(Date.now()));
-    } catch (e) {
-      console.warn("Failed to save location dismissal", e);
-    }
+    writeRaw(KEYS.locationPromptDismissed, String(Date.now()));
   };
 
   return (
@@ -211,6 +152,7 @@ export default function LocationSearch() {
         getLabel={(city) => city.lokasi}
         onSelect={handleSelect}
         isSearching={isSearching}
+        emptyText={searchFailed ? MESSAGES.citySearchFailed : MESSAGES.cityNotFound}
       />
     </div>
   );

@@ -18,7 +18,7 @@ export default defineConfig({
       include: ["src/**"],
       exclude: ["src/**/*.test.{ts,tsx}", "src/__tests__/**", "src/types/**"],
       // Measured coverage minus 2 points; raise these as coverage grows
-      thresholds: { statements: 85, branches: 77, functions: 83, lines: 87 },
+      thresholds: { statements: 91, branches: 86, functions: 89, lines: 92 },
     },
   },
 });

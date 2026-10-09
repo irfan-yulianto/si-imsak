@@ -10,7 +10,7 @@ import ScheduleTable from "@/components/schedule/ScheduleTable";
 import InstallBanner from "@/components/pwa/InstallBanner";
 import { CalendarIcon, MosqueIcon } from "@/components/ui/Icons";
 import UpdateToast from "@/components/pwa/UpdateToast";
-import { useStore } from "@/store/useStore";
+import { useAppBootstrap } from "@/hooks/useAppBootstrap";
 
 const MosqueFinder = dynamic(() => import("@/components/mosque/MosqueFinder"), {
   ssr: false,
@@ -35,11 +35,7 @@ function tabFromUrl(): ActiveTab {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("jadwal");
 
-  // Load cached city/schedule/theme right after hydration but before the first paint:
-  // the first client render matches the server HTML, and users still never see defaults.
-  useLayoutEffect(() => {
-    useStore.getState().hydrateFromCache();
-  }, []);
+  useAppBootstrap();
 
   // The active mobile tab lives in the URL (?tab=masjid) so the back button and
   // shared links work. Read after hydration, before paint.

@@ -1,9 +1,11 @@
 import { CDN_CACHE_DAY, NO_STORE, getScheduleYearRange } from "@/lib/constants";
-import { MYQURAN_API_BASE, UPSTREAM_USER_AGENT } from "@/lib/upstream";
+import { MYQURAN_API_BASE } from "@/lib/upstream";
+import { json, tooManyRequests, upstreamFetch } from "@/lib/http";
 import { log, errorMessage } from "@/lib/log";
-import { isRateLimited, extractClientIp } from "@/lib/rate-limit";
-import { PRAYER_KEYS, type ScheduleDay } from "@/types";
-import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { isCityId, parseUpstreamPeriod, toScheduleDay, type UpstreamPeriod } from "@/lib/validate";
+import type { ScheduleDay, ScheduleResponse } from "@/types";
+import type { NextRequest, NextResponse } from "next/server";
 
 // The whole request, including retries, finishes within DEADLINE_MS
 export const maxDuration = 10;
@@ -17,8 +19,6 @@ const BREAKER_MS = 15_000;
 const RETRY_AFTER_S = 30;
 const UNAVAILABLE_CACHE = "public, s-maxage=30";
 const NOT_FOUND_CACHE = "public, s-maxage=300";
-
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Get number of days in a month
 function getDaysInMonth(year: number, month: number): number {
@@ -54,12 +54,6 @@ async function withConcurrency<T>(
   return results;
 }
 
-interface UpstreamData {
-  kabko?: unknown;
-  prov?: unknown;
-  jadwal: Record<string, unknown>;
-}
-
 /**
  * What one upstream call came back with:
  * - ok: data for the period (individual days are validated separately)
@@ -68,7 +62,7 @@ interface UpstreamData {
  * - unavailable: 5xx, 429, timeout, network error or a body that isn't JSON
  */
 type Outcome =
-  | { kind: "ok"; data: UpstreamData }
+  | { kind: "ok"; data: UpstreamPeriod }
   | { kind: "empty" | "client" | "unavailable" };
 
 interface RequestLog {
@@ -95,19 +89,14 @@ async function fetchPeriod(
   if (deadline.aborted) return { kind: "unavailable" };
   entry.calls++;
   try {
-    // No Next.js data cache: a cached `{status:false}` body would outlive an upstream
-    // hiccup by a day. The CDN caches our own response instead.
-    const res = await fetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
-      cache: "no-store",
-      headers: { "User-Agent": UPSTREAM_USER_AGENT, Accept: "application/json" },
-      signal: AbortSignal.any([deadline, AbortSignal.timeout(CALL_TIMEOUT_MS)]),
+    const res = await upstreamFetch(`${MYQURAN_API_BASE}/jadwal/${cityId}/${period}`, {
+      signal: deadline,
+      timeoutMs: CALL_TIMEOUT_MS,
     });
     if (res.status === 429 || res.status >= 500) return { kind: "unavailable" };
     if (!res.ok) return { kind: "client" };
-    const body = await res.json();
-    const data = body?.status ? body.data : null;
-    if (data?.jadwal && typeof data.jadwal === "object") return { kind: "ok", data };
-    return { kind: "empty" };
+    const data = parseUpstreamPeriod(await res.json());
+    return data ? { kind: "ok", data } : { kind: "empty" };
   } catch {
     return { kind: "unavailable" };
   }
@@ -126,75 +115,33 @@ async function fetchPeriodRetrying(
   return fetchPeriod(cityId, period, deadline, entry);
 }
 
-/** An upstream day with all eight times as HH:MM, in our format — or null */
-function toScheduleDay(date: string, raw: unknown): ScheduleDay | null {
-  if (!raw || typeof raw !== "object") return null;
-  const day = raw as Record<string, unknown>;
-  if (typeof day.tanggal !== "string" || !day.tanggal) return null;
-  const times = {} as Record<(typeof PRAYER_KEYS)[number], string>;
-  for (const key of PRAYER_KEYS) {
-    const value = day[key];
-    if (typeof value !== "string" || !HHMM.test(value)) return null;
-    times[key] = value;
-  }
-  return { tanggal: day.tanggal, date, ...times };
-}
-
 function unavailable(retryAfterS: number) {
-  return NextResponse.json(
+  return json<ScheduleResponse>(
     { status: false, error: "Upstream unavailable" },
-    {
-      status: 502,
-      headers: { "Retry-After": String(Math.max(1, retryAfterS)), "Cache-Control": UNAVAILABLE_CACHE },
-    }
+    { status: 502, cache: UNAVAILABLE_CACHE, headers: { "Retry-After": String(Math.max(1, retryAfterS)) } }
   );
 }
 
+const invalid = (error: string) => json<ScheduleResponse>({ status: false, error }, { status: 400 });
+
 export async function GET(request: NextRequest) {
   const started = Date.now();
-  const ip = extractClientIp(request);
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { status: false, error: "Too many requests" },
-      { status: 429 }
-    );
-  }
+  const limit = checkRateLimit(request, "schedule");
+  if (!limit.ok) return tooManyRequests<ScheduleResponse>({ status: false, error: "Too many requests" }, limit.retryAfterS);
 
   const cityId = request.nextUrl.searchParams.get("city_id");
   const year = request.nextUrl.searchParams.get("year");
   const month = request.nextUrl.searchParams.get("month");
 
-  if (!cityId || !year || !month) {
-    return NextResponse.json(
-      { status: false, error: "Missing parameters" },
-      { status: 400 }
-    );
-  }
-
-  // Validate city_id: MD5 hash (32 hex chars)
-  if (!/^[a-f0-9]{32}$/.test(cityId)) {
-    return NextResponse.json(
-      { status: false, error: "Invalid city_id" },
-      { status: 400 }
-    );
-  }
+  if (!cityId || !year || !month) return invalid("Missing parameters");
+  if (!isCityId(cityId)) return invalid("Invalid city_id");
 
   // Validate year and month
   const yearNum = Number(year);
   const monthNum = Number(month);
   const yearRange = getScheduleYearRange();
-  if (!Number.isInteger(yearNum) || yearNum < yearRange.min || yearNum > yearRange.max) {
-    return NextResponse.json(
-      { status: false, error: "Invalid year" },
-      { status: 400 }
-    );
-  }
-  if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
-    return NextResponse.json(
-      { status: false, error: "Invalid month" },
-      { status: 400 }
-    );
-  }
+  if (!Number.isInteger(yearNum) || yearNum < yearRange.min || yearNum > yearRange.max) return invalid("Invalid year");
+  if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) return invalid("Invalid month");
 
   const monthPeriod = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
   const dates = Array.from({ length: getDaysInMonth(yearNum, monthNum) }, (_, i) =>
@@ -220,7 +167,7 @@ export async function GET(request: NextRequest) {
   try {
     const deadline = AbortSignal.any([request.signal, AbortSignal.timeout(DEADLINE_MS)]);
     const days = new Map<string, ScheduleDay>();
-    let meta: UpstreamData | undefined;
+    let meta: UpstreamPeriod | undefined;
     const take = (outcome: Outcome, wanted: string[]) => {
       if (outcome.kind !== "ok") return;
       for (const date of wanted) {
@@ -252,14 +199,8 @@ export async function GET(request: NextRequest) {
         // city has no schedule
         return finish(
           probe.kind === "ok"
-            ? NextResponse.json(
-                { status: false, error: "Upstream API error" },
-                { status: 502, headers: { "Cache-Control": NO_STORE } }
-              )
-            : NextResponse.json(
-                { status: false, error: "Schedule not found" },
-                { status: 404, headers: { "Cache-Control": NOT_FOUND_CACHE } }
-              )
+            ? json<ScheduleResponse>({ status: false, error: "Upstream API error" }, { status: 502, cache: NO_STORE })
+            : json<ScheduleResponse>({ status: false, error: "Schedule not found" }, { status: 404, cache: NOT_FOUND_CACHE })
         );
       }
     }
@@ -282,27 +223,24 @@ export async function GET(request: NextRequest) {
     const partial = jadwal.length < dates.length;
 
     return finish(
-      NextResponse.json(
+      json<ScheduleResponse>(
         {
           status: true,
           ...(partial && { partial: true }),
           data: {
             id: cityId,
-            lokasi: typeof meta?.kabko === "string" ? meta.kabko : "",
-            daerah: typeof meta?.prov === "string" ? meta.prov : "",
+            lokasi: meta?.kabko ?? "",
+            daerah: meta?.prov ?? "",
             jadwal,
           },
         },
-        { headers: { "Cache-Control": partial ? NO_STORE : CDN_CACHE_DAY } }
+        { cache: partial ? NO_STORE : CDN_CACHE_DAY }
       )
     );
   } catch (err) {
     log("error", { route: "schedule", error: errorMessage(err) });
     return finish(
-      NextResponse.json(
-        { status: false, error: "Failed to fetch schedule" },
-        { status: 500, headers: { "Cache-Control": NO_STORE } }
-      )
+      json<ScheduleResponse>({ status: false, error: "Failed to fetch schedule" }, { status: 500, cache: NO_STORE })
     );
   }
 }

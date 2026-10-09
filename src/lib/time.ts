@@ -1,10 +1,11 @@
+import { parseServerTime } from "@/lib/validate";
+import { KEYS, read, write } from "@/lib/storage";
+
+const OFFSET_MAX_AGE = 3_600_000; // re-measured at least hourly
+const isOffset = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
 function cacheOffset(offset: number) {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem("timeOffset", JSON.stringify({ offset, ts: Date.now() }));
-  } catch (e) {
-    console.warn("Failed to write timeOffset in sessionStorage", e);
-  }
+  write(KEYS.timeOffset, offset, { where: "session" });
 }
 
 /**
@@ -15,25 +16,16 @@ function cacheOffset(offset: number) {
  * the fresh offset from the background refresh is passed to `onRefresh`.
  */
 export async function syncServerTime(onRefresh?: (offset: number) => void): Promise<number> {
-  if (typeof window !== "undefined") {
-    try {
-      const cached = sessionStorage.getItem("timeOffset");
-      if (cached) {
-        const { offset, ts } = JSON.parse(cached);
-        if (typeof offset === "number" && Date.now() - ts < 3600000) {
-          fetchServerTimeOffset()
-            .then((fresh) => {
-              if (fresh !== null) onRefresh?.(fresh);
-            })
-            .catch((e) => {
-              console.warn("Background server time fetch failed", e);
-            });
-          return offset;
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to read timeOffset from sessionStorage", e);
-    }
+  const cached = read(KEYS.timeOffset, isOffset, OFFSET_MAX_AGE, "session");
+  if (cached !== null) {
+    fetchServerTimeOffset()
+      .then((fresh) => {
+        if (fresh !== null) onRefresh?.(fresh);
+      })
+      .catch((e) => {
+        console.warn("Background server time fetch failed", e);
+      });
+    return cached;
   }
   return (await fetchServerTimeOffset()) ?? 0;
 }
@@ -49,9 +41,8 @@ async function fetchServerTimeOffset(): Promise<number | null> {
 
     if (!res.ok) return null;
 
-    const data = await res.json();
-    const serverTime = Number(data.now);
-    if (!Number.isFinite(serverTime)) return null;
+    const serverTime = parseServerTime(await res.json());
+    if (serverTime === null) return null;
     // NTP-style: assume the server read its clock halfway through the round trip
     const latency = (after - before) / 2;
     const offset = serverTime + latency - after;
@@ -64,26 +55,4 @@ async function fetchServerTimeOffset(): Promise<number | null> {
   } finally {
     clearTimeout(timeout);
   }
-}
-
-/**
- * Get current time adjusted by server offset
- */
-export function getAdjustedTime(offset: number): Date {
-  return new Date(Date.now() + offset);
-}
-
-/**
- * Parse a time string (HH:MM) and a date string (YYYY-MM-DD) into a Date object
- */
-export function parseScheduleTime(
-  dateStr: string,
-  timeStr: string,
-  utcOffset: number // 7 for WIB, 8 for WITA, 9 for WIT
-): Date {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  const date = new Date(dateStr);
-  // Set time in UTC, then subtract the timezone offset to get the correct UTC time
-  date.setUTCHours(hours - utcOffset, minutes, 0, 0);
-  return date;
 }

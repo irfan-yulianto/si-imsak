@@ -38,19 +38,3 @@ export function getTimezone(daerah: string): TimezoneLabel {
   }
   return "WIB";
 }
-
-/**
- * Get UTC offset hours for a timezone label
- */
-export function getUtcOffset(tz: TimezoneLabel): number {
-  switch (tz) {
-    case "WIB":
-      return 7;
-    case "WITA":
-      return 8;
-    case "WIT":
-      return 9;
-    default:
-      return 7;
-  }
-}

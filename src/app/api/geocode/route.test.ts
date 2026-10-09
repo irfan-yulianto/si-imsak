@@ -4,8 +4,13 @@ import { GET } from "./route";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/rate-limit", () => ({
-  isRateLimited: vi.fn(() => false),
-  extractClientIp: vi.fn(() => "127.0.0.1"),
+  checkRateLimit: vi.fn(() => ({ ok: true })),
+}));
+
+// Nominatim's one-request-a-second gate is tested in lib/http.test.ts
+vi.mock("@/lib/http", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/http")>()),
+  createGate: () => () => Promise.resolve(),
 }));
 
 vi.mock("@/lib/geocode", () => ({
@@ -27,7 +32,7 @@ beforeEach(async () => {
   // Stubbed per test: globals are restored before every test (vitest.config.ts)
   vi.stubGlobal("fetch", mockFetch);
   const rl = await import("@/lib/rate-limit");
-  vi.mocked(rl.isRateLimited).mockReturnValue(false);
+  vi.mocked(rl.checkRateLimit).mockReturnValue({ ok: true });
   const geo = await import("@/lib/geocode");
   vi.mocked(geo.extractCityFromNominatim).mockReturnValue("Kabupaten Gresik");
   vi.mocked(geo.normalizeToMyquranName).mockReturnValue("KAB. GRESIK");
@@ -40,9 +45,10 @@ beforeEach(async () => {
 describe("GET /api/geocode", () => {
   it("returns 429 when rate limited", async () => {
     const rl = await import("@/lib/rate-limit");
-    vi.mocked(rl.isRateLimited).mockReturnValue(true);
+    vi.mocked(rl.checkRateLimit).mockReturnValue({ ok: false, retryAfterS: 42 });
     const res = await GET(makeRequest({ lat: "-7.25", lng: "112.43" }));
     expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("42");
   });
 
   it("returns 400 when lat is missing", async () => {
@@ -109,10 +115,10 @@ describe("GET /api/geocode", () => {
     expect(json.status).toBe(false);
   });
 
-  it("rounds coordinates to 3 decimals and sets CDN cache headers", async () => {
+  it("sends Nominatim the position to ~1 km only (2 decimals) and sets CDN cache headers", async () => {
     const res = await GET(makeRequest({ lat: "-7.251234", lng: "112.438765" }));
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("lat=-7.251&lon=112.439"),
+      expect.stringContaining("lat=-7.25&lon=112.44"),
       expect.any(Object)
     );
     expect(res.headers.get("Cache-Control")).toContain("s-maxage=86400");

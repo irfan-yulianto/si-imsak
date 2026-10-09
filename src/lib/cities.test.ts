@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getCityGuess } from "./cities";
+import { findCityCoords, getCityGuess } from "./cities";
 
 describe("getCityGuess", () => {
   it("returns KOTA JAKARTA for Jakarta coordinates", () => {
@@ -47,5 +47,31 @@ describe("getCityGuess", () => {
   it("returns KAB. BEKASI for Pekayon, Kota Bekasi (known centroid limitation)", () => {
     // Pekayon is in KOTA BEKASI but centroids are only 1.6km apart
     expect(getCityGuess(-6.27, 106.98)).toBe("KAB. BEKASI");
+  });
+});
+
+describe("findCityCoords", () => {
+  it("finds a city by its MyQuran name", () => {
+    expect(findCityCoords("KOTA JAKARTA")).toEqual({ lat: -6.17, lng: 106.85 });
+  });
+
+  it("tells a city from the regency of the same name", () => {
+    const city = findCityCoords("KOTA BOGOR");
+    const regency = findCityCoords("KAB. BOGOR");
+    expect(city).not.toBeNull();
+    expect(regency).not.toBeNull();
+    expect(city).not.toEqual(regency);
+  });
+
+  it("still finds a city written differently upstream", () => {
+    expect(findCityCoords("Kabupaten Bogor")).toEqual(findCityCoords("KAB. BOGOR"));
+    expect(findCityCoords("Kota Adm. Jakarta Pusat")).toEqual(findCityCoords("KOTA JAKARTA"));
+    // Without a kind: the city
+    expect(findCityCoords("BOGOR")).toEqual(findCityCoords("KOTA BOGOR"));
+  });
+
+  it("gives up on a name it doesn't know", () => {
+    expect(findCityCoords("ATLANTIS")).toBeNull();
+    expect(findCityCoords("")).toBeNull();
   });
 });

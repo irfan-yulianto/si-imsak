@@ -1,93 +1,46 @@
-import { ScheduleDay, PrayerName, PRAYER_NAMES, PRAYER_KEYS } from "@/types";
+import { ScheduleDay, PrayerKey, PrayerName, PRAYER_NAMES, PRAYER_KEYS, TimezoneLabel } from "@/types";
+import { addDays, cityDate, cityInstant } from "@/lib/city-time";
 
 export interface NextPrayer {
   name: PrayerName;
-  key: string;
+  key: PrayerKey;
   time: string;
   remainingMs: number;
   isTomorrow?: boolean;
-  targetMs?: number;
+  /** The exact instant the time arrives (epoch ms) */
+  targetMs: number;
 }
 
-export function getLocalDate(now: Date, utcOffset: number): Date {
-  return new Date(now.getTime() + utcOffset * 3600000);
+export function findDay(days: ScheduleDay[], iso: string): ScheduleDay | null {
+  return days.find((d) => d.date === iso) ?? null;
 }
 
-export function getDateStr(localTime: Date): string {
-  return localTime.toISOString().split("T")[0];
-}
-
-export function getTodaySchedule(
-  schedules: ScheduleDay[],
-  now: Date,
-  utcOffset: number
-): ScheduleDay | null {
-  const dateStr = getDateStr(getLocalDate(now, utcOffset));
-  return schedules.find((s) => s.date === dateStr) || null;
-}
-
-export function getTomorrowSchedule(
-  schedules: ScheduleDay[],
-  now: Date,
-  utcOffset: number
-): ScheduleDay | null {
-  const localTime = getLocalDate(now, utcOffset);
-  const tomorrow = new Date(localTime);
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const dateStr = getDateStr(tomorrow);
-  return schedules.find((s) => s.date === dateStr) || null;
-}
-
-export function parseTimeToSeconds(timeStr: string): number {
-  const [h, m] = timeStr.split(":").map(Number);
-  return h * 3600 + m * 60;
-}
-
-export function getNextPrayerCyclic(
-  schedules: ScheduleDay[],
-  now: Date,
-  utcOffset: number
-): NextPrayer | null {
-  const localTime = getLocalDate(now, utcOffset);
-  const localHours = localTime.getUTCHours();
-  const localMinutes = localTime.getUTCMinutes();
-  const localSeconds = localTime.getUTCSeconds();
-  const currentTotalSeconds = localHours * 3600 + localMinutes * 60 + localSeconds;
-
-  const todaySchedule = getTodaySchedule(schedules, now, utcOffset);
-
-  // Try today's remaining prayers
-  if (todaySchedule) {
+/**
+ * The next of today's times in the city, or tomorrow's Imsak once Isya has passed.
+ * Null when the data for today (or, after Isya, for tomorrow) is missing.
+ */
+export function getNextPrayer(days: ScheduleDay[], nowMs: number, tz: TimezoneLabel): NextPrayer | null {
+  const today = cityDate(nowMs, tz).iso;
+  const todayDay = findDay(days, today);
+  if (todayDay) {
     for (let i = 0; i < PRAYER_KEYS.length; i++) {
       const key = PRAYER_KEYS[i];
-      const timeStr = todaySchedule[key];
-      if (!timeStr) continue;
-
-      const prayerTotalSeconds = parseTimeToSeconds(timeStr);
-      if (prayerTotalSeconds > currentTotalSeconds) {
-        const remainingMs = (prayerTotalSeconds - currentTotalSeconds) * 1000;
-        return { name: PRAYER_NAMES[i], key, time: timeStr, remainingMs, targetMs: now.getTime() + remainingMs };
+      const time = todayDay[key];
+      if (!time) continue;
+      const targetMs = cityInstant(today, time, tz);
+      if (targetMs > nowMs) {
+        return { name: PRAYER_NAMES[i], key, time, remainingMs: targetMs - nowMs, targetMs };
       }
     }
   }
 
-  // All today's prayers passed → countdown to tomorrow's Imsak
-  const tomorrowSchedule = getTomorrowSchedule(schedules, now, utcOffset);
-  if (tomorrowSchedule && tomorrowSchedule.imsak) {
-    const tomorrowImsakSeconds = parseTimeToSeconds(tomorrowSchedule.imsak);
-    const secondsLeftToday = 86400 - currentTotalSeconds;
-    const remainingMs = (secondsLeftToday + tomorrowImsakSeconds) * 1000;
-    return {
-      name: "Imsak",
-      key: "imsak",
-      time: tomorrowSchedule.imsak,
-      remainingMs,
-      isTomorrow: true,
-      targetMs: now.getTime() + remainingMs,
-    };
+  // All of today's times passed: tomorrow's Imsak (on a month's last day, in next month's data)
+  const tomorrow = addDays(today, 1);
+  const tomorrowDay = findDay(days, tomorrow);
+  if (tomorrowDay?.imsak) {
+    const targetMs = cityInstant(tomorrow, tomorrowDay.imsak, tz);
+    return { name: "Imsak", key: "imsak", time: tomorrowDay.imsak, remainingMs: targetMs - nowMs, isTomorrow: true, targetMs };
   }
-
-  // No tomorrow data (end of month) → return null to trigger refetch
   return null;
 }
 

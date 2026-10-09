@@ -2,23 +2,19 @@
 
 import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
 import { CrescentIcon } from "@/components/ui/Icons";
+import { KEYS, isAvailable, readRaw, writeRaw } from "@/lib/storage";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISSED_KEY = "pwa-install-dismissed";
-
 type BannerMode = "chromium" | "ios" | null;
 
 function detectBannerMode(): BannerMode {
   if (window.matchMedia("(display-mode: standalone)").matches) return null;
-  try {
-    if (localStorage.getItem(DISMISSED_KEY)) return null;
-  } catch {
-    return null;
-  }
+  // Without storage a dismissal couldn't be remembered: no banner at all
+  if (!isAvailable() || readRaw(KEYS.installDismissed)) return null;
 
   // iOS Safari detection (no beforeinstallprompt support)
   const ua = navigator.userAgent;
@@ -103,7 +99,7 @@ export default function InstallBanner() {
 
   const handleDismiss = useCallback(() => {
     setHidden(true);
-    try { localStorage.setItem(DISMISSED_KEY, "1"); } catch {}
+    writeRaw(KEYS.installDismissed, "1");
   }, []);
 
   return (

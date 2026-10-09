@@ -1,12 +1,4 @@
-export interface Mosque {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  distance: number;
-  address?: string;
-  type?: "masjid" | "musholla";
-}
+import type { Mosque } from "@/types";
 
 interface OverpassElement {
   type: "node" | "way" | "relation";
@@ -23,11 +15,11 @@ interface OverpassResponse {
 }
 
 /**
- * Calculate distance between two coordinates using a fast equirectangular approximation.
- * Returns distance in meters.
- * Optimized for speed over short distances compared to full Haversine.
+ * Distance in meters between two points, by the equirectangular approximation: well
+ * within 1% of the great-circle distance over the few kilometers the finder searches,
+ * and cheaper than the haversine formula.
  */
-export function haversineDistance(
+export function distanceMeters(
   lat1: number,
   lng1: number,
   lat2: number,
@@ -64,6 +56,26 @@ export function getSearchRadius(accuracy: number | null): number {
   if (!accuracy || accuracy <= 100) return 2000;
   if (accuracy <= 500) return 3000;
   return 4000;
+}
+
+/**
+ * The radii /api/mosques accepts (meters): what getSearchRadius() and widerRadius() can
+ * produce. A fixed set keeps CDN cache entries shared, and arbitrary queries away from
+ * the public Overpass mirrors.
+ */
+export const SEARCH_RADII: readonly number[] = [2000, 3000, 4000, 6000, 8000, 10000];
+
+/** The widest search "Perluas Pencarian" can reach (meters) */
+export const MAX_SEARCH_RADIUS = 10000;
+
+/** The radius "Perluas Pencarian" moves to: twice as wide, up to the maximum */
+export function widerRadius(radius: number): number {
+  return Math.min(radius * 2, MAX_SEARCH_RADIUS);
+}
+
+/** A search radius for display: "800 m", "2 km", "2.5 km" */
+export function formatRadius(meters: number): string {
+  return meters >= 1000 ? `${meters / 1000} km` : `${meters} m`;
 }
 
 /**
@@ -137,7 +149,7 @@ export function parseOverpassResponse(
       name,
       lat: center.lat,
       lng: center.lng,
-      distance: haversineDistance(userLat, userLng, center.lat, center.lng),
+      distance: distanceMeters(userLat, userLng, center.lat, center.lng),
       address,
       type,
     });

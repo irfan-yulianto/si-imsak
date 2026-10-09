@@ -1,51 +1,54 @@
 import { describe, it, expect } from "vitest";
 import {
-  haversineDistance,
+  distanceMeters,
   formatDistance,
   getSearchRadius,
+  widerRadius,
+  formatRadius,
+  SEARCH_RADII,
   buildOverpassQuery,
   parseOverpassResponse,
 } from "./mosques";
 
-describe("haversineDistance", () => {
+describe("distanceMeters", () => {
   it("returns 0 for identical coordinates", () => {
-    expect(haversineDistance(-6.17, 106.85, -6.17, 106.85)).toBe(0);
+    expect(distanceMeters(-6.17, 106.85, -6.17, 106.85)).toBe(0);
   });
 
   it("calculates Jakarta to Bandung (~120km)", () => {
-    const dist = haversineDistance(-6.17, 106.85, -6.91, 107.61);
+    const dist = distanceMeters(-6.17, 106.85, -6.91, 107.61);
     expect(dist).toBeGreaterThan(110000);
     expect(dist).toBeLessThan(130000);
   });
 
   it("calculates short distance (~100m)", () => {
     // ~100m apart along latitude
-    const dist = haversineDistance(-6.17, 106.85, -6.1709, 106.85);
+    const dist = distanceMeters(-6.17, 106.85, -6.1709, 106.85);
     expect(dist).toBeGreaterThan(80);
     expect(dist).toBeLessThan(120);
   });
 
   it("is symmetric", () => {
-    const a = haversineDistance(-6.17, 106.85, -6.91, 107.61);
-    const b = haversineDistance(-6.91, 107.61, -6.17, 106.85);
+    const a = distanceMeters(-6.17, 106.85, -6.91, 107.61);
+    const b = distanceMeters(-6.91, 107.61, -6.17, 106.85);
     expect(a).toBeCloseTo(b, 5);
   });
 
   it("handles negative latitudes (southern hemisphere)", () => {
-    const dist = haversineDistance(-8.65, 115.22, -7.25, 112.75);
+    const dist = distanceMeters(-8.65, 115.22, -7.25, 112.75);
     expect(dist).toBeGreaterThan(0);
   });
 
   it("handles equator crossing", () => {
     // Pontianak (~0 lat) to Jakarta
-    const dist = haversineDistance(-0.02, 109.34, -6.17, 106.85);
+    const dist = distanceMeters(-0.02, 109.34, -6.17, 106.85);
     expect(dist).toBeGreaterThan(600000);
     expect(dist).toBeLessThan(800000);
   });
 
   it("handles antimeridian wrap-around correctly", () => {
     // E.g., 179 to -179 is 2 degrees apart
-    const dist = haversineDistance(0, 179, 0, -179);
+    const dist = distanceMeters(0, 179, 0, -179);
     expect(dist).toBeGreaterThan(200000);
     expect(dist).toBeLessThan(250000);
   });
@@ -100,6 +103,34 @@ describe("getSearchRadius", () => {
 
   it("returns 4000 for 501m accuracy", () => {
     expect(getSearchRadius(501)).toBe(4000);
+  });
+});
+
+describe("widerRadius", () => {
+  it("doubles the radius up to 10 km", () => {
+    expect(widerRadius(2000)).toBe(4000);
+    expect(widerRadius(3000)).toBe(6000);
+    expect(widerRadius(8000)).toBe(10000);
+    expect(widerRadius(10000)).toBe(10000);
+  });
+});
+
+describe("SEARCH_RADII", () => {
+  it("holds every radius the finder can ask for", () => {
+    const asked = new Set<number>();
+    for (const accuracy of [null, 50, 300, 800]) {
+      let radius = getSearchRadius(accuracy);
+      for (let i = 0; i < 5; i++, radius = widerRadius(radius)) asked.add(radius);
+    }
+    for (const radius of asked) expect(SEARCH_RADII).toContain(radius);
+  });
+});
+
+describe("formatRadius", () => {
+  it("shows meters below 1 km and kilometers from there", () => {
+    expect(formatRadius(800)).toBe("800 m");
+    expect(formatRadius(2000)).toBe("2 km");
+    expect(formatRadius(2500)).toBe("2.5 km");
   });
 });
 

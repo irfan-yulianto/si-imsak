@@ -1,13 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  getLocalDate,
-  getDateStr,
-  getTodaySchedule,
-  getTomorrowSchedule,
-  parseTimeToSeconds,
-  getNextPrayerCyclic,
-  formatCountdown,
-} from "./countdown-helpers";
+import { findDay, getNextPrayer, formatCountdown } from "./countdown-helpers";
 import { ScheduleDay } from "@/types";
 
 function makeScheduleDay(date: string, times?: Partial<ScheduleDay>): ScheduleDay {
@@ -26,139 +18,76 @@ function makeScheduleDay(date: string, times?: Partial<ScheduleDay>): ScheduleDa
   };
 }
 
-describe("getLocalDate", () => {
-  it("adds UTC offset to UTC midnight", () => {
-    const utcMidnight = new Date("2026-03-08T00:00:00Z");
-    const local = getLocalDate(utcMidnight, 7);
-    expect(local.getUTCHours()).toBe(7);
+const at = (iso: string) => new Date(iso).getTime();
+
+describe("findDay", () => {
+  const days = [makeScheduleDay("2026-03-08"), makeScheduleDay("2026-03-09")];
+
+  it("finds a day by its ISO date", () => {
+    expect(findDay(days, "2026-03-09")?.date).toBe("2026-03-09");
   });
 
-  it("handles WIT offset (UTC+9)", () => {
-    const utcMidnight = new Date("2026-03-08T00:00:00Z");
-    const local = getLocalDate(utcMidnight, 9);
-    expect(local.getUTCHours()).toBe(9);
-  });
-});
-
-describe("getDateStr", () => {
-  it("returns YYYY-MM-DD format", () => {
-    const date = new Date("2026-03-08T12:00:00Z");
-    expect(getDateStr(date)).toBe("2026-03-08");
-  });
-
-  it("pads single digit months and days", () => {
-    const date = new Date("2026-01-05T12:00:00Z");
-    expect(getDateStr(date)).toBe("2026-01-05");
+  it("returns null for a missing day", () => {
+    expect(findDay(days, "2026-03-10")).toBeNull();
   });
 });
 
-describe("getTodaySchedule", () => {
-  const schedules = [
-    makeScheduleDay("2026-03-08"),
-    makeScheduleDay("2026-03-09"),
-  ];
+describe("getNextPrayer", () => {
+  const days = [makeScheduleDay("2026-03-08"), makeScheduleDay("2026-03-09")];
 
-  it("returns schedule matching today", () => {
-    // 2026-03-08 05:00 WIB = 2026-03-07 22:00 UTC
-    const now = new Date("2026-03-07T22:00:00Z");
-    const result = getTodaySchedule(schedules, now, 7);
-    expect(result?.date).toBe("2026-03-08");
+  it("returns the next of today's times", () => {
+    // 2026-03-08 10:00 WIB
+    const result = getNextPrayer(days, at("2026-03-08T03:00:00Z"), "WIB");
+    expect(result).toMatchObject({ name: "Dzuhur", key: "dzuhur", time: "12:00" });
+    expect(result!.isTomorrow).toBeUndefined();
   });
 
-  it("returns null when no schedule matches", () => {
-    const now = new Date("2026-03-10T00:00:00Z");
-    const result = getTodaySchedule(schedules, now, 7);
-    expect(result).toBeNull();
-  });
-});
-
-describe("getTomorrowSchedule", () => {
-  const schedules = [
-    makeScheduleDay("2026-03-08"),
-    makeScheduleDay("2026-03-09"),
-  ];
-
-  it("returns schedule for the next day", () => {
-    const now = new Date("2026-03-07T22:00:00Z"); // 2026-03-08 WIB
-    const result = getTomorrowSchedule(schedules, now, 7);
-    expect(result?.date).toBe("2026-03-09");
+  it("targets the exact instant, to the millisecond", () => {
+    // 04:00:00.750 WIB: Imsak at 04:30:00.000 is 29 min 59.25 s away
+    const now = at("2026-03-07T21:00:00.750Z");
+    const result = getNextPrayer(days, now, "WIB")!;
+    expect(result.name).toBe("Imsak");
+    expect(result.targetMs).toBe(at("2026-03-07T21:30:00Z"));
+    expect(result.remainingMs).toBe(1_799_250);
   });
 
-  it("returns null when tomorrow is not in array", () => {
-    const now = new Date("2026-03-08T22:00:00Z"); // 2026-03-09 WIB
-    const result = getTomorrowSchedule(schedules, now, 7);
-    expect(result).toBeNull();
-  });
-});
-
-describe("parseTimeToSeconds", () => {
-  it("returns 0 for 00:00", () => {
-    expect(parseTimeToSeconds("00:00")).toBe(0);
+  it("moves on once a time has arrived", () => {
+    // Exactly 04:30 WIB, Imsak itself
+    expect(getNextPrayer(days, at("2026-03-07T21:30:00Z"), "WIB")!.name).toBe("Subuh");
   });
 
-  it("returns 3600 for 01:00", () => {
-    expect(parseTimeToSeconds("01:00")).toBe(3600);
+  it("counts down to tomorrow's Imsak after Isya", () => {
+    // 2026-03-08 20:00 WIB
+    const result = getNextPrayer(days, at("2026-03-08T13:00:00Z"), "WIB")!;
+    expect(result).toMatchObject({ name: "Imsak", time: "04:30", isTomorrow: true });
+    expect(result.targetMs).toBe(at("2026-03-08T21:30:00Z"));
   });
 
-  it("returns 19800 for 05:30", () => {
-    expect(parseTimeToSeconds("05:30")).toBe(19800);
+  it("crosses into next month's data on a month's last day", () => {
+    const monthEnd = [makeScheduleDay("2026-03-31"), makeScheduleDay("2026-04-01", { imsak: "04:29" })];
+    const result = getNextPrayer(monthEnd, at("2026-03-31T13:00:00Z"), "WIB")!;
+    expect(result).toMatchObject({ time: "04:29", isTomorrow: true });
   });
 
-  it("returns 86340 for 23:59", () => {
-    expect(parseTimeToSeconds("23:59")).toBe(86340);
-  });
-});
-
-describe("getNextPrayerCyclic", () => {
-  const schedules = [
-    makeScheduleDay("2026-03-08"),
-    makeScheduleDay("2026-03-09"),
-  ];
-
-  it("returns next upcoming prayer when some remain today", () => {
-    // 2026-03-08 10:00 WIB = 03:00 UTC
-    const now = new Date("2026-03-08T03:00:00Z");
-    const result = getNextPrayerCyclic(schedules, now, 7);
-    expect(result).not.toBeNull();
-    expect(result!.name).toBe("Dzuhur"); // 12:00 is next after 10:00
-    expect(result!.remainingMs).toBeGreaterThan(0);
+  it("returns null when tomorrow's data is missing after Isya", () => {
+    expect(getNextPrayer([makeScheduleDay("2026-03-08")], at("2026-03-08T13:00:00Z"), "WIB")).toBeNull();
   });
 
-  it("returns tomorrow Imsak when all today's prayers passed", () => {
-    // 2026-03-08 20:00 WIB = 13:00 UTC (after Isya 19:15)
-    const now = new Date("2026-03-08T13:00:00Z");
-    const result = getNextPrayerCyclic(schedules, now, 7);
-    expect(result).not.toBeNull();
-    expect(result!.name).toBe("Imsak");
-    expect(result!.isTomorrow).toBe(true);
+  it("returns null when today's data is missing", () => {
+    expect(getNextPrayer(days, at("2026-03-20T03:00:00Z"), "WIB")).toBeNull();
   });
 
-  it("returns null at end of month (no tomorrow data)", () => {
-    const singleDay = [makeScheduleDay("2026-03-08")];
-    // After all prayers on the last day
-    const now = new Date("2026-03-08T13:00:00Z");
-    const result = getNextPrayerCyclic(singleDay, now, 7);
-    expect(result).toBeNull();
+  it("uses the city's time zone, not the device's", () => {
+    // 03:00 UTC is 11:00 WITA and 12:00 WIT: Dzuhur (12:00) is still ahead in WITA only
+    expect(getNextPrayer(days, at("2026-03-08T03:00:00Z"), "WITA")!.name).toBe("Dzuhur");
+    expect(getNextPrayer(days, at("2026-03-08T03:00:00Z"), "WIT")!.name).toBe("Ashar");
   });
 
-  it("calculates correct remainingMs", () => {
-    // 2026-03-08 04:00 WIB = 2026-03-07 21:00 UTC
-    const now = new Date("2026-03-07T21:00:00Z");
-    const result = getNextPrayerCyclic(schedules, now, 7);
-    expect(result).not.toBeNull();
-    expect(result!.name).toBe("Imsak"); // 04:30 is next after 04:00
-    // 30 minutes = 1800 seconds = 1800000 ms
-    expect(result!.remainingMs).toBe(1800000);
-  });
-
-  it("returns next prayer when exactly at a prayer time", () => {
-    // At exactly 04:30 (Imsak time), should return Subuh (04:40)
-    // 04:30 WIB = 2026-03-07 21:30 UTC
-    const now = new Date("2026-03-07T21:30:00Z");
-    const result = getNextPrayerCyclic(schedules, now, 7);
-    expect(result).not.toBeNull();
-    // At exactly 04:30, prayerTotalSeconds === currentTotalSeconds, so it's NOT > so Imsak is skipped
-    expect(result!.name).toBe("Subuh");
+  it("follows the city's date around midnight", () => {
+    // 2026-03-08 16:30 UTC is already the 9th in WIT (01:30) but still the 8th in WIB (23:30)
+    const now = at("2026-03-08T16:30:00Z");
+    expect(getNextPrayer(days, now, "WIT")).toMatchObject({ name: "Imsak", targetMs: at("2026-03-08T19:30:00Z") });
+    expect(getNextPrayer(days, now, "WIB")).toMatchObject({ name: "Imsak", isTomorrow: true });
   });
 });
 

@@ -1,245 +1,123 @@
 import { render, screen, act } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import TodayCard from "./TodayCard";
-import { getAdjustedTime } from "@/lib/time";
-import { BUILD_DATE } from "@/lib/city-time";
+import { getHijriDate } from "@/lib/hijri";
+import { DENPASAR, JAKARTA, day, resetStore, seedCity, seedMonth } from "@/__tests__/store";
 
-// Mock zustand store
-const mockUseStore = vi.fn();
-vi.mock("@/store/useStore", () => ({
-  useStore: (selector: (state: unknown) => unknown) => selector(mockUseStore()),
-}));
+// Real store, real dates: only the clock is faked
+const JUNE_15 = day("2025-06-15", {
+  imsak: "04:15", subuh: "04:25", terbit: "05:40", dhuha: "06:05",
+  dzuhur: "11:45", ashar: "15:05", maghrib: "17:40", isya: "18:55",
+});
 
-// Mock time utils
-vi.mock("@/lib/time", () => ({
-  getAdjustedTime: vi.fn(() => new Date("2025-06-15T12:00:00Z")), // Default mock time
-}));
+/** The time tile of a prayer, found by its name */
+const tile = (name: string) => screen.getByText(name).closest("div");
 
-// Mock timezone util
-vi.mock("@/lib/timezone", () => ({
-  getUtcOffset: vi.fn(() => 7), // WIB by default
-}));
+beforeEach(() => {
+  resetStore();
+  // 15 June 2025, 12:00 WIB
+  vi.useFakeTimers({ now: new Date("2025-06-15T05:00:00Z") });
+  seedCity(JAKARTA, "2025-06-15");
+});
 
-// Mock hijri util
-vi.mock("@/lib/hijri", () => ({
-  getHijriDate: vi.fn(() => "15 Dzulhijjah 1446 H"),
-}));
-
-// Mock Icons to simplify
-vi.mock("@/components/ui/Icons", () => {
-  const DummyIcon = () => <svg data-testid="dummy-icon" />;
-  return {
-    CalendarIcon: DummyIcon,
-    PRAYER_ICON_MAP: {
-      imsak: DummyIcon,
-      subuh: DummyIcon,
-      terbit: DummyIcon,
-      dhuha: DummyIcon,
-      dzuhur: DummyIcon,
-      ashar: DummyIcon,
-      maghrib: DummyIcon,
-      isya: DummyIcon,
-    },
-  };
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("TodayCard", () => {
-  const defaultStoreState = {
-    countdownSchedule: [],
-    schedule: { loading: false, data: [] },
-    location: { timezone: "WIB" },
-    timeOffset: 0,
-    // Set by hydrateFromCache and kept current by the countdown
-    todayDateStr: "2025-06-15",
-  };
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    mockUseStore.mockReturnValue(defaultStoreState);
+  it("shows a skeleton while this month loads", () => {
+    seedMonth(2025, 6, [], { status: "loading" });
+    render(<TodayCard />);
+    expect(screen.getByRole("status", { name: "Memuat jadwal hari ini" })).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.clearAllMocks();
-  });
-
-  it("renders skeleton loading state when schedule is loading and no todaySchedule", () => {
-    mockUseStore.mockReturnValue({
-      ...defaultStoreState,
-      schedule: { loading: true, data: [] },
-    });
-    const { container } = render(<TodayCard />);
-    expect(container.querySelector(".animate-shimmer")).toBeInTheDocument();
-  });
-
-  it("renders empty state when schedule is not loading and no todaySchedule", () => {
+  it("says so when today's schedule isn't available", () => {
+    seedMonth(2025, 6, [], { status: "error", error: "Gagal memuat jadwal. Coba lagi nanti." });
     render(<TodayCard />);
     expect(screen.getByText("Jadwal hari ini belum tersedia")).toBeInTheDocument();
   });
 
-  it("renders today's schedule properly", () => {
-    // Mock the current time to 2025-06-15T12:00:00Z (UTC)
-    // For WIB (+7), this is 2025-06-15 19:00:00 local time
-    // But let's mock the getAdjustedTime to something specific and we'll see
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T05:00:00Z")); // UTC
-
-    // Local time = 12:00:00 WIB (past Dzuhur, before Ashar)
-    const todayStr = "2025-06-15";
-
-    const mockCountdownSchedule = [
-      {
-        tanggal: "Ahad, 15/06/2025",
-        date: todayStr,
-        imsak: "04:15",
-        subuh: "04:25",
-        terbit: "05:40",
-        dhuha: "06:05",
-        dzuhur: "11:45",
-        ashar: "15:05",
-        maghrib: "17:40",
-        isya: "18:55",
-      },
-    ];
-
-    mockUseStore.mockReturnValue({
-      ...defaultStoreState,
-      countdownSchedule: mockCountdownSchedule,
-    });
-
+  it("shows today's date, Hijri date and all eight times", () => {
+    seedMonth(2025, 6, [JUNE_15]);
     render(<TodayCard />);
 
-    // Check day and formatted date
-    expect(screen.getByText(/Ahad,/)).toBeInTheDocument();
-    expect(screen.getByText(/15 Juni 2025/)).toBeInTheDocument();
-
-    // Check hijri banner
-    expect(screen.getByText("15 Dzulhijjah 1446 H")).toBeInTheDocument();
-
-    // Check all prayer times
-    expect(screen.getByText("04:15")).toBeInTheDocument();
-    expect(screen.getByText("11:45")).toBeInTheDocument();
-    expect(screen.getByText("15:05")).toBeInTheDocument();
-    expect(screen.getByText("18:55")).toBeInTheDocument();
+    expect(screen.getByText("Minggu, 15 Juni 2025")).toBeInTheDocument();
+    expect(screen.getByText(getHijriDate("2025-06-15"))).toBeInTheDocument();
+    for (const time of ["04:15", "04:25", "05:40", "06:05", "11:45", "15:05", "17:40", "18:55"]) {
+      expect(screen.getByText(time)).toBeInTheDocument();
+    }
   });
 
-  it("shows the store's today, not the device clock's date", () => {
-    // The device clock says 16 June, but the city's today (from the store) is 15 June
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-16T05:00:00Z"));
-    mockUseStore.mockReturnValue({
-      ...defaultStoreState,
-      countdownSchedule: [
-        { tanggal: "Ahad, 15/06/2025", date: "2025-06-15", imsak: "04:15", subuh: "04:25", terbit: "05:40", dhuha: "06:05", dzuhur: "11:45", ashar: "15:05", maghrib: "17:40", isya: "18:55" },
-        { tanggal: "Senin, 16/06/2025", date: "2025-06-16", imsak: "04:16", subuh: "04:26", terbit: "05:41", dhuha: "06:06", dzuhur: "11:46", ashar: "15:06", maghrib: "17:41", isya: "18:56" },
-      ],
-    });
+  it("follows the city's calendar, not the UTC date", () => {
+    // 17:30 UTC on the 15th is already 00:30 on the 16th in Jakarta
+    vi.setSystemTime(new Date("2025-06-15T17:30:00Z"));
+    seedMonth(2025, 6, [JUNE_15, day("2025-06-16", { dzuhur: "11:46" })]);
+    render(<TodayCard />);
+    expect(screen.getByText(/16 Juni 2025/)).toBeInTheDocument();
+    expect(screen.getByText("11:46")).toBeInTheDocument();
+  });
 
+  it("moves to the next day at the city's midnight", () => {
+    vi.setSystemTime(new Date("2025-06-15T16:59:30Z")); // 23:59:30 WIB
+    seedMonth(2025, 6, [JUNE_15, day("2025-06-16", { dzuhur: "11:46" })]);
     render(<TodayCard />);
     expect(screen.getByText(/15 Juni 2025/)).toBeInTheDocument();
-    expect(screen.getByText("11:45")).toBeInTheDocument();
-  });
-
-  it("falls back to the build date before the store knows today (matches the server render)", () => {
-    mockUseStore.mockReturnValue({
-      ...defaultStoreState,
-      todayDateStr: "",
-      countdownSchedule: [
-        { tanggal: "Kamis, 01/10/2026", date: BUILD_DATE.iso, imsak: "04:01", subuh: "04:11", terbit: "05:26", dhuha: "05:51", dzuhur: "11:33", ashar: "14:41", maghrib: "17:40", isya: "18:49" },
-      ],
-    });
-
-    render(<TodayCard />);
-    expect(screen.getByText("11:33")).toBeInTheDocument();
-  });
-
-  it("highlights the currently active prayer (Dzuhur)", () => {
-    // Setup time so current local time is 12:30 WIB (past Dzuhur 11:45, before Ashar 15:05)
-    // 12:30 WIB = 05:30 UTC
-    vi.setSystemTime(new Date("2025-06-15T05:30:00Z"));
-
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T05:30:00Z"));
-
-    const todayStr = "2025-06-15";
-    const mockCountdownSchedule = [
-      {
-        tanggal: "Ahad, 15/06/2025",
-        date: todayStr,
-        imsak: "04:15",
-        subuh: "04:25",
-        terbit: "05:40",
-        dhuha: "06:05",
-        dzuhur: "11:45",
-        ashar: "15:05",
-        maghrib: "17:40",
-        isya: "18:55",
-      },
-    ];
-
-    mockUseStore.mockReturnValue({
-      ...defaultStoreState,
-      countdownSchedule: mockCountdownSchedule,
-    });
-
-    render(<TodayCard />);
-
-    // Verify highlighted prayer
-    // Dzuhur is index 4 in PRAYER_NAMES ("Dzuhur")
-    // Let's find the p tag for Dzuhur and check its parent container class
-    const dzuhurLabel = screen.getByText("Dzuhur");
-    const container = dzuhurLabel.closest("div");
-
-    expect(container).toHaveClass("animate-pulse-glow");
-
-    // Ensure Ashar is not highlighted
-    const asharLabel = screen.getByText("Ashar");
-    const asharContainer = asharLabel.closest("div");
-    expect(asharContainer).not.toHaveClass("animate-pulse-glow");
-  });
-
-  it("updates highlighted prayer when time transitions", () => {
-    // Start at 11:40 WIB (Before Dzuhur, Dhuha is active)
-    vi.setSystemTime(new Date("2025-06-15T04:40:00Z"));
-
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T04:40:00Z"));
-
-    const todayStr = "2025-06-15";
-    const mockCountdownSchedule = [
-      {
-        tanggal: "Ahad, 15/06/2025",
-        date: todayStr,
-        imsak: "04:15",
-        subuh: "04:25",
-        terbit: "05:40",
-        dhuha: "06:05",
-        dzuhur: "11:45",
-        ashar: "15:05",
-        maghrib: "17:40",
-        isya: "18:55",
-      },
-    ];
-
-    mockUseStore.mockReturnValue({
-      ...defaultStoreState,
-      countdownSchedule: mockCountdownSchedule,
-    });
-
-    render(<TodayCard />);
-
-    // Dhuha should be highlighted
-    const dhuhaLabel = screen.getByText("Dhuha");
-    expect(dhuhaLabel.closest("div")).toHaveClass("animate-pulse-glow");
-
-    // Fast forward to 11:46 WIB (Dzuhur is now active)
-    vi.mocked(getAdjustedTime).mockReturnValue(new Date("2025-06-15T04:46:00Z"));
 
     act(() => {
-      vi.advanceTimersByTime(61000); // past the next minute-boundary re-check
+      vi.advanceTimersByTime(31_000);
     });
+    expect(screen.getByText(/16 Juni 2025/)).toBeInTheDocument();
+  });
 
-    // Now Dzuhur should be highlighted
-    const dzuhurLabel = screen.getByText("Dzuhur");
-    expect(dzuhurLabel.closest("div")).toHaveClass("animate-pulse-glow");
+  it("renders the same skeleton on the server whatever the clock says, so hydration matches", () => {
+    // The server has no saved city, cache or clock: the client fills the card in after hydrating
+    seedMonth(2025, 6, [JUNE_15]);
+    const html = renderToString(<TodayCard />);
+    expect(html).toContain('aria-label="Memuat jadwal hari ini"');
+    expect(html).not.toContain("aria-current");
 
-    // Dhuha should no longer be highlighted
-    expect(dhuhaLabel.closest("div")).not.toHaveClass("animate-pulse-glow");
+    vi.setSystemTime(new Date("2025-07-01T05:00:00Z"));
+    expect(renderToString(<TodayCard />)).toBe(html);
+  });
+
+  it("highlights the time in progress and marks earlier ones as past", () => {
+    // 12:30 WIB: after Dzuhur (11:45), before Ashar (15:05)
+    vi.setSystemTime(new Date("2025-06-15T05:30:00Z"));
+    seedMonth(2025, 6, [JUNE_15]);
+    render(<TodayCard />);
+
+    expect(tile("Dzuhur")).toHaveAttribute("aria-current", "time");
+    expect(tile("Dzuhur")).toHaveTextContent("(sedang berlangsung)");
+    expect(tile("Subuh")).toHaveTextContent("(sudah lewat)");
+    expect(tile("Ashar")).not.toHaveAttribute("aria-current");
+  });
+
+  it("moves the highlight at the minute a time arrives", () => {
+    // 11:40 WIB: Dhuha in progress
+    vi.setSystemTime(new Date("2025-06-15T04:40:00Z"));
+    seedMonth(2025, 6, [JUNE_15]);
+    render(<TodayCard />);
+    expect(tile("Dhuha")).toHaveAttribute("aria-current", "time");
+
+    act(() => {
+      vi.advanceTimersByTime(4 * 60_000);
+    });
+    expect(tile("Dhuha")).toHaveAttribute("aria-current", "time");
+
+    act(() => {
+      vi.advanceTimersByTime(60_100); // just after 11:45, when the minute's check runs
+    });
+    expect(tile("Dzuhur")).toHaveAttribute("aria-current", "time");
+    expect(tile("Dhuha")).not.toHaveAttribute("aria-current");
+  });
+
+  it("reads the clock in the city's time zone", () => {
+    // 04:30 UTC is 11:30 WIB but 12:30 WITA: Dzuhur has begun in Denpasar only
+    vi.setSystemTime(new Date("2025-06-15T04:30:00Z"));
+    seedCity(DENPASAR, "2025-06-15");
+    seedMonth(2025, 6, [JUNE_15]);
+    render(<TodayCard />);
+    expect(tile("Dzuhur")).toHaveAttribute("aria-current", "time");
   });
 });

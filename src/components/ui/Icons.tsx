@@ -1,8 +1,9 @@
-import { SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
+import type { PrayerKey } from "@/types";
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+export type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-const defaultProps = (size: number = 24): SVGProps<SVGSVGElement> => ({
+export const defaultProps = (size: number = 24): SVGProps<SVGSVGElement> => ({
   width: size,
   height: size,
   viewBox: "0 0 24 24",
@@ -150,16 +151,6 @@ export function CrescentIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
-// Copy icon
-export function CopyIcon({ size = 24, ...props }: IconProps) {
-  return (
-    <svg {...defaultProps(size)} {...props}>
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
 // Map pin
 export function MapPinIcon({ size = 24, ...props }: IconProps) {
   return (
@@ -255,7 +246,7 @@ export function RefreshIcon({ size = 24, ...props }: IconProps) {
   );
 }
 
-export const PRAYER_ICON_MAP: Record<string, React.ComponentType<IconProps>> = {
+export const PRAYER_ICON_MAP: Record<PrayerKey, ComponentType<IconProps>> = {
   imsak: ImsakIcon,
   subuh: SubuhIcon,
   terbit: TerbitIcon,

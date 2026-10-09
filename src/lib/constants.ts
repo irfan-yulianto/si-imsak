@@ -13,8 +13,9 @@ export const BUILD_TIME = Number(process.env.NEXT_PUBLIC_BUILD_TIME) || Date.now
 // Identifies the deploy; the service worker URL carries it so each deploy gets a fresh worker.
 export const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 
-// Schedule cache TTL — single source of truth (used by api.ts and useStore.ts)
-export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days in ms
+// How long cached data stays usable on the device
+export const SCHEDULE_CACHE_MAX_AGE = 7 * 24 * 3600000; // 7 days
+export const MOSQUE_CACHE_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 
 // CDN caching for upstream data that changes rarely (schedules, city search).
 // Vercel's edge serves repeat requests without invoking the function, and keeps
@@ -33,10 +34,17 @@ export function getScheduleYearRange(year: number = new Date().getUTCFullYear())
   return { min: year - 1, max: year + 1 };
 }
 
-/** Round a coordinate to 3 decimals (~110 m) so nearby requests share CDN cache entries. */
-export function roundCoord(value: number): number {
-  return Math.round(value * 1000) / 1000;
+/**
+ * Round a coordinate so nearby requests share CDN cache entries, and reveal no more of
+ * the position than needed: 3 decimals (~110 m) by default.
+ */
+export function roundCoord(value: number, decimals = 3): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
 }
+
+/** Finding the city needs no more than ~1 km of the position (2 decimals) */
+export const GEOCODE_DECIMALS = 2;
 
 // Indonesia geographic bounds for input validation
 export const INDONESIA_BOUNDS = {
@@ -92,9 +100,3 @@ export const TIMEZONE_MAP = {
   "PAPUA PEGUNUNGAN": "WIT",
   "PAPUA SELATAN": "WIT",
 } as const satisfies Record<string, TimezoneLabel>;
-
-export const TIMEZONE_OFFSETS: Record<string, number> = {
-  WIB: 7,
-  WITA: 8,
-  WIT: 9,
-};

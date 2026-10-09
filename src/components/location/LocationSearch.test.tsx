@@ -1,9 +1,9 @@
 import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import LocationSearch from "./LocationSearch";
-import { useStore } from "@/store/useStore";
+import { monthId, useStore } from "@/store/useStore";
 import { searchCities, getSchedule } from "@/lib/api";
-import { detectAndUpdateLocation } from "@/lib/detect-location";
+import { resetStore } from "@/__tests__/store";
 
 // Mock dependencies
 vi.mock("@/lib/api", () => ({
@@ -11,9 +11,8 @@ vi.mock("@/lib/api", () => ({
   getSchedule: vi.fn(),
 }));
 
-vi.mock("@/lib/detect-location", () => ({
-  detectAndUpdateLocation: vi.fn(),
-}));
+// GPS detection is the store's own (tested in city-slice.test.ts); here it is replaced
+const detectCity = vi.fn();
 
 // Provide minimal implementation of AbortController if not globally present
 if (typeof global.AbortController === "undefined") {
@@ -49,16 +48,11 @@ describe("LocationSearch Component", () => {
     localStorage.clear();
 
     // Reset store state
-    const store = useStore.getState();
-    store.setLocation(
-      { id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE" },
-      "WIB"
-    );
-    store.setSchedule([]);
-    store.setCountdownSchedule([]);
-    store.setScheduleLoading(false);
-    store.setScheduleError(null);
-    useStore.setState({ locationPrompt: false, todayDateStr: "" });
+    resetStore();
+    useStore.setState({
+      location: { cityId: "default-id", cityName: "DEFAULT CITY", province: "DEFAULT PROVINCE", timezone: "WIB" },
+      detectCity,
+    });
 
     vi.mocked(getSchedule).mockResolvedValue({
       status: true,
@@ -92,44 +86,6 @@ describe("LocationSearch Component", () => {
     expect(screen.getByRole("button", { name: "Nanti" })).toBeInTheDocument();
   });
 
-  it("fetches schedule on mount if location is saved in localStorage", async () => {
-    const mockLocation = { id: "test-id", lokasi: "TEST CITY", daerah: "TEST PROV" };
-    localStorage.setItem("selectedLocation", JSON.stringify(mockLocation));
-
-    vi.mocked(getSchedule).mockResolvedValue({
-      status: true,
-      data: {
-        id: "test-id",
-        lokasi: "TEST CITY",
-        daerah: "TEST PROV",
-        jadwal: [],
-      },
-    });
-
-    renderAfterHydrate();
-
-    // Fast-forward initial useEffects
-    await act(async () => {
-      vi.advanceTimersByTime(100);
-    });
-
-    await waitFor(() => {
-      expect(getSchedule).toHaveBeenCalledWith(
-        "test-id",
-        expect.any(Number),
-        expect.any(Number)
-      );
-    });
-    // Loaded once on startup, not once per effect run
-    expect(getSchedule).toHaveBeenCalledTimes(1);
-    expect(useStore.getState().location.cityName).toBe("TEST CITY");
-
-    // Prompt should not be shown
-    expect(
-      screen.queryByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
-    ).not.toBeInTheDocument();
-  });
-
   it("handles dismissing the location prompt", async () => {
     renderAfterHydrate();
 
@@ -151,8 +107,8 @@ describe("LocationSearch Component", () => {
     expect(localStorage.getItem("locationPermissionDismissed")).toBeTruthy();
   });
 
-  it("calls detectAndUpdateLocation when 'Gunakan Lokasi' is clicked", async () => {
-    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: true });
+  it("detects the city when 'Gunakan Lokasi' is clicked", async () => {
+    detectCity.mockResolvedValue({ success: true });
 
     renderAfterHydrate();
 
@@ -167,7 +123,7 @@ describe("LocationSearch Component", () => {
       fireEvent.click(btn);
     });
 
-    expect(detectAndUpdateLocation).toHaveBeenCalled();
+    expect(detectCity).toHaveBeenCalled();
     expect(
       screen.queryByText("Gunakan lokasi Anda untuk menampilkan jadwal yang sesuai?")
     ).not.toBeInTheDocument();
@@ -234,6 +190,35 @@ describe("LocationSearch Component", () => {
     });
     // Also announced to screen readers
     expect(screen.getByRole("status")).toHaveTextContent("Kota tidak ditemukan");
+  });
+
+  it("says the search failed, not that the city doesn't exist, when the network fails", async () => {
+    vi.mocked(searchCities).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderAfterHydrate();
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("Cari kota"), { target: { value: "bandung" } });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("listbox")).toHaveTextContent("Gagal mencari kota. Periksa koneksi internet");
+    });
+    expect(screen.queryByText("Kota tidak ditemukan")).not.toBeInTheDocument();
+
+    // The next search that gets an answer tells "not found" again
+    vi.mocked(searchCities).mockResolvedValue({ status: true, data: [] });
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("Cari kota"), { target: { value: "bandungx" } });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("listbox")).toHaveTextContent("Kota tidak ditemukan");
+    });
   });
 
   it("selects a location and fetches its schedule", async () => {
@@ -374,7 +359,7 @@ describe("LocationSearch Component", () => {
   });
 
   it("keeps the location prompt open with an explanation when detection fails", async () => {
-    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, error: "Izin lokasi ditolak" });
+    detectCity.mockResolvedValue({ success: false, error: "Izin lokasi ditolak" });
 
     renderAfterHydrate();
     await act(async () => {
@@ -396,7 +381,7 @@ describe("LocationSearch Component", () => {
   });
 
   it("explains other detection failures with a single full stop", async () => {
-    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, error: "Gagal mencari kota. Periksa koneksi internet." });
+    detectCity.mockResolvedValue({ success: false, error: "Gagal mencari kota. Periksa koneksi internet." });
 
     renderAfterHydrate();
     await act(async () => {
@@ -412,7 +397,7 @@ describe("LocationSearch Component", () => {
   });
 
   it("closes the prompt quietly when the user picked a city during detection", async () => {
-    vi.mocked(detectAndUpdateLocation).mockResolvedValue({ success: false, superseded: true });
+    detectCity.mockResolvedValue({ success: false, superseded: true });
 
     renderAfterHydrate();
     await act(async () => {
@@ -458,6 +443,10 @@ describe("LocationSearch Component", () => {
     vi.mocked(searchCities).mockResolvedValue({ status: true, data: [{ id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT" }] });
 
     renderAfterHydrate();
+    // The page loads the default city at start-up (useAppBootstrap)
+    act(() => {
+      void useStore.getState().selectCity({ id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE" });
+    });
     await act(async () => {
       vi.advanceTimersByTime(100);
     });
@@ -473,16 +462,19 @@ describe("LocationSearch Component", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("option", { name: "BANDUNG" }));
     });
-    await waitFor(() => expect(useStore.getState().schedule.loading).toBe(false));
+    const shown = () => {
+      const { months, location, viewYear, viewMonth } = useStore.getState();
+      return months[monthId(location.cityId, viewYear, viewMonth)];
+    };
+    await waitFor(() => expect(shown()?.status).toBe("ready"));
 
     // The startup request for the previous city finishes last
     await act(async () => {
       resolveFirst({ status: true, data: { id: "default-id", lokasi: "DEFAULT CITY", daerah: "DEFAULT PROVINCE", jadwal: [{ date: "1999-01-01" } as never] } });
     });
 
-    const state = useStore.getState();
-    expect(state.location.cityName).toBe("BANDUNG");
-    expect(state.schedule.data[0].date).toBe("2024-01-01");
-    expect(state.countdownSchedule[0].date).toBe("2024-01-01");
+    expect(useStore.getState().location.cityName).toBe("BANDUNG");
+    // The table and the countdown both show Bandung's month
+    expect(shown()?.days[0].date).toBe("2024-01-01");
   });
 });

@@ -8,15 +8,15 @@ vi.mock("@/components/ui/Icons", () => ({
   MosqueIcon: () => <div data-testid="mosque-icon" />,
   MapPinIcon: () => <div data-testid="map-pin-icon" />,
   SearchIcon: () => <div data-testid="search-icon" />,
-  CrosshairIcon: () => <div data-testid="crosshair-icon" />,
-  ExternalLinkIcon: () => <div data-testid="external-link-icon" />,
   XIcon: () => <div data-testid="x-icon" />,
+  // For the finder's own icons (./icons)
+  defaultProps: () => ({}),
 }));
 
 // Mock CITIES to prevent heavy filtering during tests
 vi.mock("@/lib/cities", () => {
   const CITIES = [{ id: "test-city", name: "TEST CITY", lat: -6.2, lng: 106.8 }];
-  return { CITIES, CITY_MAP: new Map(CITIES.map((c) => [c.name, c])) };
+  return { CITIES, findCityCoords: (name: string) => CITIES.find((c) => c.name === name) ?? null };
 });
 
 // Mock mosques utils to return a predictable distance
@@ -212,8 +212,8 @@ describe("MosqueFinder Component - U6 Fixes", () => {
   it("measures cached results from the current position", async () => {
     // Cached by a visit ~1 km away, when this mosque was 5 m from the user
     localStorage.setItem(
-      "mosques_-6.20_106.80_r2000",
-      JSON.stringify({ data: [{ ...mosque("m1", "Masjid Dekat", 106.81), distance: 5 }], ts: Date.now() })
+      "si:mosques:-6.20:106.80:2000",
+      JSON.stringify({ v: 1, ts: Date.now(), data: [{ ...mosque("m1", "Masjid Dekat", 106.81), distance: 5 }] })
     );
     render(<MosqueFinder />);
 

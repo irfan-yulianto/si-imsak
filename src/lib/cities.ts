@@ -622,7 +622,42 @@ export function getCityGuess(lat: number, lng: number): string | null {
   return closest.name;
 }
 
-const CITY_MAP = new Map<string, CityCoord>(CITIES.map((c) => [c.name, c]));
+type CityKind = "KOTA" | "KAB" | "";
 
-export { CITIES, CITY_MAP };
+/** "KAB. BOGOR", "Kabupaten Bogor", "Kota Adm. Jakarta Pusat" → the kind, and the name without it */
+function splitCityName(name: string): { kind: CityKind; base: string } {
+  const words = name.toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+  const prefix = /^(KOTA|KABUPATEN|KAB)( ADMINISTRASI| ADM)? /.exec(words);
+  if (!prefix) return { kind: "", base: words };
+  return { kind: prefix[1] === "KOTA" ? "KOTA" : "KAB", base: words.slice(prefix[0].length) };
+}
+
+let byBaseName: Map<string, { kind: CityKind; city: CityCoord }[]> | null = null;
+
+/**
+ * Where a city named by MyQuran is, from this table. The name is matched loosely
+ * ("KAB." or "Kabupaten", "Kota Adm.", punctuation, and as a last resort without its
+ * last words: "Jakarta Pusat" → "Jakarta"), so a city renamed upstream keeps its place.
+ * Among cities of the same name, the same kind wins, then the city over the regency.
+ */
+export function findCityCoords(name: string): { lat: number; lng: number } | null {
+  if (!byBaseName) {
+    byBaseName = new Map();
+    for (const city of CITIES) {
+      const { kind, base } = splitCityName(city.name);
+      byBaseName.set(base, [...(byBaseName.get(base) ?? []), { kind, city }]);
+    }
+  }
+  const { kind, base } = splitCityName(name);
+  const words = base.split(" ");
+  for (let n = words.length; n > 0; n--) {
+    const matches = byBaseName.get(words.slice(0, n).join(" "));
+    if (!matches) continue;
+    const { city } = matches.find((m) => m.kind === kind) ?? matches.find((m) => m.kind === "KOTA") ?? matches[0];
+    return { lat: city.lat, lng: city.lng };
+  }
+  return null;
+}
+
+export { CITIES };
 export type { CityCoord };
