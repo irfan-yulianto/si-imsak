@@ -13,10 +13,11 @@ import ArrivalNotice, { arrivalMessage } from "./ArrivalNotice";
 
 const targetLabel = (next: NextPrayer) => (next.isTomorrow ? "Menuju Imsak Besok" : `Menuju Waktu ${next.name}`);
 
-/** Hours, minutes or seconds; the digits are written by useCountdownTicker */
+/** Hours, minutes or seconds; the digits are written by useCountdownTicker. Narrower below
+ * 360px, where three of the wider boxes overflow a 320px screen */
 function Unit({ ref, label }: { ref: Ref<HTMLSpanElement>; label: string }) {
   return (
-    <div className="min-w-[4.5rem] rounded-tile bg-on-hero/10 px-3 py-2 md:min-w-24 md:px-5 md:py-3">
+    <div className="min-w-16 rounded-tile bg-on-hero/10 px-3 py-2 min-[22.5rem]:min-w-[4.5rem] md:min-w-24 md:px-5 md:py-3">
       <span ref={ref} className="block font-mono text-3xl font-extrabold tabular-nums tracking-tight md:text-5xl">
         --
       </span>

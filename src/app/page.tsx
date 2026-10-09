@@ -116,7 +116,7 @@ export default function Home() {
           className={activeTab === "masjid" ? "hidden md:block" : "block"}
         >
           {/* Countdown and today's times side by side on wide screens, the same height */}
-          <div className="grid gap-3 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
             <div className="lg:col-span-7">
               <CountdownTimer />
             </div>

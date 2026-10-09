@@ -60,8 +60,10 @@ export default function MosqueFinder() {
   };
 
   return (
-    // Wide screens: the controls stay in view on the left, the results on the right
-    <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
+    // Wide screens: the controls stay in view on the left, the results on the right.
+    // Below that one column of the screen's width: an auto-sized column would grow to a
+    // long mosque name instead of truncating it
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-start">
       <div className="lg:sticky lg:top-[calc(var(--header-h)+var(--safe-t)+0.75rem)] lg:col-span-4">
         <MosqueControls
           coords={coords}

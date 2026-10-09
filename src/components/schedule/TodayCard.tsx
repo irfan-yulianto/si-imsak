@@ -8,7 +8,6 @@ import { MESSAGES } from "@/lib/messages";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
 import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
 import Skeleton from "@/components/ui/Skeleton";
 import { cx } from "@/components/ui/cx";
 import { useMemo } from "react";
@@ -55,9 +54,9 @@ export default function TodayCard() {
       // The same shape as the card, so nothing moves when it fills in
       return (
         <Card role="status" aria-label="Memuat jadwal hari ini" className="h-full">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-6 w-28 rounded-full" />
+          <div className="border-b border-border px-4 py-3">
+            <Skeleton className="h-6 w-44 max-w-full" />
+            <Skeleton className="mt-0.5 h-4 w-32" />
           </div>
           <div className={TILES}>
             {PRAYER_KEYS.map((key) => (
@@ -82,14 +81,16 @@ export default function TodayCard() {
 
   return (
     <Card className="h-full">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-fg">
+      {/* The Hijri date under the heading, not beside it: a long pair would wrap on phones
+          and push the times down as they load */}
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-base font-bold text-fg">
           {dayName}, {formatLongDate(todayDateStr)}
         </h2>
-        <Badge tone="gold" className="text-xs">
+        <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-gold">
           <CalendarIcon size={14} />
           {hijriDate}
-        </Badge>
+        </p>
       </div>
 
       <div role="region" aria-label="Jadwal sholat hari ini" className={TILES}>
