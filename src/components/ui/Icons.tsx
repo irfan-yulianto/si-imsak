@@ -1,9 +1,9 @@
 import type { ComponentType, SVGProps } from "react";
 import type { PrayerKey } from "@/types";
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+export type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-const defaultProps = (size: number = 24): SVGProps<SVGSVGElement> => ({
+export const defaultProps = (size: number = 24): SVGProps<SVGSVGElement> => ({
   width: size,
   height: size,
   viewBox: "0 0 24 24",

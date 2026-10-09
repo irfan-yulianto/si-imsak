@@ -6,11 +6,14 @@ import { searchCities } from "@/lib/api";
 import { useStore } from "@/store/useStore";
 import CityCombobox from "@/components/ui/CityCombobox";
 import { KEYS, writeJson, writeRaw } from "@/lib/storage";
+import { MESSAGES, detectFailedMessage } from "@/lib/messages";
 
 export default function LocationSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  // The last search failed (network, server): not the same as "no such city"
+  const [searchFailed, setSearchFailed] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [promptError, setPromptError] = useState("");
   const promptButtonRef = useRef<HTMLButtonElement>(null);
@@ -29,12 +32,7 @@ export default function LocationSearch() {
       setLocationPrompt(false);
     } else {
       // Keep the prompt open and explain — the schedule already on screen stays usable
-      const reason = (result.error || "Lokasi tidak dapat dideteksi").replace(/\.+$/, "");
-      setPromptError(
-        result.error?.includes("ditolak")
-          ? "Izin lokasi ditolak. Ketik nama kotamu di kolom pencarian."
-          : `${reason}. Ketik nama kotamu di kolom pencarian.`
-      );
+      setPromptError(detectFailedMessage(result.error));
     }
   }, [setLocationPrompt]);
 
@@ -58,9 +56,13 @@ export default function LocationSearch() {
     const timer = setTimeout(async () => {
       try {
         const res = await searchCities(q, controller.signal);
-        if (!controller.signal.aborted) setResults(res.status && res.data ? res.data : []);
+        if (controller.signal.aborted) return;
+        setResults(res.status && res.data ? res.data : []);
+        setSearchFailed(false);
       } catch {
-        if (!controller.signal.aborted) setResults([]);
+        if (controller.signal.aborted) return;
+        setResults([]);
+        setSearchFailed(true);
       } finally {
         if (!controller.signal.aborted) setIsSearching(false);
       }
@@ -150,6 +152,7 @@ export default function LocationSearch() {
         getLabel={(city) => city.lokasi}
         onSelect={handleSelect}
         isSearching={isSearching}
+        emptyText={searchFailed ? MESSAGES.citySearchFailed : MESSAGES.cityNotFound}
       />
     </div>
   );

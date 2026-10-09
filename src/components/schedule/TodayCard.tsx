@@ -4,6 +4,7 @@ import { useCountdownDays, useCurrentMonth } from "@/hooks/useSchedule";
 import { useCityMinute, useCityToday } from "@/hooks/useCityClock";
 import { getHijriDate } from "@/lib/hijri";
 import { formatLongDate } from "@/lib/city-time";
+import { MESSAGES } from "@/lib/messages";
 import { PRAYER_NAMES, PRAYER_KEYS } from "@/types";
 import { PRAYER_ICON_MAP, CalendarIcon } from "@/components/ui/Icons";
 import { useMemo } from "react";
@@ -65,7 +66,7 @@ export default function TodayCard() {
     return (
       <div role="status" className="min-h-[160px] rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/80">
         <p className="text-center text-sm text-slate-600 dark:text-slate-300">
-          Jadwal hari ini belum tersedia
+          {MESSAGES.noTodaySchedule}
         </p>
       </div>
     );

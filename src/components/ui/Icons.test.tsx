@@ -22,6 +22,7 @@ import {
   RefreshIcon,
   PRAYER_ICON_MAP,
 } from "./Icons";
+import { CrosshairIcon, ExternalLinkIcon, NavigationIcon } from "@/components/mosque/icons";
 
 const ICONS = [
   { name: "ImsakIcon", Component: ImsakIcon },
@@ -43,6 +44,9 @@ const ICONS = [
   { name: "ChevronLeftIcon", Component: ChevronLeftIcon },
   { name: "ChevronRightIcon", Component: ChevronRightIcon },
   { name: "RefreshIcon", Component: RefreshIcon },
+  { name: "NavigationIcon", Component: NavigationIcon },
+  { name: "ExternalLinkIcon", Component: ExternalLinkIcon },
+  { name: "CrosshairIcon", Component: CrosshairIcon },
 ];
 
 describe("Icons", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { arrivalMessage } from "./CountdownTimer";
+import { arrivalMessage } from "./ArrivalNotice";
 
 describe("arrivalMessage", () => {
   it("tells users to pray only for obligatory prayers", () => {

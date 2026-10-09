@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MapPinIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
+import { MESSAGES } from "@/lib/messages";
 
 interface CityComboboxProps<T> {
   /** Accessible name of the input */
@@ -38,7 +39,7 @@ export default function CityCombobox<T>({
   onSelect,
   isSearching = false,
   minQueryLength = 2,
-  emptyText = "Kota tidak ditemukan",
+  emptyText = MESSAGES.cityNotFound,
   variant = "default",
 }: CityComboboxProps<T>) {
   const baseId = useId();

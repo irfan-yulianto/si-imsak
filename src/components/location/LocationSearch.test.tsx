@@ -192,6 +192,35 @@ describe("LocationSearch Component", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Kota tidak ditemukan");
   });
 
+  it("says the search failed, not that the city doesn't exist, when the network fails", async () => {
+    vi.mocked(searchCities).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderAfterHydrate();
+
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("Cari kota"), { target: { value: "bandung" } });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("listbox")).toHaveTextContent("Gagal mencari kota. Periksa koneksi internet");
+    });
+    expect(screen.queryByText("Kota tidak ditemukan")).not.toBeInTheDocument();
+
+    // The next search that gets an answer tells "not found" again
+    vi.mocked(searchCities).mockResolvedValue({ status: true, data: [] });
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText("Cari kota"), { target: { value: "bandungx" } });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("listbox")).toHaveTextContent("Kota tidak ditemukan");
+    });
+  });
+
   it("selects a location and fetches its schedule", async () => {
     const mockResults = [
       { id: "1", lokasi: "BANDUNG", daerah: "JAWA BARAT" },

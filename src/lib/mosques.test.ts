@@ -3,6 +3,8 @@ import {
   haversineDistance,
   formatDistance,
   getSearchRadius,
+  widerRadius,
+  formatRadius,
   buildOverpassQuery,
   parseOverpassResponse,
 } from "./mosques";
@@ -100,6 +102,23 @@ describe("getSearchRadius", () => {
 
   it("returns 4000 for 501m accuracy", () => {
     expect(getSearchRadius(501)).toBe(4000);
+  });
+});
+
+describe("widerRadius", () => {
+  it("doubles the radius up to 10 km", () => {
+    expect(widerRadius(2000)).toBe(4000);
+    expect(widerRadius(3000)).toBe(6000);
+    expect(widerRadius(8000)).toBe(10000);
+    expect(widerRadius(10000)).toBe(10000);
+  });
+});
+
+describe("formatRadius", () => {
+  it("shows meters below 1 km and kilometers from there", () => {
+    expect(formatRadius(800)).toBe("800 m");
+    expect(formatRadius(2000)).toBe("2 km");
+    expect(formatRadius(2500)).toBe("2.5 km");
   });
 });
 

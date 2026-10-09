@@ -58,6 +58,19 @@ export function getSearchRadius(accuracy: number | null): number {
   return 4000;
 }
 
+/** The widest search "Perluas Pencarian" can reach (meters) */
+export const MAX_SEARCH_RADIUS = 10000;
+
+/** The radius "Perluas Pencarian" moves to: twice as wide, up to the maximum */
+export function widerRadius(radius: number): number {
+  return Math.min(radius * 2, MAX_SEARCH_RADIUS);
+}
+
+/** A search radius for display: "800 m", "2 km", "2.5 km" */
+export function formatRadius(meters: number): string {
+  return meters >= 1000 ? `${meters / 1000} km` : `${meters} m`;
+}
+
 /**
  * Build Overpass QL query for mosques within a radius.
  * Uses union of three tag patterns (node+way only, relations skipped):
