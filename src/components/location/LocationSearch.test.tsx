@@ -426,6 +426,16 @@ describe("LocationSearch Component", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("keeps the city search and the prompt out of Clarity recordings", async () => {
+    renderAfterHydrate();
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByRole("combobox").closest('[data-clarity-mask="True"]')).not.toBeNull();
+    expect(screen.getByRole("dialog").closest('[data-clarity-mask="True"]')).not.toBeNull();
+  });
+
   it("does not show the prompt again within 7 days of dismissing it", async () => {
     localStorage.setItem("locationPermissionDismissed", String(Date.now() - 6 * 24 * 3600000));
 

@@ -421,8 +421,8 @@ export default function MosqueFinder() {
           <p role="alert" className="mb-3 text-xs text-red-700 dark:text-red-300">{gpsError}</p>
         )}
 
-        {/* Search input */}
-        <div className="mb-3">
+        {/* Search input — this and the location below are masked in Clarity recordings */}
+        <div data-clarity-mask="True" className="mb-3">
           <CityCombobox
             label="Cari kota untuk lokasi masjid"
             placeholder="Cari kota untuk lokasi masjid..."
@@ -436,7 +436,7 @@ export default function MosqueFinder() {
         </div>
 
         {/* Location info */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <div data-clarity-mask="True" className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <MapPinIcon size={12} />
           <span>
             {isGps ? (
@@ -514,9 +514,9 @@ export default function MosqueFinder() {
         </div>
       )}
 
-      {/* Mosque list */}
+      {/* Mosque list — nearby mosques reveal the user's area, so masked in Clarity recordings */}
       {!loading && mosques.length > 0 && (
-        <div className="space-y-2">
+        <div data-clarity-mask="True" className="space-y-2">
           {mosques.map((mosque, i) => (
             <div
               key={mosque.id}

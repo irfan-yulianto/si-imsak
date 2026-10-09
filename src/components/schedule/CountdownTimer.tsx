@@ -255,9 +255,10 @@ export default function CountdownTimer() {
       }} />
 
       <div className="relative z-10">
-        {/* Location badge — clickable to refresh GPS */}
+        {/* Location badge — clickable to refresh GPS. Masked in Clarity recordings. */}
         <button
           type="button"
+          data-clarity-mask="True"
           onClick={handleRefreshLocation}
           disabled={isRefreshing}
           aria-label={`${location.cityName}, ${location.province}. Perbarui lokasi dengan GPS`}

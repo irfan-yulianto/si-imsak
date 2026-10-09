@@ -150,6 +150,14 @@ describe("CountdownTimer recovery", () => {
   });
 });
 
+describe("CountdownTimer privacy", () => {
+  it("keeps the city name out of Clarity recordings", () => {
+    useStore.setState({ countdownSchedule: [day("2026-03-15")] });
+    render(<CountdownTimer />);
+    expect(screen.getByRole("button", { name: /KOTA JAKARTA/ })).toHaveAttribute("data-clarity-mask", "True");
+  });
+});
+
 describe("CountdownTimer arrivals", () => {
   it("announces a time that arrives while the app is open", async () => {
     vi.setSystemTime(new Date("2026-03-15T05:04:58Z")); // 12:04:58 WIB

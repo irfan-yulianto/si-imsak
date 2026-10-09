@@ -128,6 +128,24 @@ describe("MosqueFinder Component - U6 Fixes", () => {
     });
   });
 
+  it("keeps the location, the search and the results out of Clarity recordings", async () => {
+    await setupAndClickRefresh(async () => ({
+      ok: true,
+      json: async () => ({
+        status: true,
+        data: [{ id: "m1", name: "Masjid Raya", lat: -6.2, lng: 106.8, type: "masjid", distance: 0 }],
+      }),
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Masjid Raya")).toBeInTheDocument();
+    });
+    const masked = '[data-clarity-mask="True"]';
+    expect(screen.getByText("Masjid Raya").closest(masked)).not.toBeNull();
+    expect(screen.getByText(/^Lokasi GPS \(/).closest(masked)).not.toBeNull();
+    expect(screen.getByRole("combobox").closest(masked)).not.toBeNull();
+  });
+
   it("displays distinct 'network error' message when fetch throws", async () => {
     await setupAndClickRefresh(async () => {
       throw new Error("Network Error");

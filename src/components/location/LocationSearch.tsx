@@ -145,7 +145,9 @@ export default function LocationSearch() {
   };
 
   return (
-    <div className="relative w-full max-w-[260px]">
+    // The city search, its results and the prompt reveal where the user is: kept out of
+    // Clarity session recordings
+    <div data-clarity-mask="True" className="relative w-full max-w-[260px]">
       {/* Location permission prompt */}
       {showLocationPrompt && (
         <div
