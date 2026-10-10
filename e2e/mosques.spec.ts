@@ -53,6 +53,29 @@ test("orders the results again as the GPS position sharpens, without asking the 
   expect(searches).toHaveLength(1);
 });
 
+test("lets the user add a place that isn't listed, from where they stand", async ({ page }) => {
+  // The fixture's nearest place is ~345 m from here, the fix ±20 m: the offer is there
+  await seedCity(page, JAKARTA);
+  await page.goto("/?tab=masjid");
+  await expect(page.getByRole("listitem").getByRole("heading").first()).toHaveText("Masjid Uji 1");
+
+  await page.getByRole("button", { name: "Tambahkan di sini" }).click();
+  const form = page.getByRole("region", { name: "Tambahkan masjid atau musholla di sini" });
+  await expect(form).toContainText("posisi Anda sekarang (±20 m)");
+  await form.getByRole("radio", { name: "Masjid" }).check();
+  await form.getByRole("textbox", { name: "Nama" }).fill("Al-Ikhlas Uji");
+  await form.getByRole("textbox", { name: "Jalan (opsional)" }).fill("Gang Uji 10");
+  const sent = page.waitForRequest((r) => r.url().includes("/api/mosques/suggest") && r.method() === "POST");
+  await form.getByRole("button", { name: "Kirim Usulan" }).click();
+
+  // Exactly what the form says it sends; the mock GitHub checks the issue and numbers it
+  const request = await sent;
+  expect(Object.keys(request.postDataJSON())).toEqual(["kind", "name", "street", "lat", "lng", "accuracy"]);
+  await expect(page.getByRole("status").filter({ hasText: /Usulan #\d+ diterima/ })).toBeVisible();
+  await page.getByRole("button", { name: "Tutup" }).click();
+  await expect(page.getByRole("button", { name: "Tambahkan di sini" })).toHaveCount(0);
+});
+
 test.describe("at a mosque's gate", () => {
   // 22 m south of Masjid Uji 8's wall (67 m from the middle of its outline), from a sharp fix
   test.use({ geolocation: { latitude: JAKARTA.lat - 0.0004 - 22 / 111_195, longitude: JAKARTA.lng + 0.004, accuracy: 10 } });

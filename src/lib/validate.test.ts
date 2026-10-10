@@ -7,6 +7,7 @@ import {
   isScheduleDay,
   parseCityList,
   parseMosqueAnswer,
+  parseSuggestion,
   parseScheduleResponse,
   parseServerTime,
   parseUpstreamPeriod,
@@ -163,9 +164,41 @@ describe("parseMosqueAnswer", () => {
     expect(parseMosqueAnswer({ status: true, data: [], meta: { center: { lat: "x" }, coverage: -1 } })).toEqual({ mosques: [] });
   });
 
+  it("says whether the server takes suggestions, only when it says it does", () => {
+    const meta = { center: { lat: -6.17, lng: 106.83 }, coverage: 1800, dataDate: "2026-10-06" };
+    expect(parseMosqueAnswer({ status: true, data: [], meta: { ...meta, suggestions: true } })).toMatchObject({ suggestions: true });
+    expect(parseMosqueAnswer({ status: true, data: [], meta: { ...meta, suggestions: false } })).not.toHaveProperty("suggestions");
+    expect(parseMosqueAnswer({ status: true, data: [], meta: { ...meta, suggestions: "yes" } })).not.toHaveProperty("suggestions");
+  });
+
   it("returns null for a failed or malformed answer", () => {
     expect(parseMosqueAnswer({ status: false, error: "Mosque data unavailable" })).toBeNull();
     expect(parseMosqueAnswer({ status: true })).toBeNull();
+  });
+});
+
+describe("parseSuggestion", () => {
+  const sent = { kind: "musholla", name: "Al-Ikhlas", street: "Gang Damai 3", lat: -6.2, lng: 106.8, accuracy: 12 };
+
+  it("keeps a well-formed suggestion, cleaned, with only its known fields", () => {
+    expect(parseSuggestion({ ...sent, name: " Al-Ikhlas ", street: "Gang  Damai\u00a03", extra: "x" })).toEqual(sent);
+    expect(parseSuggestion({ ...sent, street: "" })).toEqual({ kind: "musholla", name: "Al-Ikhlas", lat: -6.2, lng: 106.8, accuracy: 12 });
+    expect(parseSuggestion({ ...sent, street: undefined, kind: "masjid" })).toEqual({ kind: "masjid", name: "Al-Ikhlas", lat: -6.2, lng: 106.8, accuracy: 12 });
+  });
+
+  it.each([
+    ["an array", []],
+    ["a kind that isn't a mosque's", { ...sent, kind: "gereja" }],
+    ["a name too short", { ...sent, name: "A" }],
+    ["a name too long", { ...sent, name: "A".repeat(81) }],
+    ["a name with markdown in it", { ...sent, name: "Al-Ikhlas | <b>" }],
+    ["a name with a mention", { ...sent, name: "@someone" }],
+    ["a name with a zero-width character", { ...sent, name: "Al\u200bIkhlas" }],
+    ["a street with a link", { ...sent, street: "http://x.y" }],
+    ["a position as text", { ...sent, lat: "-6.2" }],
+    ["no accuracy", { ...sent, accuracy: 0 }],
+  ])("rejects %s", (_what, body) => {
+    expect(parseSuggestion(body)).toBeNull();
   });
 });
 

@@ -126,7 +126,7 @@ export function useMosqueSearch(): {
       // only sure as far as its farthest mosque
       const mosques = [...found.mosques].sort((a, b) => a.distance - b.distance);
       const coverage = found.coverage ?? mosques.at(-1)?.distance ?? 0;
-      const result: MosqueAnswer = { center: found.center ?? center, coverage, mosques };
+      const result: MosqueAnswer = { center: found.center ?? center, coverage, mosques, ...(found.suggestions && { suggestions: true }) };
       answered.current = { area, answer: result };
       setAnswer({ ...result, basis: area.basis });
       if (mosques.length === 0) setError(noMosquesMessage(formatRadius(coverage)));

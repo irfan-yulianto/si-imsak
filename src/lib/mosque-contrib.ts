@@ -102,11 +102,16 @@ export function isApproved(issue: SuggestionIssue): boolean {
 
 const FENCE = /```json[^\n]*\n([\s\S]*?)\n```/;
 
-const text = (value: unknown, max: number): string | null => {
+/**
+ * A suggested name or street as kept: composed (NFC), single-spaced, trimmed, and only
+ * when it is NAME_MIN to `max` characters of what NAME_ALLOWED permits; else null
+ */
+export function suggestionText(value: unknown, max = NAME_MAX): string | null {
   if (typeof value !== "string") return null;
   const clean = value.normalize("NFC").replace(/\s+/g, " ").trim();
   return clean.length >= NAME_MIN && clean.length <= max && NAME_ALLOWED.test(clean) ? clean : null;
-};
+}
+const text = suggestionText;
 
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 

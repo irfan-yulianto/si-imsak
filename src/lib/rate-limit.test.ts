@@ -59,6 +59,8 @@ describe("checkRateLimit", () => {
     expect(checkRateLimit(from("2.2.2.2"), "mosques")).toMatchObject({ ok: false });
     expect(send(10, "2.2.2.2", "geocode")).toEqual({ ok: true });
     expect(checkRateLimit(from("2.2.2.2"), "geocode")).toMatchObject({ ok: false });
+    expect(send(3, "2.2.2.2", "suggest")).toEqual({ ok: true });
+    expect(checkRateLimit(from("2.2.2.2"), "suggest")).toMatchObject({ ok: false });
   });
 
   it("counts each route and each client separately", () => {

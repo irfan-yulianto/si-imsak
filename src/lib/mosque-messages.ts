@@ -17,7 +17,30 @@ export const MOSQUE_MESSAGES = {
   failed: "Server gagal memuat data masjid. Coba tekan Muat Ulang.",
   connectionFailed: "Gagal terhubung ke server. Periksa koneksi internet dan coba lagi.",
   stale: "Gagal memperbarui data. Menampilkan hasil sebelumnya.",
+  // Suggesting a place that isn't listed
+  suggestionRejected: "Permintaan tidak dikenali.",
+  suggestionInvalid: "Periksa lagi isiannya: nama dan jalan hanya huruf, angka, spasi, dan tanda baca biasa, paling panjang 80 karakter.",
+  suggestionNameMissing: "Tulis nama masjid atau musholla-nya dulu.",
+  suggestionNameHint: "Tanpa kata \"Masjid\" atau \"Musholla\": itu dari pilihan jenis di atas.",
+  suggestionNeedsSharpFix: "Posisi GPS belum cukup akurat untuk mengusulkan tempat. Tunggu sampai ±50 m atau lebih baik.",
+  suggestionsOff: "Fitur usulan belum aktif di server ini.",
+  suggestionsFull: "Antrean usulan sedang penuh. Coba lagi beberapa hari lagi, setelah usulan yang ada diperiksa.",
 } as const;
+
+/** The place is in the data already, under this name */
+export function suggestionExists(name: string): string {
+  return `Sudah tercatat: ${name}. Bila datanya keliru, laporkan di OpenStreetMap.`;
+}
+
+/** What the form says it sends, and what happens next; `accuracy` is the fix's (m) */
+export function suggestionIntro(accuracy: number): string {
+  return `Yang dikirim: jenis, nama, jalan, dan posisi Anda sekarang (±${Math.round(accuracy)} m), tanpa identitas Anda. Usulan diperiksa dulu sebelum masuk ke data, dan Anda melepaskannya ke domain publik (CC0).`;
+}
+
+/** The suggestion was taken, as issue `number` (0: the number wasn't told) */
+export function suggestionSent(number: number): string {
+  return `Terima kasih. Usulan${number > 0 ? ` #${number}` : " Anda"} diterima dan akan diperiksa dulu; bila sesuai, masuk ke data dalam satu–dua minggu.`;
+}
 
 /** No mosque within `reach` (e.g. "25 km") */
 export function noMosquesMessage(reach: string): string {

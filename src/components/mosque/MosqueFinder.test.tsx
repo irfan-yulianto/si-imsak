@@ -48,13 +48,23 @@ function allowLocation(state: PermissionState | undefined, userAgent = "") {
 
 const fetchMock = vi.fn();
 /** The server's answer: these mosques, complete (as it would say) to 25 km around the point asked about */
-const okResponse = (mosques: object[], url?: string) => {
+const okResponse = (mosques: object[], url?: string, extraMeta: object = {}) => {
   const asked = url ? new URL(url, "http://x").searchParams : null;
-  const meta = asked && { center: { lat: Number(asked.get("lat")), lng: Number(asked.get("lng")) }, coverage: 25_000, dataDate: "2026-10-06" };
+  const meta = asked && {
+    center: { lat: Number(asked.get("lat")), lng: Number(asked.get("lng")) },
+    coverage: 25_000,
+    dataDate: "2026-10-06",
+    ...extraMeta,
+  };
   return { ok: true, status: 200, json: async () => ({ status: true, data: mosques, ...(meta && { meta }) }) };
 };
 /** As okResponse, for every request */
-const answering = (mosques: object[]) => async (url: string) => okResponse(mosques, url);
+const answering = (mosques: object[], extraMeta: object = {}) => async (url: string) => okResponse(mosques, url, extraMeta);
+/** The server takes suggestions, and this one it took as issue 12 */
+const takingSuggestions = (mosques: object[]) => async (url: string, init?: RequestInit) =>
+  init?.method === "POST"
+    ? { ok: true, status: 200, json: async () => ({ status: true, data: { number: 12 } }) }
+    : okResponse(mosques, url, { suggestions: true });
 const mosque = (id: string, name: string, north = 0, distance = 0) => ({
   id,
   name,
@@ -378,6 +388,57 @@ describe("MosqueFinder: results", () => {
     expect(screen.getByText("Lokasi GPS Anda").closest(masked)).not.toBeNull();
     expect(screen.getByRole("combobox").closest(masked)).not.toBeNull();
     expect(screen.getByRole("link", { name: /Cari lebih banyak di Google Maps/ }).closest(masked)).not.toBeNull();
+  });
+});
+
+describe("MosqueFinder: suggesting a place", () => {
+  // beforeEach: a sharp fix of a moment ago at TEST CITY
+  const farAway = [mosque("m1", "Masjid Jauh", 200, 200)];
+
+  it("offers to add a place from a sharp fix with nothing listed within 60 m, when the server takes suggestions", async () => {
+    fetchMock.mockImplementation(answering(farAway, { suggestions: true }));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(screen.getByText("Masjid Jauh")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Tambahkan di sini" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /laporkan di OpenStreetMap/ })).toBeInTheDocument();
+  });
+
+  it.each<[string, () => void, object[]]>([
+    ["the server doesn't take suggestions", () => {}, farAway],
+    ["a place is listed within 60 m", () => {}, [mosque("m1", "Masjid Dekat", 30, 30)]],
+    ["the fix is rough", () => useStore.setState({ userCoords: { lat: -6.2, lng: 106.8, accuracy: 80, at: Date.now() } }), farAway],
+    ["the user is offline", () => useStore.setState({ isOffline: true }), farAway],
+    ["the search is around a city's centre", () => useStore.setState({ userCoords: null }), farAway],
+  ])("doesn't offer it when %s", async (what, arrange, mosques) => {
+    arrange();
+    fetchMock.mockImplementation(answering(mosques, what === "the server doesn't take suggestions" ? {} : { suggestions: true }));
+    render(<MosqueFinder />);
+    if (what !== "the user is offline") await waitFor(() => expect(screen.getByText(mosques[0] === farAway[0] ? "Masjid Jauh" : "Masjid Dekat")).toBeInTheDocument());
+    else await waitFor(() => expect(screen.getByText("Anda sedang offline. Periksa koneksi internet Anda.")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Tambahkan di sini" })).toBeNull();
+    expect(screen.getByRole("link", { name: /Laporkan di OpenStreetMap/ })).toBeInTheDocument();
+  });
+
+  it("sends the suggestion from the position, thanks the user, and offers no second one", async () => {
+    fetchMock.mockImplementation(takingSuggestions(farAway));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(screen.getByText("Masjid Jauh")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Tambahkan di sini" }));
+    const form = screen.getByRole("region", { name: "Tambahkan masjid atau musholla di sini" });
+    expect(form).toHaveTextContent("posisi Anda sekarang (±20 m)");
+    // Inside the Clarity mask, like the list
+    expect(form.closest('[data-clarity-mask="True"]')).not.toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Nama" }), { target: { value: "Al-Ikhlas Uji" } });
+    fireEvent.click(screen.getByRole("button", { name: "Kirim Usulan" }));
+
+    await waitFor(() => expect(screen.getByText(/Usulan #12 diterima/)).toBeInTheDocument());
+    const [, init] = fetchMock.mock.calls.find(([, i]) => (i as RequestInit)?.method === "POST")!;
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ kind: "musholla", name: "Al-Ikhlas Uji", lat: -6.2, lng: 106.8, accuracy: 20 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Tutup" }));
+    expect(screen.queryByRole("button", { name: "Tambahkan di sini" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Tambahkan masjid atau musholla di sini" })).toBeNull();
   });
 });
 

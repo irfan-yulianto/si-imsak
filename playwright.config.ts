@@ -59,6 +59,9 @@ export default defineConfig({
             NOMINATIM_REVERSE_URL: `${MOCK}/nominatim/reverse`,
             // Seven mosques around the fixtures' Jakarta, instead of the whole country
             MOSQUE_DATA_PATH: "e2e/mosques.fixture.tsv",
+            // Suggestions become issues of the mock's GitHub
+            SUGGESTION_GITHUB_API: `${MOCK}/github`,
+            SUGGESTION_GITHUB_TOKEN: "e2e-token",
           },
         },
       ],

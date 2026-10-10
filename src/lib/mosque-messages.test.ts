@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { MOSQUE_MESSAGES, approximateLocationHint, cityCentreLabel, gpsHint, noMosquesMessage, platformOf } from "./mosque-messages";
+import {
+  MOSQUE_MESSAGES,
+  approximateLocationHint,
+  cityCentreLabel,
+  gpsHint,
+  noMosquesMessage,
+  platformOf,
+  suggestionExists,
+  suggestionIntro,
+  suggestionSent,
+} from "./mosque-messages";
 
 describe("platformOf", () => {
   it("tells Android and iOS apart from the rest", () => {
@@ -44,5 +54,14 @@ describe("the finder's other messages", () => {
   it("labels a city's centre, and says when it isn't the user's position", () => {
     expect(cityCentreLabel("KOTA JAKARTA", true)).toBe("Sekitar pusat KOTA JAKARTA");
     expect(cityCentreLabel("KOTA JAKARTA", false)).toBe("Sekitar pusat KOTA JAKARTA, bukan lokasi Anda");
+  });
+
+  it("explains a suggestion: what is sent, what was taken, and what is listed already", () => {
+    expect(suggestionIntro(11.6)).toBe(
+      "Yang dikirim: jenis, nama, jalan, dan posisi Anda sekarang (±12 m), tanpa identitas Anda. Usulan diperiksa dulu sebelum masuk ke data, dan Anda melepaskannya ke domain publik (CC0)."
+    );
+    expect(suggestionSent(12)).toBe("Terima kasih. Usulan #12 diterima dan akan diperiksa dulu; bila sesuai, masuk ke data dalam satu–dua minggu.");
+    expect(suggestionSent(0)).toBe("Terima kasih. Usulan Anda diterima dan akan diperiksa dulu; bila sesuai, masuk ke data dalam satu–dua minggu.");
+    expect(suggestionExists("Masjid Uji")).toBe("Sudah tercatat: Masjid Uji. Bila datanya keliru, laporkan di OpenStreetMap.");
   });
 });

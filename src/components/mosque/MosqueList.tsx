@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Mosque } from "@/types";
 import { formatDistance, formatRadius } from "@/lib/mosques";
-import { MEDIUM_M, atPlace } from "@/lib/geofix";
+import { MEDIUM_M, SHARP_M, atPlace } from "@/lib/geofix";
+import { NEAR_PLACE_M } from "@/lib/mosque-contrib";
 import { roundCoord } from "@/lib/constants";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
 import { MosqueIcon } from "@/components/ui/Icons";
@@ -13,6 +14,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import Button, { buttonClass } from "@/components/ui/Button";
 import { cx } from "@/components/ui/cx";
 import { ExternalLinkIcon, NavigationIcon } from "./icons";
+import SuggestPlace from "./SuggestPlace";
 
 /** Results shown at first, and added by each "Tampilkan lebih banyak" */
 const PAGE = 20;
@@ -21,7 +23,7 @@ const PAGE = 20;
  * The search's outcome — loading, a failure, the mosques — and the ways to search further.
  * Rendered as siblings of the controls card (the page spaces them evenly).
  */
-export default function MosqueList({ mosques, loading, error, coords, accuracy, onRetry }: {
+export default function MosqueList({ mosques, loading, error, coords, accuracy, suggestions, onRetry }: {
   /** Nearest first */
   mosques: Mosque[];
   loading: boolean;
@@ -30,9 +32,18 @@ export default function MosqueList({ mosques, loading, error, coords, accuracy, 
   coords: { lat: number; lng: number } | null;
   /** How well that position is known (m) when it is the GPS position, else null */
   accuracy: number | null;
+  /** The server takes suggestions, and the position is the user's own */
+  suggestions: boolean;
   onRetry: () => void;
 }) {
   const [shown, setShown] = useState(PAGE);
+  // Suggesting the place the user stands at: the form is open, or one was sent from here
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggested, setSuggested] = useState(false);
+  // Only from a sharp fix with nothing listed within NEAR_PLACE_M of it (nearest first)
+  const canSuggest =
+    suggestions && !suggested && coords !== null && accuracy !== null && accuracy <= SHARP_M &&
+    (mosques.length === 0 || mosques[0].distance > NEAR_PLACE_M);
 
   // Links to other sites carry the position rounded to ~110 m, like the search itself
   const at = coords ? `${roundCoord(coords.lat)},${roundCoord(coords.lng)}` : null;
@@ -142,6 +153,11 @@ export default function MosqueList({ mosques, loading, error, coords, accuracy, 
             <span className="sr-only"> (buka di tab baru)</span>
           </a>
 
+          {/* Open until the user closes it, thank-you included; only the way in depends on canSuggest */}
+          {suggesting && coords !== null && accuracy !== null && (
+            <SuggestPlace coords={coords} accuracy={accuracy} onSent={() => setSuggested(true)} onClose={() => setSuggesting(false)} />
+          )}
+
           {/* The data's sources (their licenses ask for this), and a way to add what they lack */}
           <p className="text-center text-xs leading-relaxed text-fg-subtle">
             {mosques.length > 0 &&
@@ -162,8 +178,16 @@ export default function MosqueList({ mosques, loading, error, coords, accuracy, 
             {noteUrl && (
               <>
                 .{" "}Ada yang belum tercantum?{" "}
+                {canSuggest && !suggesting && (
+                  <>
+                    <button type="button" onClick={() => setSuggesting(true)} className="focus-ring cursor-pointer underline hover:text-accent-fg">
+                      Tambahkan di sini
+                    </button>{" "}
+                    atau{" "}
+                  </>
+                )}
                 <a href={noteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-fg">
-                  Laporkan di OpenStreetMap
+                  {canSuggest && !suggesting ? "laporkan di OpenStreetMap" : "Laporkan di OpenStreetMap"}
                   <span className="sr-only"> (buka di tab baru)</span>
                 </a>
               </>

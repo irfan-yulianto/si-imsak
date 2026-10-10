@@ -14,6 +14,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
   - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat: GPS diberi waktu satu menit untuk mengunci sampai ±50 m, dan pembacaan yang lebih kasar tidak menimpa fix yang lebih tajam. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
   - Jarak ditampilkan sejujur posisinya: dari fix yang lebih kasar dari 300 m jarak dibulatkan ("~300 m"), dan dari lokasi perkiraan (izin lokasi perkiraan di Android/iOS, ±2 km) hanya batas atasnya ("≤ 2.5 km"), dengan petunjuk mengaktifkan lokasi akurat.
   - Untuk masjid yang denah bangunannya dipetakan, jarak diukur ke dindingnya, bukan ke tengah halamannya. Dari fix yang akurat, masjid yang dindingnya dalam 30 m (atau sejauh akurasi fix) berlabel "Di lokasi Anda".
+  - Yang berdiri di masjid atau musholla yang belum tercatat (fix ≤50 m, tidak ada tempat tercatat dalam 60 m) bisa mengusulkannya lewat "Tambahkan di sini"; usulan diperiksa pemilik sebagai issue GitHub sebelum masuk ke data (lihat "Data masjid").
   - Titik dan bangunan untuk masjid yang sama ditampilkan sekali, dan musholla dikenali dari namanya.
 - **Deteksi Lokasi** — Geolocation otomatis dengan reverse geocoding sampai tingkat kota/kabupaten, database 514 kota/kabupaten di seluruh Indonesia
 - **Pencarian Kota** — Cari kota/kabupaten dari database Kemenag RI via MyQuran API v3
@@ -83,7 +84,8 @@ src/
 │   ├── api/
 │   │   ├── cities/route.ts      # Proxy pencarian kota ke MyQuran API v3
 │   │   ├── geocode/route.ts     # Reverse geocoding: koordinat → kota/kabupaten (Nominatim)
-│   │   ├── mosques/route.ts     # Masjid terdekat dari dataset (posisi dibulatkan ±1 km; meta.coverage), juga format lama ber-radius
+│   │   ├── mosques/route.ts     # Masjid terdekat dari dataset (posisi dibulatkan ±1 km; meta.coverage, meta.suggestions), juga format lama ber-radius
+│   │   ├── mosques/suggest/route.ts # Usulan masjid/musholla dari pengguna → issue GitHub (POST; aktif bila SUGGESTION_GITHUB_TOKEN terpasang)
 │   │   ├── schedule/route.ts    # Proxy jadwal sholat ke MyQuran API v3 (1 panggilan bulanan + fallback per hari)
 │   │   └── time/route.ts        # Jam server untuk sinkronisasi waktu klien
 │   ├── layout.tsx               # Root layout (font, metadata, analytics, theme init)
@@ -159,28 +161,29 @@ data/                            # data/mosques.tsv (ODbL dan CDLA-Permissive-2.
 - **Content Security Policy (CSP)** — Whitelist ketat untuk script, connect, image, dan font sources
 - **HSTS** — Strict-Transport-Security dengan preload (max-age 2 tahun)
 - **Security Headers** — X-Frame-Options (DENY), X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy; route API juga mengirim Cross-Origin-Resource-Policy. Header `X-App-Version` menyebut deploy mana yang menjawab
-- **Rate Limiting** — Sliding window per IP dan per route di memori (30 req/menit untuk jadwal dan pencarian kota, 60 req/menit untuk masjid karena banyak pengguna seluler berbagi satu IP dan datanya ada di memori, 10 req/menit untuk geocode). Jawaban 429 menyertakan `Retry-After`. Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment). Panggilan ke Nominatim dibatasi 1 per detik per instance, sesuai kebijakan pemakaiannya
-- **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius hanya 2, 3, 4, 6, 8, atau 10 km)
+- **Rate Limiting** — Sliding window per IP dan per route di memori (30 req/menit untuk jadwal dan pencarian kota, 60 req/menit untuk masjid karena banyak pengguna seluler berbagi satu IP dan datanya ada di memori, 10 req/menit untuk geocode, 3 usulan/menit untuk `/api/mosques/suggest`). Jawaban 429 menyertakan `Retry-After`. Ini hanya lapis tipis, karena tiap instance serverless punya memori sendiri; perlindungan utamanya adalah cache CDN dan aturan Vercel Firewall (lihat Deployment). Panggilan ke Nominatim dibatasi 1 per detik per instance, sesuai kebijakan pemakaiannya
+- **Input Validation** — Validasi ketat pada semua API routes (MD5 city_id, koordinat dalam batas Indonesia, radius hanya 2, 3, 4, 6, 8, atau 10 km). Usulan masjid hanya diterima sebagai JSON dari halaman sendiri (`Content-Type`, `Sec-Fetch-Site`), paling besar 2 KB, dengan nama dan jalan 2–80 karakter dari huruf, angka, spasi, dan tanda baca biasa (tanpa markdown, tautan, atau mention), posisi di Indonesia dengan akurasi ≤50 m, dan tidak ada tempat tercatat dalam 60 m
 - **Request Timeout** — Setiap panggilan upstream punya batas waktu dan satu retry. `/api/schedule` selesai paling lama 8 detik; saat MyQuran down ia membalas 502 dengan `Retry-After` setelah paling banyak 3 panggilan, lalu menahan panggilan berikutnya selama 15 detik
 - **Service Worker Versioning** — Worker didaftarkan sebagai `/sw.js?v=<build id>`, jadi setiap deploy memasang worker dan cache baru; cache lama dihapus saat aktivasi. Versi baru menunggu sampai pengguna menekan "Muat ulang" pada notifikasi pembaruan
-- **No Personal Data** — Tidak menyimpan data personal pengguna di server
+- **No Personal Data** — Tidak menyimpan data personal pengguna di server. Usulan masjid yang pengguna kirim sendiri menjadi issue GitHub publik, tanpa identitas pengirimnya
 
 Kerentanan dilaporkan secara privat; lihat [SECURITY.md](SECURITY.md).
 
 ## Privasi
 
-Si-Imsak tidak punya akun maupun database. Data yang dikirim saat aplikasi dipakai:
+Si-Imsak tidak punya akun maupun database; usulan masjid dari pengguna disimpan sebagai issue GitHub di repo ini. Data yang dikirim saat aplikasi dipakai:
 
 | Penerima | Data | Kapan |
 |----------|------|-------|
-| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 2 desimal (±1 km) untuk mendeteksi kota dan mencari masjid | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid |
+| Server Si-Imsak (Vercel) | ID kota, tahun dan bulan; kata kunci pencarian kota; koordinat yang dibulatkan ke 2 desimal (±1 km) untuk mendeteksi kota dan mencari masjid; isi usulan masjid (jenis, nama, jalan, posisi persis saat mengirim, akurasinya) | Memuat jadwal, mencari kota, mendeteksi kota dari GPS, mencari masjid, mengirim usulan masjid |
 | MyQuran | ID kota dan periode, kata kunci pencarian kota | Diteruskan oleh server, jadi MyQuran melihat server Vercel, bukan IP pengguna |
 | Nominatim (OpenStreetMap) | Koordinat yang dibulatkan ke 2 desimal (±1 km) | Mendeteksi kota dari GPS, lewat server |
+| GitHub (issue publik di repo ini), hanya bila mengirim usulan | Jenis, nama, dan jalan yang diketik; posisi GPS saat itu (5 desimal, ±1 m) beserta akurasinya; waktu kirim. Tanpa IP, nama, maupun akun pengirim | Mengirim usulan masjid atau musholla lewat "Tambahkan di sini", lewat server |
 | Google Maps dan OpenStreetMap, hanya bila tautannya dibuka | Koordinat masjid yang dituju (Navigasi), atau area pencarian yang dibulatkan ke 3 desimal (±110 m: "Cari lebih banyak di Google Maps", "Laporkan di OpenStreetMap") | Membuka tab baru di situs mereka |
 | Vercel Analytics & Speed Insights | Kunjungan halaman dan metrik performa, tanpa cookie | Setiap kunjungan |
 | Microsoft Clarity (hanya jika `NEXT_PUBLIC_CLARITY_ID` diisi) | Rekaman interaksi dan heatmap, memakai cookie. Elemen yang memuat lokasi (pencarian dan prompt kota, nama kota di countdown, koordinat, pencarian dan daftar masjid) ditandai `data-clarity-mask` sehingga isinya tidak terekam. Saat halaman error tampil, sesinya diberi tanda `app_error` beserta digest error (kode acak tanpa data pribadi) | Setiap kunjungan |
 
-Log request Vercel mencatat IP dan URL, termasuk koordinat yang dibulatkan, sesuai kebijakan retensi log Vercel. Koordinat GPS tidak disimpan di server.
+Log request Vercel mencatat IP dan URL, termasuk koordinat yang dibulatkan, sesuai kebijakan retensi log Vercel. Koordinat GPS tidak disimpan di server; yang pengguna kirim sendiri sebagai usulan masjid tersimpan di issue GitHub (baris GitHub di atas), tanpa IP pengirim, dan log server hanya mencatat nomor issue-nya.
 
 Yang disimpan di perangkat (localStorage, bisa dihapus lewat pengaturan browser):
 
@@ -205,6 +208,8 @@ npm run build
 
 `vercel.json` menjalankan function di region Singapura (`sin1`), dekat pengguna dan MyQuran. Vercel memakai Node.js 22 sesuai `engines` di `package.json`. Server menulis log JSON satu baris per kejadian (`src/lib/log.ts`, `src/instrumentation.ts`); cari di **Vercel → Logs**, misalnya dengan `"route":"schedule"`.
 
+**Usulan masjid.** Fitur "Tambahkan di sini" hidup bila variabel `SUGGESTION_GITHUB_TOKEN` terpasang di Vercel: fine-grained personal access token yang hanya mengakses repo ini dengan izin *Issues: Read and write* (buat di GitHub → Settings → Developer settings → Fine-grained tokens; beri kedaluwarsa dan pengingat untuk memperbaruinya, karena token yang mati hanya tampak di log sebagai 401). Variabel baru terbaca setelah deploy berikutnya. Tanpa token, `/api/mosques` menjawab `meta.suggestions: false`, tombolnya tidak tampil, dan endpoint menjawab 503. `SUGGESTION_GITHUB_REPO` (default repo ini) berguna untuk fork; `SUGGESTION_GITHUB_API` hanya untuk tes, karena mengarahkan token ke alamat lain.
+
 API routes mengirim header `Cache-Control` dengan `s-maxage` supaya CDN Vercel melayani request berulang tanpa memanggil function maupun upstream API:
 
 | Route | Cache CDN |
@@ -213,6 +218,7 @@ API routes mengirim header `Cache-Control` dengan `s-maxage` supaya CDN Vercel m
 | `/api/cities` | 24 jam + stale-while-revalidate 7 hari |
 | `/api/geocode` | 24 jam (koordinat dibulatkan ke 2 desimal) |
 | `/api/mosques` | 24 jam + stale-while-revalidate 7 hari (koordinat dibulatkan ke 2 desimal); deploy baru (mis. data mingguan) memulai cache baru |
+| `/api/mosques/suggest` | `no-store` (POST) |
 | `/api/time` | `no-store` |
 
 ### Rate limit di Vercel Firewall
@@ -254,7 +260,7 @@ node scripts/check-bundle-size.mjs
 
 ### Tes end-to-end
 
-Tes di `e2e/` berjalan terhadap `next start`. MyQuran dan Nominatim diganti `e2e/mock-upstream.mjs` (lewat env `MYQURAN_API_BASE`, `NOMINATIM_REVERSE_URL`), dan pencarian masjid membaca `e2e/mosques.fixture.tsv` (lewat `MOSQUE_DATA_PATH`), jadi tidak ada request ke internet. Setiap tes gagal bila ada error di console, error halaman, atau pelanggaran CSP.
+Tes di `e2e/` berjalan terhadap `next start`. MyQuran, Nominatim, dan GitHub diganti `e2e/mock-upstream.mjs` (lewat env `MYQURAN_API_BASE`, `NOMINATIM_REVERSE_URL`, `SUGGESTION_GITHUB_API`), dan pencarian masjid membaca `e2e/mosques.fixture.tsv` (lewat `MOSQUE_DATA_PATH`), jadi tidak ada request ke internet. Setiap tes gagal bila ada error di console, error halaman, atau pelanggaran CSP.
 
 ```bash
 npx playwright install chromium   # sekali saja
@@ -316,7 +322,7 @@ Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/m
 
 ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture berbentuk `o` diikuti ID Overture tanpa tanda hubung. ID dari usulan pengguna berbentuk `c` diikuti nomor issue-nya.
 
-**Usulan pengguna.** Setiap usulan adalah satu issue berlabel `usulan-masjid` (dibuat aplikasi; lihat rilis berikutnya) yang memuat nama, jenis, jalan, posisi, dan tautan peta. Pemilik memeriksanya di peta, lalu memberi label `usulan-disetujui` atau `usulan-ditolak` dan menutup issue-nya; bila ada yang perlu dibetulkan, blok JSON di badan issue diubah dulu. Usulan masuk ke dataset pada build berikutnya dan tampil berlabel "Usulan pengguna"; mengganti labelnya menjadi `usulan-ditolak` menariknya kembali. Kontributor melepaskan usulannya ke domain publik (CC0), jadi ikut lisensi ODbL dataset.
+**Usulan pengguna.** Setiap usulan adalah satu issue berlabel `usulan-masjid` (dibuat aplikasi lewat `POST /api/mosques/suggest`, hanya dari fix ≤50 m tanpa tempat tercatat dalam 60 m; paling banyak 3 per menit per IP, dan berhenti saat 50 usulan terbuka menunggu) yang memuat nama, jenis, jalan, posisi, dan tautan peta. Pemilik memeriksanya di peta, lalu memberi label `usulan-disetujui` atau `usulan-ditolak` dan menutup issue-nya; bila ada yang perlu dibetulkan, blok JSON di badan issue diubah dulu. Usulan masuk ke dataset pada build berikutnya dan tampil berlabel "Usulan pengguna"; mengganti labelnya menjadi `usulan-ditolak` menariknya kembali. Kontributor melepaskan usulannya ke domain publik (CC0), jadi ikut lisensi ODbL dataset.
 
 **Kolom.** `id`, `lat`, `lng` (pusat kotak pembatas, bilangan bulat 1e-5°), `type`, `name`, `street`, lalu `dlat` dan `dlng`: setengah lebar denah bangunan dalam 1e-5° untuk way dan relation OpenStreetMap, 0 untuk titik dan tempat Overture. Jarak diukur ke tepi kotak itu, jadi di gerbang masjid besar jaraknya ke dindingnya, bukan ke tengah halamannya. Denah yang lebih lebar dari 0,005° (~550 m, `MAX_HALF_EXTENT_DEG`) adalah kompleks atau area yang salah, dan disimpan sebagai titik. File dengan header lama (tanpa dua kolom terakhir) tetap terbaca.
 

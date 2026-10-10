@@ -2,6 +2,18 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
+## [2.7.0] — 2026-10-10 ([#504](https://github.com/irfan-yulianto/si-imsak/pull/504))
+
+Kontribusi pengguna: masjid atau musholla yang belum tercatat bisa diusulkan dari aplikasi, tepat dari tempatnya.
+
+### Ditambahkan
+- **"Tambahkan di sini".** Di bawah daftar, bila fix GPS akurat (±50 m atau lebih baik), tidak ada tempat tercatat dalam 60 m, dan server menerima usulan (`meta.suggestions` dari `/api/mosques`): form jenis (Masjid/Musholla), nama, dan jalan. Yang dikirim: jenis, nama, jalan, dan posisi saat itu, tanpa identitas pengirim; pengusul melepaskannya ke domain publik (CC0). Setelah terkirim, nomor issue-nya disebut.
+- **`POST /api/mosques/suggest`.** Memeriksa isian (hanya JSON dari halaman sendiri, paling besar 2 KB; nama dan jalan 2–80 karakter huruf, angka, spasi, dan tanda baca biasa; posisi di Indonesia; akurasi ≤50 m), menolak bila ada tempat tercatat dalam 60 m ("Sudah tercatat: …"), lalu membuat issue berlabel `usulan-masjid` lewat token `SUGGESTION_GITHUB_TOKEN`. Paling banyak 3 per menit per IP, dan berhenti saat 50 usulan terbuka menunggu pemilik. Kegagalan GitHub dipetakan (token mati → fitur mati; rate limit → coba lagi nanti), dan pembuatan issue tidak pernah diulang otomatis. Tanpa token, fitur mati dan tombolnya tidak tampil.
+- Mock GitHub untuk E2E (`SUGGESTION_GITHUB_API`), skenario E2E pengiriman usulan, dan pemeriksaan aksesibilitas form.
+
+### Privasi
+- Posisi GPS pengguna kini bisa keluar dari server bila pengguna sendiri mengirim usulan: posisi (5 desimal), akurasi, dan waktu kirim tersimpan publik di issue GitHub repo ini, tanpa IP atau nama; log server hanya mencatat nomor issue. README (tabel privasi, Deployment) dan `.env.example` menjelaskannya.
+
 ## [2.6.0] — 2026-10-10 ([#503](https://github.com/irfan-yulianto/si-imsak/pull/503))
 
 Langkah pertama kontribusi pengguna: dataset bisa memuat masjid dan musholla yang diusulkan pengguna aplikasi dan disetujui pemilik. Tombol usulannya sendiri menyusul di rilis berikutnya; sampai saat itu dataset tidak berubah.

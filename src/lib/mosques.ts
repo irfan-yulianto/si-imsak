@@ -54,6 +54,8 @@ export interface MosqueAnswer {
   coverage: number;
   /** Nearest to `center` first */
   mosques: Mosque[];
+  /** The server takes suggestions of places it doesn't list */
+  suggestions?: boolean;
 }
 
 /**
