@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cityCentreLabel } from "@/lib/mosque-messages";
+import { MEDIUM_M, SHARP_M } from "@/lib/geofix";
 import { CITIES, type CityCoord } from "@/lib/cities";
 import type { GpsStatus } from "@/hooks/useGeolocationWatch";
 import { MapPinIcon, MosqueIcon } from "@/components/ui/Icons";
@@ -14,8 +15,8 @@ import CityCombobox from "@/components/ui/CityCombobox";
 
 function AccuracyBadge({ accuracy }: { accuracy: number }) {
   const meters = Math.round(accuracy);
-  if (accuracy <= 50) return <Badge tone="accent">GPS akurat ±{meters}m</Badge>;
-  if (accuracy <= 300) return <Badge tone="warning">Akurasi sedang ±{meters}m</Badge>;
+  if (accuracy <= SHARP_M) return <Badge tone="accent">GPS akurat ±{meters}m</Badge>;
+  if (accuracy <= MEDIUM_M) return <Badge tone="warning">Akurasi sedang ±{meters}m</Badge>;
   return <Badge tone="danger">Akurasi rendah ±{meters}m</Badge>;
 }
 
@@ -35,7 +36,7 @@ function searchCityTable(query: string): CityCoord[] {
 
 /** The mosque finder's card: where it searches, and the ways to change that */
 export default function MosqueControls({
-  mode, placeName, accuracy, canRefresh, refreshing, gpsStatus, gpsError, onRefresh, onStartGps, onStopGps, onPickCity,
+  mode, placeName, accuracy, canRefresh, refreshing, gpsStatus, gpsError, hint, onRefresh, onStartGps, onStopGps, onPickCity,
 }: {
   /** Around the GPS position, a city picked here, or the selected city's centre */
   mode: "gps" | "picked" | "centre";
@@ -48,6 +49,8 @@ export default function MosqueControls({
   refreshing: boolean;
   gpsStatus: GpsStatus;
   gpsError: string | null;
+  /** Once the GPS has settled on a rough fix: why, and what to do about it */
+  hint: string | null;
   onRefresh: () => void;
   onStartGps: () => void;
   onStopGps: () => void;
@@ -84,7 +87,9 @@ export default function MosqueControls({
         <div className="mb-3 flex gap-2">
           <div role="status" className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-control bg-accent px-4 text-sm font-semibold text-on-accent">
             <Spinner size="sm" />
-            {gpsStatus === "locating" ? "Mendeteksi lokasi…" : "Mempertajam lokasi…"}
+            {gpsStatus === "locating" || accuracy === null
+              ? "Mendeteksi lokasi…"
+              : `Mempertajam lokasi… ±${Math.round(accuracy)}m`}
           </div>
           <Button variant="secondary" onClick={onStopGps} aria-label="Batal mendeteksi lokasi">
             Batal
@@ -131,6 +136,10 @@ export default function MosqueControls({
         <div className="mt-2">
           <AccuracyBadge accuracy={accuracy} />
         </div>
+      )}
+
+      {mode === "gps" && hint && (
+        <p role="status" className="mt-2 text-xs leading-relaxed text-fg-muted">{hint}</p>
       )}
     </Card>
   );

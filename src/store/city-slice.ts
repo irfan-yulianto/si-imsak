@@ -7,6 +7,7 @@ import { getTimezone } from "@/lib/timezone";
 import { reverseGeocodeCity, searchCities } from "@/lib/api";
 import { KEYS, writeJson, writeRaw } from "@/lib/storage";
 import { MESSAGES } from "@/lib/messages";
+import { betterFix, freshFix } from "@/lib/geofix";
 
 export interface CityLoadResult {
   ok: boolean;
@@ -86,7 +87,9 @@ export const createCitySlice: StateCreator<AppState, [], [], CitySlice> = (set, 
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const { latitude, longitude, accuracy } = pos.coords;
-          get().setUserCoords({ lat: latitude, lng: longitude, accuracy, at: pos.timestamp || Date.now() });
+          // A rough reading doesn't replace a fresh, sharper fix the mosque finder has
+          const fix: GeoFix = { lat: latitude, lng: longitude, accuracy, at: pos.timestamp || Date.now() };
+          if (betterFix(freshFix(get().userCoords), fix)) get().setUserCoords(fix);
 
           // Reverse geocoding first, then the local table of city centres
           let geocodedCity = "";

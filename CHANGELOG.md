@@ -2,6 +2,21 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
+## [2.4.0] — 2026-10-10 ([#500](https://github.com/irfan-yulianto/si-imsak/pull/500))
+
+Pencari masjid lebih sabar menunggu GPS dan lebih jujur soal jarak. Dua temuan dari HP pemilik: badge "Akurasi rendah ±2000m" dengan jarak meter-presisi yang sebenarnya salah, dan "±100 m" yang tidak pernah membaik walau lokasi akurat sudah aktif.
+
+### Diubah
+- **GPS diberi waktu satu menit.** Sebelumnya watch berhenti 20 detik setelah pembacaan pertama, padahal pembacaan pertama biasanya dari Wi-Fi atau jaringan (±100 m) dan GPS butuh 30–60 detik untuk mengunci. Kini watch berjalan sampai ada pembacaan ±50 m, atau satu menit setelah pembacaan pertama. Statusnya menampilkan akurasi terkini ("Mempertajam lokasi… ±120m").
+- **Pembacaan yang lebih kasar tidak menimpa fix yang lebih tajam.** Berlaku untuk watch otomatis, tombol Perbarui, dan deteksi kota: pembacaan baru dipakai hanya bila lebih akurat, atau jelas di tempat lain. Fix yang ada tetap dipakai untuk mencari selama GPS mempertajamnya.
+- **Perbarui Lokasi GPS selalu minta pembacaan baru.** Sebelumnya browser boleh mengembalikan fix dari cache sampai 30 detik, sehingga menekan tombol berulang tidak mengubah apa-apa.
+- **Watch mulai dari fix yang ada** walau browser tidak bisa menjawab Permissions API: fix yang ada membuktikan izinnya sudah diberikan.
+
+### Ditambahkan
+- **Petunjuk lokasi perkiraan.** Bila setelah satu menit akurasinya tetap 1 km atau lebih (Android melaporkan tepat 2000 m untuk izin "lokasi perkiraan"), muncul penjelasan beserta jalur pengaturannya: Android "Gunakan lokasi akurat", iOS "Lokasi Persis".
+- **Petunjuk GPS belum mengunci** bila setelah satu menit akurasinya masih lebih buruk dari 50 m.
+- **Jarak sejujur posisinya.** Dari fix yang lebih kasar dari 300 m, jarak dibulatkan ke 100 m atau 0,5 km ("~300 m", "~1.5 km"); dari lokasi perkiraan hanya batas atasnya ("≤ 2.5 km"), dan keterangan daftar menyebut "diukur dalam garis lurus dari posisi ±2 km".
+
 ## [2.3.2] — 2026-10-09 ([#497](https://github.com/irfan-yulianto/si-imsak/pull/497))
 
 ### Diperbaiki

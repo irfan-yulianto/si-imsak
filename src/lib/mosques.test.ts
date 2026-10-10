@@ -77,6 +77,20 @@ describe("formatDistance", () => {
   it("formats large distance", () => {
     expect(formatDistance(10000)).toBe("10.0 km");
   });
+
+  it("is as rough as the position it is measured from", () => {
+    expect(formatDistance(129, 300)).toBe("129 m");
+    expect(formatDistance(129, 400)).toBe("~100 m");
+    expect(formatDistance(40, 400)).toBe("~100 m");
+    expect(formatDistance(950, 400)).toBe("~1 km");
+    expect(formatDistance(1300, 400)).toBe("~1.5 km");
+  });
+
+  it("gives only an upper bound from an approximate position", () => {
+    expect(formatDistance(129, 2000)).toBe("≤ 2.5 km");
+    expect(formatDistance(600, 2000)).toBe("≤ 3 km");
+    expect(formatDistance(0, 1000)).toBe("≤ 1 km");
+  });
 });
 
 describe("formatRadius", () => {
