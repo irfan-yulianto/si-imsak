@@ -36,9 +36,11 @@ export default function MonthNav() {
 
   return (
     <div className="z-30 flex h-[var(--monthnav-h)] items-center justify-between gap-2 rounded-t-card border-b border-border bg-surface px-2 md:sticky md:top-[calc(var(--header-h)+var(--safe-t)+0.75rem)]">
-      <Button variant="secondary" size="icon" onClick={() => goTo(-1)} disabled={!canGoPrev} aria-label="Bulan sebelumnya">
-        <ChevronLeftIcon size={16} />
-      </Button>
+      <span className="flex" title={!canGoPrev ? "Jadwal sebelumnya tidak tersedia" : undefined}>
+        <Button variant="secondary" size="icon" onClick={() => goTo(-1)} disabled={!canGoPrev} aria-label="Bulan sebelumnya">
+          <ChevronLeftIcon size={16} />
+        </Button>
+      </span>
 
       <div className="flex min-w-0 flex-col items-center">
         <div className="flex items-center gap-2">
@@ -55,9 +57,11 @@ export default function MonthNav() {
         <p className="truncate text-xs font-medium text-gold">{hijriLabel}</p>
       </div>
 
-      <Button variant="secondary" size="icon" onClick={() => goTo(1)} disabled={!canGoNext} aria-label="Bulan berikutnya">
-        <ChevronRightIcon size={16} />
-      </Button>
+      <span className="flex" title={!canGoNext ? "Jadwal berikutnya tidak tersedia" : undefined}>
+        <Button variant="secondary" size="icon" onClick={() => goTo(1)} disabled={!canGoNext} aria-label="Bulan berikutnya">
+          <ChevronRightIcon size={16} />
+        </Button>
+      </span>
     </div>
   );
 }
