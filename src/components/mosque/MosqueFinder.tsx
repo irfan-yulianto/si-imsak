@@ -3,15 +3,14 @@
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useStore } from "@/store/useStore";
 import { visibleMosques } from "@/lib/mosques";
+import { SHARP_M, freshFix } from "@/lib/geofix";
+import { gpsHint, platformOf } from "@/lib/mosque-messages";
 import { findCityCoords, type CityCoord } from "@/lib/cities";
 import { useGeolocationPermission } from "@/hooks/useGeolocationPermission";
-import { SHARP_M, useGeolocationWatch } from "@/hooks/useGeolocationWatch";
+import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
 import { useMosqueSearch } from "@/hooks/useMosqueSearch";
 import MosqueControls from "./MosqueControls";
 import MosqueList from "./MosqueList";
-
-/** A GPS fix older than this is sharpened again when the finder opens or comes back (ms) */
-const FRESH_MS = 2 * 60_000;
 
 export default function MosqueFinder() {
   const cityName = useStore((s) => s.location.cityName);
@@ -20,6 +19,8 @@ export default function MosqueFinder() {
   const permission = useGeolocationPermission();
   const gps = useGeolocationWatch(setUserCoords);
   const { answer, loading, error, follow, refresh } = useMosqueSearch();
+  // Whose settings a hint names (the finder only renders in the browser)
+  const [platform] = useState(() => platformOf(navigator.userAgent));
 
   // A city picked in the search box wins until the GPS gives a new fix, or another city
   // is selected for the schedule
@@ -56,17 +57,23 @@ export default function MosqueFinder() {
     if (coords) follow({ coords, basis });
   }, [coords, basis, follow]);
 
-  // Where the site may already read the location, the GPS starts by itself: when the
-  // finder opens and when the app comes back to the foreground, unless the fix in hand
-  // is recent and sharp. Should it fail, a fix in hand stays without a message.
+  // Where the site may read the location, the GPS starts by itself: when the finder
+  // opens and when the app comes back to the foreground, unless the fix in hand is
+  // recent and sharp. A rough or old fix in hand is searched from meanwhile, and only a
+  // better reading replaces it. Should the watch fail, a fix in hand stays without a
+  // message.
   const sharpenFix = useEffectEvent(() => {
-    if (permission !== "granted" || picked || gps.status !== "idle") return;
-    if (fix && Date.now() - fix.at < FRESH_MS && fix.accuracy <= SHARP_M) return;
-    gps.start({ quiet: fix !== null });
+    if (picked || gps.status !== "idle") return;
+    // A fix in hand shows the location may be read, even where the browser can't say
+    if (permission !== "granted" && !fix) return;
+    const seed = freshFix(fix);
+    if (seed && seed.accuracy <= SHARP_M) return;
+    gps.start({ quiet: fix !== null, seed });
   });
+  const hasFix = fix !== null;
   useEffect(() => {
-    if (permission === "granted") sharpenFix();
-  }, [permission]);
+    if (permission === "granted" || hasFix) sharpenFix();
+  }, [permission, hasFix]);
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") sharpenFix();
@@ -75,10 +82,12 @@ export default function MosqueFinder() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
+  // "Perbarui Lokasi GPS": a new reading, not one the device has from before, and only
+  // if it betters a fresh fix in hand
   const startGps = () => {
     setPickedCity(null);
     setGpsCancelled(false);
-    gps.start();
+    gps.start({ fresh: true, seed: freshFix(fix) });
   };
 
   const stopGps = () => {
@@ -119,6 +128,7 @@ export default function MosqueFinder() {
           refreshing={loading && current !== null}
           gpsStatus={gps.status}
           gpsError={gps.error}
+          hint={gpsHint(gps.settled, fix?.accuracy ?? null, platform)}
           onRefresh={searchAgain}
           onStartGps={startGps}
           onStopGps={stopGps}
@@ -133,6 +143,7 @@ export default function MosqueFinder() {
           loading={showSkeleton}
           error={error}
           coords={coords}
+          accuracy={mode === "gps" ? (fix?.accuracy ?? null) : null}
           onRetry={searchAgain}
         />
       </div>

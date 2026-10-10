@@ -3,48 +3,56 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MESSAGES } from "@/lib/messages";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
-import { distanceMeters } from "@/lib/mosques";
+import { SHARP_M, betterFix } from "@/lib/geofix";
 import type { GeoFix } from "@/types";
 
-/** A fix this accurate (meters) ends the watch */
-export const SHARP_M = 50;
-/** After the first fix, the watch keeps sharpening it this long at most */
-const REFINE_MS = 20_000;
-/** How long the device may take for a first fix, once the permission is given */
+/**
+ * After the first reading, the watch keeps sharpening the fix this long at most. A
+ * phone's GPS takes 30–60 s to lock from a cold start, longer indoors, while the first
+ * reading, from Wi-Fi or the network, comes within seconds but often ±100 m. Later
+ * readings don't extend the window: the battery is finite, and the button starts over.
+ */
+const REFINE_MS = 60_000;
+/** How long the device may take for a first reading, once the permission is given */
 const FIRST_FIX_MS = 20_000;
 /** For browsers that never answer, e.g. when the permission prompt is dismissed */
 const GIVE_UP_MS = 60_000;
+/** A watch nobody asked for may begin with a reading the device took this long ago */
+const CACHED_FIX_MS = 30_000;
 
-/** idle: not watching; locating: no fix yet; refining: sharpening the first fix */
+/** idle: not watching; locating: no fix yet; refining: sharpening the fix in hand */
 export type GpsStatus = "idle" | "locating" | "refining";
 
-/**
- * A new fix is taken if it is as accurate as the best so far, or lies too far from it
- * for both to be right (the user moved). A rougher fix of the same spot is ignored.
- */
-function better(best: GeoFix | null, fix: GeoFix): boolean {
-  if (!best || fix.accuracy <= best.accuracy) return true;
-  return distanceMeters(best.lat, best.lng, fix.lat, fix.lng) > best.accuracy + fix.accuracy;
+export interface WatchOptions {
+  /** A failure leaves no message (a watch the user didn't ask for) */
+  quiet?: boolean;
+  /** Only readings taken from now on, none the device has from before (the user asked for an update) */
+  fresh?: boolean;
+  /** The fix in hand: only a reading that betters it goes to `onFix` */
+  seed?: GeoFix | null;
 }
 
 /**
- * Follows the GPS position: each better fix goes to `onFix` as it comes, from the first
- * (usually within a few seconds) until one is accurate to 50 m, or for 20 s after the
- * first. The watch also ends when the page is hidden, to spare the battery.
+ * Follows the GPS position: each better reading goes to `onFix` as it comes, from the
+ * first (usually within seconds) until one is accurate to 50 m, or for a minute after
+ * the first. The watch also ends when the page is hidden, to spare the battery.
  */
 export function useGeolocationWatch(onFix: (fix: GeoFix) => void): {
   status: GpsStatus;
   /** Why the position couldn't be found */
   error: string | null;
-  /** quiet: a failure leaves no message (a watch the user didn't ask for) */
-  start: (options?: { quiet?: boolean }) => void;
+  /** The minute passed without a reading accurate to 50 m: the fix in hand is as good as it gets */
+  settled: boolean;
+  start: (options?: WatchOptions) => void;
   stop: () => void;
 } {
   const [status, setStatus] = useState<GpsStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [settled, setSettled] = useState(false);
   const watchId = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const best = useRef<GeoFix | null>(null);
+  const readings = useRef(0);
   const quiet = useRef(false);
   // Callbacks of a watch that has ended can still arrive: they are ignored
   const ended = useRef(true);
@@ -58,10 +66,13 @@ export function useGeolocationWatch(onFix: (fix: GeoFix) => void): {
     clearTimeout(timer.current);
   }, []);
 
-  const stop = useCallback(() => {
+  const end = useCallback((asGoodAsItGets: boolean) => {
     clear();
     setStatus("idle");
+    setSettled(asGoodAsItGets);
   }, [clear]);
+
+  const stop = useCallback(() => end(false), [end]);
 
   const fail = useCallback((message: string) => {
     stop();
@@ -80,17 +91,19 @@ export function useGeolocationWatch(onFix: (fix: GeoFix) => void): {
     };
   }, [clear, stop]);
 
-  const start = useCallback(({ quiet: silent = false }: { quiet?: boolean } = {}) => {
+  const start = useCallback(({ quiet: silent = false, fresh = false, seed = null }: WatchOptions = {}) => {
     if (!navigator.geolocation) {
       if (!silent) setError(MESSAGES.noGeolocation);
       return;
     }
     clear();
     ended.current = false;
-    best.current = null;
+    best.current = seed;
+    readings.current = 0;
     quiet.current = silent;
-    setStatus("locating");
+    setStatus(seed ? "refining" : "locating");
     setError(null);
+    setSettled(false);
     timer.current = setTimeout(() => fail(MOSQUE_MESSAGES.gpsTimeout), GIVE_UP_MS);
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -101,22 +114,25 @@ export function useGeolocationWatch(onFix: (fix: GeoFix) => void): {
           accuracy: pos.coords.accuracy,
           at: pos.timestamp || Date.now(),
         };
-        if (!better(best.current, fix)) return;
-        const first = best.current === null;
-        best.current = fix;
-        onFix(fix);
-        if (fix.accuracy <= SHARP_M) return stop();
-        if (first) {
+        if (readings.current === 0) {
+          // The device answers: from here it gets a minute to sharpen
           setStatus("refining");
           clearTimeout(timer.current);
-          timer.current = setTimeout(stop, REFINE_MS);
+          timer.current = setTimeout(() => end(true), REFINE_MS);
         }
+        readings.current += 1;
+        if (betterFix(best.current, fix)) {
+          best.current = fix;
+          onFix(fix);
+        }
+        // Sharp enough, be it this reading or the fix in hand: nothing left to wait for
+        if (fix.accuracy <= SHARP_M) stop();
       },
       (err) => {
         if (ended.current) return;
         if (err.code === err.PERMISSION_DENIED) return fail(MOSQUE_MESSAGES.gpsDenied);
-        // Once there is a fix, a later failure takes nothing away
-        if (best.current) return;
+        // Once there is a reading, a later failure takes nothing away
+        if (readings.current > 0) return;
         fail(
           err.code === err.TIMEOUT
             ? MOSQUE_MESSAGES.gpsTimeout
@@ -125,10 +141,9 @@ export function useGeolocationWatch(onFix: (fix: GeoFix) => void): {
               : MOSQUE_MESSAGES.gpsFailed
         );
       },
-      // A fix up to 30 s old is good enough to start with: the first answer comes sooner
-      { enableHighAccuracy: true, timeout: FIRST_FIX_MS, maximumAge: 30_000 }
+      { enableHighAccuracy: true, timeout: FIRST_FIX_MS, maximumAge: fresh ? 0 : CACHED_FIX_MS }
     );
-  }, [clear, stop, fail, onFix]);
+  }, [clear, end, stop, fail, onFix]);
 
-  return { status, error, start, stop };
+  return { status, error, settled, start, stop };
 }

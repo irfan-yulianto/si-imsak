@@ -13,13 +13,13 @@ vi.mock("@/lib/cities", () => ({ getCityGuess: vi.fn() }));
 
 const geoError = (code: number) => ({ code, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 });
 
-function gpsAt(latitude: number, longitude: number) {
+function gpsAt(latitude: number, longitude: number, accuracy = 35) {
   vi.stubGlobal("navigator", {
     onLine: true,
     geolocation: {
       getCurrentPosition: (
         ok: (pos: { coords: { latitude: number; longitude: number; accuracy: number }; timestamp: number }) => void
-      ) => ok({ coords: { latitude, longitude, accuracy: 35 }, timestamp: 1_760_000_000_000 }),
+      ) => ok({ coords: { latitude, longitude, accuracy }, timestamp: 1_760_000_000_000 }),
     },
   });
 }
@@ -65,6 +65,27 @@ describe("detectCity", () => {
     expect(state.location).toEqual(JAKARTA);
     expect(JSON.parse(localStorage.getItem("selectedLocation")!)).toEqual(asCity(JAKARTA));
     expect(Number(localStorage.getItem("locationPermissionDismissed"))).toBeGreaterThan(0);
+  });
+
+  it("keeps a fresh, sharper fix the mosque finder has over its own rougher reading", async () => {
+    const fresh = { lat: -6.17, lng: 106.85, accuracy: 20, at: Date.now() };
+    useStore.setState({ userCoords: fresh });
+    gpsAt(-6.17, 106.85, 35);
+    expect(await useStore.getState().detectCity()).toEqual({ success: true });
+    expect(useStore.getState().userCoords).toBe(fresh);
+  });
+
+  it("replaces a fix that is old, or from elsewhere, with its reading", async () => {
+    useStore.setState({ userCoords: { lat: -6.17, lng: 106.85, accuracy: 20, at: Date.now() - 3 * 60_000 } });
+    gpsAt(-6.17, 106.85, 35);
+    await useStore.getState().detectCity();
+    expect(useStore.getState().userCoords).toMatchObject({ accuracy: 35, at: 1_760_000_000_000 });
+
+    // Bandung a moment ago, Jakarta now: the user moved
+    useStore.setState({ userCoords: { lat: -6.91, lng: 107.61, accuracy: 20, at: Date.now() } });
+    gpsAt(-6.17, 106.85, 35);
+    await useStore.getState().detectCity();
+    expect(useStore.getState().userCoords).toMatchObject({ lat: -6.17, lng: 106.85, accuracy: 35 });
   });
 
   it("asks Nominatim first, and only then the local table of city centres", async () => {

@@ -11,7 +11,8 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **Pencari Masjid Terdekat** — Masjid dan musholla terdekat dari posisi GPS, atau di sekitar pusat kota pilihan, dengan navigasi langsung ke Google Maps.
   - Datanya dari OpenStreetMap, dilengkapi Overture Places untuk masjid yang belum dipetakan di OpenStreetMap, dan dibangun ulang setiap minggu menjadi dataset sendiri (lihat "Data masjid"). Dataset ini dibaca oleh server, tanpa layanan pihak ketiga saat pencarian.
   - Bila izin lokasi sudah diberikan, GPS langsung dipakai tanpa perlu menekan tombol.
-  - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
+  - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat: GPS diberi waktu satu menit untuk mengunci sampai ±50 m, dan pembacaan yang lebih kasar tidak menimpa fix yang lebih tajam. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
+  - Jarak ditampilkan sejujur posisinya: dari fix yang lebih kasar dari 300 m jarak dibulatkan ("~300 m"), dan dari lokasi perkiraan (izin lokasi perkiraan di Android/iOS, ±2 km) hanya batas atasnya ("≤ 2.5 km"), dengan petunjuk mengaktifkan lokasi akurat.
   - Titik dan bangunan untuk masjid yang sama ditampilkan sekali, dan musholla dikenali dari namanya.
 - **Deteksi Lokasi** — Geolocation otomatis dengan reverse geocoding sampai tingkat kota/kabupaten, database 514 kota/kabupaten di seluruh Indonesia
 - **Pencarian Kota** — Cari kota/kabupaten dari database Kemenag RI via MyQuran API v3
@@ -106,7 +107,7 @@ src/
 │   ├── useNextPrayer.ts         # Waktu sholat berikutnya, pengumuman, dan retry data yang hilang
 │   ├── useCountdownTicker.ts    # Digit countdown, ditulis langsung ke DOM tiap detik
 │   ├── useGeolocationPermission.ts # Izin lokasi (Permissions API): GPS dimulai sendiri bila sudah diizinkan
-│   ├── useGeolocationWatch.ts   # GPS untuk pencari masjid (fix terbaik; berhenti di akurasi 50 m atau 20 detik setelah fix pertama)
+│   ├── useGeolocationWatch.ts   # GPS untuk pencari masjid (hanya pembacaan yang lebih baik; berhenti di akurasi 50 m atau satu menit setelah pembacaan pertama)
 │   └── useMosqueSearch.ts       # Pencarian masjid (aturan cakupan: kapan perlu bertanya lagi, retry, pembatalan)
 ├── lib/
 │   ├── api.ts                   # Client API (fetch + timeout + offline cache)
@@ -116,6 +117,7 @@ src/
 │   ├── constants.ts             # Konfigurasi (lokasi default, cache, batas wilayah)
 │   ├── countdown-helpers.ts     # Penentuan waktu sholat berikutnya
 │   ├── geocode.ts               # Nama kota Nominatim → nama kota MyQuran
+│   ├── geofix.ts                # Fix GPS: ambang akurasi (50/300/1000 m), pembacaan mana yang menggantikan fix, batas kesegaran
 │   ├── hijri.ts                 # Konversi kalender Hijriyah (Intl.DateTimeFormat)
 │   ├── http.ts                  # Jawaban JSON, panggilan upstream, gerbang 1 req/detik untuk Nominatim
 │   ├── log.ts                   # Log JSON satu baris untuk route API

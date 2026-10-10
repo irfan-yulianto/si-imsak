@@ -25,22 +25,25 @@ vi.mock("@/lib/cities", () => {
 type Success = (pos: GeolocationPosition) => void;
 type Failure = (err: GeolocationPositionError) => void;
 let onPosition: Success = () => {};
+let onError: Failure = () => {};
 const geolocation = {
-  watchPosition: vi.fn<(success: Success, failure?: Failure) => number>((success) => {
+  watchPosition: vi.fn<(success: Success, failure: Failure, options?: PositionOptions) => number>((success, failure) => {
     onPosition = success;
+    onError = failure;
     return 1;
   }),
   clearWatch: vi.fn(),
 };
+const ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 /** A GPS fix `north` meters north of TEST CITY's centre */
 const gpsFix = (accuracy: number, north = 0) =>
   ({ coords: { latitude: -6.2 + north / 111_200, longitude: 106.8, accuracy }, timestamp: Date.now() }) as GeolocationPosition;
 
 /** What the browser says about the location permission; undefined: no Permissions API */
-function allowLocation(state: PermissionState | undefined) {
+function allowLocation(state: PermissionState | undefined, userAgent = "") {
   const permissions =
     state && { query: vi.fn(async () => ({ state, addEventListener: vi.fn(), removeEventListener: vi.fn() })) };
-  vi.stubGlobal("navigator", { ...navigator, geolocation, permissions });
+  vi.stubGlobal("navigator", { ...navigator, geolocation, permissions, userAgent });
 }
 
 const fetchMock = vi.fn();
@@ -90,6 +93,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("MosqueFinder: where it searches", () => {
@@ -145,7 +149,7 @@ describe("MosqueFinder: where it searches", () => {
     expect(screen.getByText("Sekitar pusat TEST CITY, bukan lokasi Anda")).toBeInTheDocument();
   });
 
-  it("sharpens a rough fix from the city detection", async () => {
+  it("sharpens a rough fix from the city detection, keeping it until a better reading", async () => {
     allowLocation("granted");
     useStore.setState({ userCoords: { lat: -6.2, lng: 106.8, accuracy: 900, at: Date.now() } });
     fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat")]));
@@ -155,6 +159,94 @@ describe("MosqueFinder: where it searches", () => {
     await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
     expect(geolocation.watchPosition).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Akurasi rendah ±900m")).toBeInTheDocument();
+    expect(screen.getByText("Mempertajam lokasi… ±900m")).toBeInTheDocument();
+
+    // A reading no better than the fix in hand changes nothing
+    act(() => onPosition(gpsFix(1000)));
+    expect(screen.getByText("Akurasi rendah ±900m")).toBeInTheDocument();
+    act(() => onPosition(gpsFix(30)));
+    await waitFor(() => expect(screen.getByText("GPS akurat ±30m")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Perbarui Lokasi GPS" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sharpens a rough fix in hand even where the browser can't tell the permission", async () => {
+    allowLocation(undefined);
+    useStore.setState({ userCoords: { lat: -6.2, lng: 106.8, accuracy: 900, at: Date.now() } });
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat")]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
+    expect(geolocation.watchPosition).toHaveBeenCalledTimes(1);
+
+    // Quietly: a failure leaves the fix in hand, without a message
+    act(() => onError({ code: 3, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Akurasi rendah ±900m")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Perbarui Lokasi GPS" })).toBeInTheDocument();
+  });
+
+  it("on Perbarui, asks for a new reading and keeps the fix in hand unless it is bettered", async () => {
+    // The permission is still to be asked for; the sharp fix of a moment ago is in hand
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat")]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Perbarui Lokasi GPS" }));
+    expect(geolocation.watchPosition.mock.calls[0][2]).toMatchObject({ maximumAge: 0 });
+    expect(screen.getByText("Mempertajam lokasi… ±20m")).toBeInTheDocument();
+
+    // A rougher reading of the same spot: the fix in hand stays, and so does the list
+    act(() => onPosition(gpsFix(150)));
+    expect(screen.getByText("GPS akurat ±20m")).toBeInTheDocument();
+    expect(screen.getByText("Mempertajam lokasi… ±20m")).toBeInTheDocument();
+    // A sharp one confirms it: done
+    act(() => onPosition(gpsFix(30)));
+    expect(screen.getByText("GPS akurat ±20m")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Perbarui Lokasi GPS" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the distances as roughly as the position is known", async () => {
+    allowLocation("granted");
+    useStore.setState({ userCoords: null });
+    fetchMock.mockImplementation(answering([mosque("a", "Masjid Selatan", 0, 0), mosque("b", "Masjid Utara", 600, 600)]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(geolocation.watchPosition).toHaveBeenCalled());
+
+    act(() => onPosition(gpsFix(400)));
+    await waitFor(() => expect(screen.getByText("~100 m")).toBeInTheDocument());
+    expect(screen.getByText("~600 m")).toBeInTheDocument();
+    expect(screen.getByText(/^Jarak hanya kira-kira: diukur dalam garis lurus dari posisi ±400 m\./)).toBeInTheDocument();
+
+    act(() => onPosition(gpsFix(30, 100)));
+    await waitFor(() => expect(screen.getByText("100 m")).toBeInTheDocument());
+    expect(screen.getByText("500 m")).toBeInTheDocument();
+    expect(screen.getByText(/^Jarak diukur dalam garis lurus\./)).toBeInTheDocument();
+  });
+
+  it("after a minute at an approximate position, says how to allow the accurate one", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    allowLocation("granted", ANDROID);
+    useStore.setState({ userCoords: null });
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat", 100, 100)]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(geolocation.watchPosition).toHaveBeenCalled());
+
+    // Android's approximate location: exactly 2 km
+    act(() => onPosition(gpsFix(2000)));
+    await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
+    expect(screen.getByText("Akurasi rendah ±2000m")).toBeInTheDocument();
+    expect(screen.getByText("≤ 2.5 km")).toBeInTheDocument();
+    expect(screen.queryByText(/lokasi perkiraan/)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByText(/^Browser hanya mendapat lokasi perkiraan/)).toHaveTextContent(
+      'buka Setelan → Aplikasi → browser Anda (misalnya Chrome) → Izin → Lokasi, lalu aktifkan "Gunakan lokasi akurat", lalu tekan Perbarui Lokasi GPS.'
+    );
+    expect(screen.getByRole("button", { name: "Perbarui Lokasi GPS" })).toBeInTheDocument();
   });
 
   it("orders the results again as the fix sharpens, without asking the server again", async () => {

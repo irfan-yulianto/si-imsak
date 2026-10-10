@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { Mosque } from "@/types";
-import { formatDistance } from "@/lib/mosques";
+import { formatDistance, formatRadius } from "@/lib/mosques";
+import { MEDIUM_M } from "@/lib/geofix";
 import { roundCoord } from "@/lib/constants";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
 import { MosqueIcon } from "@/components/ui/Icons";
@@ -20,13 +21,15 @@ const PAGE = 20;
  * The search's outcome — loading, a failure, the mosques — and the ways to search further.
  * Rendered as siblings of the controls card (the page spaces them evenly).
  */
-export default function MosqueList({ mosques, loading, error, coords, onRetry }: {
+export default function MosqueList({ mosques, loading, error, coords, accuracy, onRetry }: {
   /** Nearest first */
   mosques: Mosque[];
   loading: boolean;
   error: string | null;
   /** Where the search is; null when no place is known yet */
   coords: { lat: number; lng: number } | null;
+  /** How well that position is known (m) when it is the GPS position, else null */
+  accuracy: number | null;
   onRetry: () => void;
 }) {
   const [shown, setShown] = useState(PAGE);
@@ -97,7 +100,7 @@ export default function MosqueList({ mosques, loading, error, coords, onRetry }:
                     {mosque.address && <p className="mt-0.5 truncate text-xs text-fg-subtle">{mosque.address}</p>}
                   </div>
                   <Badge tone="accent" className="text-xs tabular-nums">
-                    {formatDistance(mosque.distance)}
+                    {formatDistance(mosque.distance, accuracy ?? 0)}
                   </Badge>
                 </div>
                 <a
@@ -139,7 +142,10 @@ export default function MosqueList({ mosques, loading, error, coords, onRetry }:
 
           {/* The data's sources (their licenses ask for this), and a way to add what they lack */}
           <p className="text-center text-xs leading-relaxed text-fg-subtle">
-            {mosques.length > 0 && "Jarak diukur dalam garis lurus. "}
+            {mosques.length > 0 &&
+              (accuracy !== null && accuracy > MEDIUM_M
+                ? `Jarak hanya kira-kira: diukur dalam garis lurus dari posisi ±${formatRadius(accuracy)}. `
+                : "Jarak diukur dalam garis lurus. ")}
             Data ©{" "}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-fg">
               kontributor OpenStreetMap

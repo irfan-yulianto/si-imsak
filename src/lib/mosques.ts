@@ -1,14 +1,22 @@
 import type { Mosque } from "@/types";
 import { distanceMeters } from "@/lib/mosque-osm";
+import { COARSE_M, MEDIUM_M } from "@/lib/geofix";
 
 export { distanceMeters } from "@/lib/mosque-osm";
 
 type Coords = { lat: number; lng: number };
 
 /**
- * Format distance for display: "120 m" or "1.2 km"
+ * A distance for display, "120 m" or "1.2 km", as rough as the position it is measured
+ * from is known (`accuracy`, m): past MEDIUM_M only to 100 m or half a kilometre,
+ * "~100 m"; from an approximate position (COARSE_M) only an upper bound, "≤ 2.5 km".
  */
-export function formatDistance(meters: number): string {
+export function formatDistance(meters: number, accuracy = 0): string {
+  if (accuracy >= COARSE_M) return `≤ ${formatRadius(Math.ceil((meters + accuracy) / 500) * 500)}`;
+  if (accuracy > MEDIUM_M) {
+    const rough = meters < 1000 ? Math.max(100, Math.round(meters / 100) * 100) : Math.round(meters / 500) * 500;
+    return `~${formatRadius(rough)}`;
+  }
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
 }
