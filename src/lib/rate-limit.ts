@@ -17,7 +17,8 @@ const WINDOW_MS = 60_000;
 /** Requests per client and minute, for each route: one route's traffic never uses up another's */
 // Mosque searches: phones on one mobile carrier often share an address (CGNAT), and
 // each costs the server little (the dataset is in memory)
-const LIMITS = { schedule: 30, cities: 30, geocode: 10, mosques: 60 } as const;
+// Suggestions: each becomes an issue the owner reads; three a minute is plenty for a person
+const LIMITS = { schedule: 30, cities: 30, geocode: 10, mosques: 60, suggest: 3 } as const;
 export type LimitedRoute = keyof typeof LIMITS;
 /** Most clients tracked at once, so memory stays bounded */
 const MAX_KEYS = 10_000;

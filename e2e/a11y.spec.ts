@@ -45,6 +45,18 @@ test("mosque finder with results, light theme", async ({ page }) => {
   expect(await violations(page)).toEqual([]);
 });
 
+test.describe("with the location allowed", () => {
+  test.use({ permissions: ["geolocation"], geolocation: { latitude: JAKARTA.lat, longitude: JAKARTA.lng, accuracy: 20 } });
+
+  test("mosque finder with the suggestion form open", async ({ page }) => {
+    await seedCity(page, JAKARTA);
+    await page.goto("/?tab=masjid");
+    await page.getByRole("button", { name: "Tambahkan di sini" }).click();
+    await expect(page.getByRole("textbox", { name: "Nama" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+});
+
 test("city search with results open", async ({ page }) => {
   await seedCity(page, JAKARTA);
   await page.goto("/");

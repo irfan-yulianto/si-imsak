@@ -66,14 +66,16 @@ jobs:
       - name: Bundle budget
         run: node scripts/check-bundle-size.mjs
 
-      # /api/mosques reads data/mosques.tsv at run time: next.config.ts must ship it
-      - name: The mosque dataset ships with its route
+      # /api/mosques and /api/mosques/suggest read data/mosques.tsv at run time: next.config.ts must ship it
+      - name: The mosque dataset ships with its routes
         run: |
           node -e '
-            const files = require("./.next/server/app/api/mosques/route.js.nft.json").files;
-            if (!files.some((f) => f.endsWith("data/mosques.tsv"))) {
-              console.error("data/mosques.tsv is not traced into /api/mosques (outputFileTracingIncludes in next.config.ts)");
-              process.exit(1);
+            for (const route of ["mosques", "mosques/suggest"]) {
+              const files = require(`./.next/server/app/api/${route}/route.js.nft.json`).files;
+              if (!files.some((f) => f.endsWith("data/mosques.tsv"))) {
+                console.error(`data/mosques.tsv is not traced into /api/${route} (outputFileTracingIncludes in next.config.ts)`);
+                process.exit(1);
+              }
             }'
 
   unit-tz:

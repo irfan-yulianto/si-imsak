@@ -6,6 +6,7 @@ import {
   type ScheduleDay,
   type ScheduleResponse,
 } from "@/types";
+import { suggestionText } from "@/lib/mosque-contrib";
 
 // Type guards and parsers for everything that crosses a boundary: upstream APIs, our
 // own API as the client reads it, and the browser's storage. Data that doesn't have
@@ -140,7 +141,7 @@ export function parseCityList(body: unknown): Location[] {
  */
 export function parseMosqueAnswer(
   body: unknown
-): { mosques: Mosque[]; center?: { lat: number; lng: number }; coverage?: number } | null {
+): { mosques: Mosque[]; center?: { lat: number; lng: number }; coverage?: number; suggestions?: true } | null {
   if (!isObject(body) || body.status !== true || !Array.isArray(body.data)) return null;
   const mosques = body.data.filter(isMosque);
   const meta = isObject(body.meta) ? body.meta : null;
@@ -149,7 +150,39 @@ export function parseMosqueAnswer(
       ? { lat: meta.center.lat, lng: meta.center.lng }
       : undefined;
   const coverage = meta && isFiniteNumber(meta.coverage) && meta.coverage >= 0 ? meta.coverage : undefined;
-  return { mosques, ...(center && { center }), ...(coverage !== undefined && { coverage }) };
+  return {
+    mosques,
+    ...(center && { center }),
+    ...(coverage !== undefined && { coverage }),
+    ...(meta?.suggestions === true && { suggestions: true }),
+  };
+}
+
+/** What the mosque finder sends to /api/mosques/suggest */
+export interface SuggestionInput {
+  kind: "masjid" | "musholla";
+  /** The name typed, 2–80 characters of letters, digits, spaces and plain punctuation */
+  name: string;
+  street?: string;
+  lat: number;
+  lng: number;
+  /** The fix's accuracy (m) */
+  accuracy: number;
+}
+
+/**
+ * A suggestion as the finder sends it, with only its known fields, or null when it
+ * doesn't have the shape (the route checks the bounds and the accuracy)
+ */
+export function parseSuggestion(body: unknown): SuggestionInput | null {
+  if (!isObject(body)) return null;
+  const { kind, lat, lng, accuracy } = body;
+  if (kind !== "masjid" && kind !== "musholla") return null;
+  const name = suggestionText(body.name);
+  const street = body.street === undefined || body.street === "" ? undefined : suggestionText(body.street);
+  if (!name || street === null) return null;
+  if (!isFiniteNumber(lat) || !isFiniteNumber(lng) || !isFiniteNumber(accuracy) || accuracy <= 0) return null;
+  return { kind, name, ...(street && { street }), lat, lng, accuracy };
 }
 
 /** The server clock in /api/time's answer, or null */

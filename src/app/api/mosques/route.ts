@@ -3,6 +3,7 @@ import { SEARCH_RADII, SEARCH_DECIMALS } from "@/lib/mosques";
 import { loadMosqueData } from "@/lib/mosque-index";
 import { CDN_CACHE_DAY, INDONESIA_BOUNDS, NO_STORE, roundCoord } from "@/lib/constants";
 import { json, tooManyRequests } from "@/lib/http";
+import { suggestionToken } from "@/lib/upstream";
 import type { MosqueSearchResponse } from "@/types";
 import type { NextRequest } from "next/server";
 
@@ -54,8 +55,11 @@ export async function GET(request: NextRequest) {
     ? data.index.nearest(center.lat, center.lng, { minReach: radiusNum, maxReach: radiusNum, minCount: 1, maxCount: 50 })
     : data.index.nearest(center.lat, center.lng);
 
+  // Whether /api/mosques/suggest is on, so the finder shows its button only then (the
+  // CDN keeps this a day; a new token means a new deployment, and a fresh cache)
+  const suggestions = suggestionToken() !== "";
   return json<MosqueSearchResponse>(
-    { status: true, data: mosques, meta: { center, coverage: Math.round(coverage), dataDate: data.dataDate } },
+    { status: true, data: mosques, meta: { center, coverage: Math.round(coverage), dataDate: data.dataDate, suggestions } },
     { cache: CDN_CACHE_DAY, headers: { "X-Data-Date": data.dataDate } }
   );
 }

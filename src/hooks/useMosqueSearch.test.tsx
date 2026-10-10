@@ -57,6 +57,20 @@ describe("useMosqueSearch", () => {
     });
   });
 
+  it("passes on whether the server takes suggestions", async () => {
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ status: true, data: [mosque], meta: { center: MONAS_CENTER, coverage: 1800, dataDate: "2026-10-06", suggestions: true } }),
+          { status: 200 }
+        )
+    );
+    const { result } = renderHook(() => useMosqueSearch());
+    act(() => result.current.follow(area()));
+    await waitFor(() => expect(result.current.answer).not.toBeNull());
+    expect(result.current.answer?.suggestions).toBe(true);
+  });
+
   it("trusts an answer without its coverage only as far as its farthest mosque", async () => {
     fetchMock.mockImplementation(async () => ok([mosque]));
     const { result } = renderHook(() => useMosqueSearch());

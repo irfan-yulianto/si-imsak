@@ -14,6 +14,7 @@ import MosqueList from "./MosqueList";
 
 export default function MosqueFinder() {
   const cityName = useStore((s) => s.location.cityName);
+  const isOffline = useStore((s) => s.isOffline);
   const fix = useStore((s) => s.userCoords);
   const setUserCoords = useStore((s) => s.setUserCoords);
   const permission = useGeolocationPermission();
@@ -144,6 +145,8 @@ export default function MosqueFinder() {
           error={error}
           coords={coords}
           accuracy={mode === "gps" ? (fix?.accuracy ?? null) : null}
+          // A place can be suggested only from where the user stands, and when the server takes them
+          suggestions={mode === "gps" && !isOffline && current?.suggestions === true}
           onRetry={searchAgain}
         />
       </div>

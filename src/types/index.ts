@@ -98,10 +98,22 @@ export interface Mosque {
 export interface MosqueSearchResponse {
   status: boolean;
   data?: Mosque[];
-  /** Where the server searched (the rounded position), and how far from there the list is complete (m) */
-  meta?: { center: { lat: number; lng: number }; coverage: number; dataDate: string };
+  /**
+   * Where the server searched (the rounded position), how far from there the list is
+   * complete (m), and whether this server takes suggestions of unlisted places
+   */
+  meta?: { center: { lat: number; lng: number }; coverage: number; dataDate: string; suggestions?: boolean };
   error?: string;
   /** The failure was upstream's; trying again later may work */
+  retryable?: boolean;
+}
+
+/** /api/mosques/suggest's answer: the issue the suggestion became, or why not */
+export interface SuggestionResponse {
+  status: boolean;
+  data?: { number: number };
+  error?: string;
+  /** Trying again later may work */
   retryable?: boolean;
 }
 
