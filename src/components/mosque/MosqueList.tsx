@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Mosque } from "@/types";
 import { formatDistance, formatRadius } from "@/lib/mosques";
-import { MEDIUM_M } from "@/lib/geofix";
+import { MEDIUM_M, atPlace } from "@/lib/geofix";
 import { roundCoord } from "@/lib/constants";
 import { MOSQUE_MESSAGES } from "@/lib/mosque-messages";
 import { MosqueIcon } from "@/components/ui/Icons";
@@ -100,7 +100,7 @@ export default function MosqueList({ mosques, loading, error, coords, accuracy, 
                     {mosque.address && <p className="mt-0.5 truncate text-xs text-fg-subtle">{mosque.address}</p>}
                   </div>
                   <Badge tone="accent" className="text-xs tabular-nums">
-                    {formatDistance(mosque.distance, accuracy ?? 0)}
+                    {accuracy !== null && atPlace(mosque.distance, accuracy) ? "Di lokasi Anda" : formatDistance(mosque.distance, accuracy ?? 0)}
                   </Badge>
                 </div>
                 <a

@@ -1,8 +1,9 @@
-id	lat	lng	type	name	street
-n1001	-617320	10682940	masjid	Masjid Uji 1	Jalan Uji 1
-n1002	-617100	10683160	masjid	Masjid Uji 2	Jalan Uji 2
-n1003	-616880	10683380	musholla	Musholla Al-Ikhlas	Jalan Uji 3
-n1004	-616660	10683600	masjid	Masjid Uji 4	Jalan Uji 4
-n1005	-616440	10683820	masjid	Masjid Uji 5	Jalan Uji 5
-n1006	-616220	10684040	musholla	Musholla Al-Ikhlas	Jalan Uji 6
-n1007	-616000	10684260	masjid	Masjid Uji 7	Jalan Uji 7
+id	lat	lng	type	name	street	dlat	dlng
+n1001	-617320	10682940	masjid	Masjid Uji 1	Jalan Uji 1	0	0
+n1002	-617100	10683160	masjid	Masjid Uji 2	Jalan Uji 2	0	0
+n1003	-616880	10683380	musholla	Musholla Al-Ikhlas	Jalan Uji 3	0	0
+n1004	-616660	10683600	masjid	Masjid Uji 4	Jalan Uji 4	0	0
+n1005	-616440	10683820	masjid	Masjid Uji 5	Jalan Uji 5	0	0
+n1006	-616220	10684040	musholla	Musholla Al-Ikhlas	Jalan Uji 6	0	0
+n1007	-616000	10684260	masjid	Masjid Uji 7	Jalan Uji 7	0	0
+w1008	-617540	10683120	masjid	Masjid Uji 8	Jalan Uji 8	40	40

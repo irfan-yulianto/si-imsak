@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { buildIndex, loadMosqueData } from "./mosque-index";
-import { distanceMeters } from "./mosque-osm";
+import { distanceToPlace } from "./mosque-osm";
 import { toTsv, type DatasetRow } from "./mosque-tsv";
 
 /** The same numbers on every run */
@@ -15,7 +15,7 @@ function seeded(seed: number) {
   };
 }
 
-/** `count` places scattered over a square of `spanDeg` degrees around a point */
+/** `count` places scattered over a square of `spanDeg` degrees around a point; every third a building up to ~90 m wide */
 function scatter(count: number, center: { lat: number; lng: number }, spanDeg: number, seed = 1): DatasetRow[] {
   const random = seeded(seed);
   return Array.from({ length: count }, (_, i) => ({
@@ -24,13 +24,14 @@ function scatter(count: number, center: { lat: number; lng: number }, spanDeg: n
     lng: center.lng + (random() - 0.5) * spanDeg,
     type: i % 4 === 0 ? "musholla" : "masjid",
     name: `Masjid ${i}`,
+    ...(i % 3 === 0 && { dlat: 0.0001 + random() * 0.0003, dlng: 0.0001 + random() * 0.0003 }),
   }));
 }
 
 /** The answer the index must give, by measuring every place */
 function bruteForce(rows: DatasetRow[], lat: number, lng: number, within: number) {
   return rows
-    .map((row) => ({ id: row.id, d: distanceMeters(lat, lng, row.lat, row.lng) }))
+    .map((row) => ({ id: row.id, d: distanceToPlace(lat, lng, row) }))
     .filter((r) => r.d <= within)
     .sort((a, b) => a.d - b.d)
     .map((r) => r.id);
@@ -81,6 +82,28 @@ describe("buildIndex().nearest", () => {
     const { mosques, coverage } = index.nearest(JAKARTA.lat, JAKARTA.lng, { minReach: 2000, maxReach: 2000, minCount: 1, maxCount: 50 });
     expect(mosques).toHaveLength(50);
     expect(mosques.every((m) => m.distance <= coverage)).toBe(true);
+  });
+
+  it("lists a wide mosque whose wall is nearer first, measuring to the wall", () => {
+    const index = buildIndex([
+      // A point 300 m north, and a 660 m wide building centred 500 m east: its wall is ~170 m away
+      { id: "n1", lat: JAKARTA.lat + 0.0027, lng: JAKARTA.lng, type: "masjid", name: "Masjid Titik" },
+      { id: "w2", lat: JAKARTA.lat, lng: JAKARTA.lng + 0.004523, type: "masjid", name: "Masjid Lebar", dlat: 0.003, dlng: 0.003 },
+    ]);
+    const { mosques } = index.nearest(JAKARTA.lat, JAKARTA.lng);
+    expect(mosques.map((m) => m.id)).toEqual(["w2", "n1"]);
+    expect(mosques[0].distance).toBeCloseTo(168, -1);
+    expect(mosques[0]).toMatchObject({ dlat: 0.003, dlng: 0.003 });
+    expect(mosques[1]).not.toHaveProperty("dlat");
+  });
+
+  it("finds a building in the next cell whose wall reaches into this one", () => {
+    // Centred 0.012° east, in the next cell, but with its wall 0.009° away
+    const wide = buildIndex([{ id: "w1", lat: -6.205, lng: 106.825 + 0.012, type: "masjid", name: "Masjid Lebar", dlat: 0.003, dlng: 0.003 }]);
+    const { mosques, coverage } = wide.nearest(-6.205, 106.825);
+    expect(mosques[0].distance).toBeCloseTo(0.009 * 110_540, -2);
+    // Alone in the dataset: the search went as far as it goes
+    expect(coverage).toBe(25_000);
   });
 
   it("carries the street as the address", () => {

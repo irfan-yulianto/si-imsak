@@ -1,5 +1,5 @@
 import type { Mosque } from "@/types";
-import { distanceMeters } from "@/lib/mosque-osm";
+import { distanceMeters, distanceToPlace } from "@/lib/mosque-osm";
 import { COARSE_M, MEDIUM_M } from "@/lib/geofix";
 
 export { distanceMeters } from "@/lib/mosque-osm";
@@ -39,10 +39,10 @@ export const SEARCH_DECIMALS = 2;
  */
 export const SEARCH_RADII: readonly number[] = [2000, 3000, 4000, 6000, 8000, 10000];
 
-/** Nearest first, measured from `coords` */
+/** Nearest first, measured from `coords` to each building's edge, or to its point */
 export function sortByDistance(mosques: readonly Mosque[], coords: Coords): Mosque[] {
   return mosques
-    .map((m) => ({ ...m, distance: distanceMeters(coords.lat, coords.lng, m.lat, m.lng) }))
+    .map((m) => ({ ...m, distance: distanceToPlace(coords.lat, coords.lng, m) }))
     .sort((a, b) => a.distance - b.distance);
 }
 

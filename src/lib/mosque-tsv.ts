@@ -1,9 +1,18 @@
 // The mosque dataset's file, data/mosques.tsv: a header, then one place per line, sorted
 // by id (OpenStreetMap's, then Overture's) so that a week's changes make a small diff.
-// Coordinates are whole numbers of 1e-5 degrees (~1 m). Written by the dataset build
-// (scripts/mosque-data), read by /api/mosques. No imports: plain Node reads this file too.
+// Coordinates, and the half-extents of a building's outline, are whole numbers of 1e-5
+// degrees (~1 m). Written by the dataset build (scripts/mosque-data), read by
+// /api/mosques. No imports: plain Node reads this file too.
 
-export const TSV_HEADER = "id\tlat\tlng\ttype\tname\tstreet";
+export const TSV_HEADER = "id\tlat\tlng\ttype\tname\tstreet\tdlat\tdlng";
+/** The header before the outline's half-extents were stored: such a file still reads */
+export const TSV_HEADER_V1 = "id\tlat\tlng\ttype\tname\tstreet";
+
+/**
+ * The widest half-extent (degrees, ~550 m) a building may have in the dataset: wider
+ * is a complex or a mistaken area, and is stored as its point
+ */
+export const MAX_HALF_EXTENT_DEG = 0.005;
 
 export interface DatasetRow {
   /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture */
@@ -13,6 +22,9 @@ export interface DatasetRow {
   type: "masjid" | "musholla";
   name: string;
   street?: string;
+  /** Half the extent of the building's outline (degrees), when the source maps it */
+  dlat?: number;
+  dlng?: number;
 }
 
 const ID = /^(?:[nwr]\d+|o[0-9a-f]{32})$/;
@@ -49,24 +61,46 @@ const toE5 = (degrees: number) => Math.round(degrees * 1e5);
 export function toTsv(rows: readonly DatasetRow[]): string {
   const lines = [...rows]
     .sort((a, b) => compareIds(a.id, b.id))
-    .map((row) => [row.id, toE5(row.lat), toE5(row.lng), row.type, clean(row.name), clean(row.street ?? "")].join("\t"));
+    .map((row) =>
+      [row.id, toE5(row.lat), toE5(row.lng), row.type, clean(row.name), clean(row.street ?? ""), toE5(row.dlat ?? 0), toE5(row.dlng ?? 0)].join("\t")
+    );
   return `${[TSV_HEADER, ...lines].join("\n")}\n`;
 }
 
 /** The rows of the file's text; throws on a line it can't read */
 export function parseTsv(text: string): DatasetRow[] {
   const lines = text.split("\n");
-  if (lines[0] !== TSV_HEADER) throw new Error(`Unexpected header: ${lines[0].slice(0, 80)}`);
+  if (lines[0] !== TSV_HEADER && lines[0] !== TSV_HEADER_V1) throw new Error(`Unexpected header: ${lines[0].slice(0, 80)}`);
   const rows: DatasetRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     if (lines[i] === "") continue;
-    const [id, lat, lng, type, name, street] = lines[i].split("\t");
+    const [id, lat, lng, type, name, street, dlat = "0", dlng = "0"] = lines[i].split("\t");
     const latE5 = Number(lat);
     const lngE5 = Number(lng);
-    if (!ID.test(id) || !Number.isInteger(latE5) || !Number.isInteger(lngE5) || (type !== "masjid" && type !== "musholla") || !name) {
+    const dlatE5 = Number(dlat);
+    const dlngE5 = Number(dlng);
+    if (
+      !ID.test(id) ||
+      !Number.isInteger(latE5) ||
+      !Number.isInteger(lngE5) ||
+      (type !== "masjid" && type !== "musholla") ||
+      !name ||
+      !Number.isInteger(dlatE5) ||
+      !Number.isInteger(dlngE5) ||
+      dlatE5 < 0 ||
+      dlngE5 < 0
+    ) {
       throw new Error(`Line ${i + 1} can't be read: ${lines[i].slice(0, 80)}`);
     }
-    rows.push({ id, lat: latE5 / 1e5, lng: lngE5 / 1e5, type, name, ...(street && { street }) });
+    rows.push({
+      id,
+      lat: latE5 / 1e5,
+      lng: lngE5 / 1e5,
+      type,
+      name,
+      ...(street && { street }),
+      ...(dlatE5 > 0 && dlngE5 > 0 && { dlat: dlatE5 / 1e5, dlng: dlngE5 / 1e5 }),
+    });
   }
   return rows;
 }
@@ -97,7 +131,7 @@ const MAX_CHANGE: Record<DataSource, number> = { openstreetmap: 0.05, overture: 
 
 /**
  * Why a freshly built dataset can't replace the committed one (none: it can): rows out
- * of bounds or repeated, landmarks missing, or a source whose count moved more than
+ * of bounds, repeated or wider than a building, landmarks missing, or a source whose count moved more than
  * `maxChange` (5% for OpenStreetMap, 10% for Overture) from the `previous` dataset's,
  * which a week doesn't do but a broken build or download does. A source the previous
  * dataset didn't have isn't compared.
@@ -122,6 +156,9 @@ export function datasetProblems(
     ids.add(row.id);
     if (row.lat < bounds.latMin || row.lat > bounds.latMax || row.lng < bounds.lngMin || row.lng > bounds.lngMax) {
       problems.push(`${row.id} lies outside Indonesia (${row.lat}, ${row.lng})`);
+    }
+    if ((row.dlat ?? 0) > MAX_HALF_EXTENT_DEG || (row.dlng ?? 0) > MAX_HALF_EXTENT_DEG) {
+      problems.push(`${row.id} spans more than ${MAX_HALF_EXTENT_DEG}° (${row.dlat}, ${row.dlng})`);
     }
   }
   for (const landmark of LANDMARKS) {

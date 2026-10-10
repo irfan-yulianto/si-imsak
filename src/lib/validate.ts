@@ -23,6 +23,7 @@ export const isObject = (value: unknown): value is Obj =>
 const isString = (value: unknown): value is string => typeof value === "string";
 const isNonEmptyString = (value: unknown): value is string => isString(value) && value !== "";
 const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const isNonNegativeNumber = (value: unknown): value is number => isFiniteNumber(value) && value >= 0;
 
 export const isHHMM = (value: unknown): value is string => isString(value) && HHMM.test(value);
 export const isIsoDate = (value: unknown): value is string => isString(value) && ISO_DATE.test(value);
@@ -73,7 +74,9 @@ function isMosque(value: unknown): value is Mosque {
     isFiniteNumber(value.lng) &&
     isFiniteNumber(value.distance) &&
     (value.address === undefined || isString(value.address)) &&
-    (value.type === undefined || value.type === "masjid" || value.type === "musholla")
+    (value.type === undefined || value.type === "masjid" || value.type === "musholla") &&
+    (value.dlat === undefined || isNonNegativeNumber(value.dlat)) &&
+    (value.dlng === undefined || isNonNegativeNumber(value.dlng))
   );
 }
 

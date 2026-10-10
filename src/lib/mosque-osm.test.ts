@@ -5,6 +5,7 @@ import {
   dedupe,
   displayName,
   distanceMeters,
+  distanceToPlace,
   isIslamicName,
   isMosque,
   normalizeName,
@@ -215,6 +216,9 @@ describe("placeFromFeature", () => {
     expect(building).toMatchObject({ id: "w10", type: "masjid", name: "Masjid", sourceName: undefined, rank: 0 });
     expect(building!.lat).toBeCloseTo(-6.199, 6);
     expect(building!.lng).toBeCloseTo(106.801, 6);
+    // With half the extent of its outline, for distances to its wall
+    expect(building!.dlat).toBeCloseTo(0.001, 6);
+    expect(building!.dlng).toBeCloseTo(0.001, 6);
   });
 
   it("knows a mosque OpenStreetMap links to Wikidata or Wikipedia as well-known", () => {
@@ -229,6 +233,23 @@ describe("placeFromFeature", () => {
     expect(placeFromFeature({ id: "n1", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { shop: "bakery" } })).toBeNull();
     expect(placeFromFeature({ id: "n1", geometry: null, properties: { building: "mosque" } })).toBeNull();
     expect(placeFromFeature({ id: "x", geometry: { type: "Point", coordinates: [106.8, -6.2] }, properties: { building: "mosque" } })).toBeNull();
+  });
+});
+
+describe("distanceToPlace", () => {
+  const building = { lat: -6.2, lng: 106.8, dlat: 0.0004, dlng: 0.0005 };
+
+  it("measures to the nearest edge of a building's outline: nothing inside it", () => {
+    expect(distanceToPlace(-6.2, 106.8, building)).toBe(0);
+    expect(distanceToPlace(-6.2 + 0.0004, 106.8 - 0.0005, building)).toBe(0);
+    // 0.001° north of the top edge
+    expect(distanceToPlace(-6.2 + 0.0014, 106.8, building)).toBeCloseTo(111.2, 0);
+    // Past a corner: the diagonal to it
+    expect(distanceToPlace(-6.2 + 0.0007, 106.8 + 0.0009, building)).toBeCloseTo(55.4, 0);
+  });
+
+  it("measures to the point of a place without an outline", () => {
+    expect(distanceToPlace(-6.201, 106.801, { lat: -6.2, lng: 106.8 })).toBe(distanceMeters(-6.201, 106.801, -6.2, 106.8));
   });
 });
 

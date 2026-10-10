@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Mosque } from "@/types";
-import { distanceMeters } from "@/lib/mosque-osm";
+import { distanceToPlace } from "@/lib/mosque-osm";
 import { parseTsv, type DatasetRow } from "@/lib/mosque-tsv";
 import { errorMessage, log } from "@/lib/log";
 
@@ -14,6 +14,7 @@ const DATA_FILE = process.env.MOSQUE_DATA_PATH || path.join(process.cwd(), "data
 const CELL_DEG = 0.01;
 /** The narrowest a cell gets in Indonesia (m): 0.01° of longitude at 11° of latitude */
 const CELL_MIN_M = CELL_DEG * 111_195 * Math.cos((11 * Math.PI) / 180);
+const M_PER_DEG = 111_195;
 
 export interface NearestOptions {
   /** The answer reaches at least this far (m)… */
@@ -38,12 +39,15 @@ export interface MosqueIndex {
 export function buildIndex(rows: readonly DatasetRow[]): MosqueIndex {
   const cells = new Map<string, number[]>();
   const cellOf = (lat: number, lng: number) => [Math.floor(lat / CELL_DEG), Math.floor(lng / CELL_DEG)] as const;
+  // A building is in the cell of its centre, but its wall can be nearer by up to this (m)
+  let slack = 0;
   rows.forEach((row, i) => {
     const [r, c] = cellOf(row.lat, row.lng);
     const key = `${r}:${c}`;
     const list = cells.get(key);
     if (list) list.push(i);
     else cells.set(key, [i]);
+    if (row.dlat || row.dlng) slack = Math.max(slack, Math.hypot(row.dlat ?? 0, row.dlng ?? 0) * M_PER_DEG);
   });
 
   return {
@@ -52,7 +56,7 @@ export function buildIndex(rows: readonly DatasetRow[]): MosqueIndex {
       const [r0, c0] = cellOf(lat, lng);
       const found: { i: number; d: number }[] = [];
       const visit = (r: number, c: number) => {
-        for (const i of cells.get(`${r}:${c}`) ?? []) found.push({ i, d: distanceMeters(lat, lng, rows[i].lat, rows[i].lng) });
+        for (const i of cells.get(`${r}:${c}`) ?? []) found.push({ i, d: distanceToPlace(lat, lng, rows[i]) });
       };
 
       let want = maxReach;
@@ -67,7 +71,7 @@ export function buildIndex(rows: readonly DatasetRow[]): MosqueIndex {
           }
         }
         // Every mosque closer than this has been seen: the rest lie beyond this ring
-        const seen = ring * CELL_MIN_M;
+        const seen = Math.max(0, ring * CELL_MIN_M - slack);
         found.sort((a, b) => a.d - b.d);
         const countReach = found.length >= minCount && found[minCount - 1].d <= seen ? found[minCount - 1].d : Infinity;
         want = Math.min(maxReach, Math.max(minReach, minCount > 0 ? countReach : 0));
@@ -82,7 +86,16 @@ export function buildIndex(rows: readonly DatasetRow[]): MosqueIndex {
       }
       const mosques = within.map(({ i, d }): Mosque => {
         const row = rows[i];
-        return { id: row.id, name: row.name, lat: row.lat, lng: row.lng, distance: d, ...(row.street && { address: row.street }), type: row.type };
+        return {
+          id: row.id,
+          name: row.name,
+          lat: row.lat,
+          lng: row.lng,
+          distance: d,
+          ...(row.street && { address: row.street }),
+          type: row.type,
+          ...(row.dlat !== undefined && row.dlng !== undefined && { dlat: row.dlat, dlng: row.dlng }),
+        };
       });
       return { mosques, coverage };
     },

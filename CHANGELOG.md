@@ -2,6 +2,18 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
+## [2.5.0] — 2026-10-10 ([#501](https://github.com/irfan-yulianto/si-imsak/pull/501))
+
+Lanjutan v2.4.0 untuk permintaan agar masjid dalam 10 m dan 10–50 m ikut terdeteksi. Galat posisinya (GPS ±5–15 m di luar ruangan; pusat denah 10–40 m dari dinding) lebih besar dari selisih 10 m, jadi yang jujur adalah satu label untuk keduanya.
+
+### Ditambahkan
+- **"Di lokasi Anda".** Dari fix yang akurat (±50 m atau lebih baik), masjid yang dindingnya dalam 30 m (atau sejauh akurasi fix) berlabel "Di lokasi Anda", bukan angka meter. Hanya di mode GPS.
+- **Jarak ke dinding.** Dataset kini menyimpan setengah lebar denah bangunan (kolom `dlat` dan `dlng`, 1e-5°) untuk way dan relation OpenStreetMap, sekitar 55 ribu dari 95 ribu tempat. Jarak dan urutan diukur ke tepi kotak denah, bukan ke tengahnya; di gerbang masjid besar selisihnya 20–40 m. Denah yang lebih lebar dari 0,005° (~550 m) disimpan sebagai titik, dan validasi menolaknya.
+- `/api/mosques` menyertakan `dlat` dan `dlng` bila ada; klien lama mengabaikannya.
+
+### Diubah
+- Format `data/mosques.tsv` bertambah dua kolom. File dengan header lama tetap terbaca, sehingga aplikasi bisa dirilis sebelum datasetnya dibangun ulang; data berdenah datang dari workflow **Mosque data** (dijalankan manual setelah rilis ini).
+
 ## [2.4.0] — 2026-10-10 ([#500](https://github.com/irfan-yulianto/si-imsak/pull/500))
 
 Pencari masjid lebih sabar menunggu GPS dan lebih jujur soal jarak. Dua temuan dari HP pemilik: badge "Akurasi rendah ±2000m" dengan jarak meter-presisi yang sebenarnya salah, dan "±100 m" yang tidak pernah membaik walau lokasi akurat sudah aktif.
