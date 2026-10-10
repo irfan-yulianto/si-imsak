@@ -1,11 +1,11 @@
 {
   "source": "OpenStreetMap (Geofabrik's extract of Indonesia) and Overture Maps Foundation's places",
   "license": "ODbL-1.0; the places from Overture also CDLA-Permissive-2.0 (see LICENSE)",
-  "osmTimestamp": "2026-10-08T20:21:06Z",
+  "osmTimestamp": "2026-10-09T20:21:04Z",
   "overtureRelease": "2026-09-23.1",
-  "places": 95363,
-  "masjid": 81550,
+  "places": 95377,
+  "masjid": 81564,
   "musholla": 13813,
-  "openstreetmap": 75021,
-  "overture": 20342
+  "openstreetmap": 75037,
+  "overture": 20340
 }
