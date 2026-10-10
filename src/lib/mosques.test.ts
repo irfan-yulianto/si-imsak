@@ -120,6 +120,15 @@ describe("sortByDistance", () => {
     expect(sorted.map((m) => m.id)).toEqual(["near", "far"]);
     expect(sorted[0].distance).toBeCloseTo(110.6, 0);
   });
+
+  it("measures to the edge of a building whose outline is known", () => {
+    const point = mosqueAt("point", -6.2, 106.801);
+    // Centred 300 m north, but 222 m tall: its wall is 78 m away
+    const building = { ...mosqueAt("building", -6.2 + 0.0027, 106.8), dlat: 0.002, dlng: 0.0005 };
+    const sorted = sortByDistance([point, building], { lat: -6.2, lng: 106.8 });
+    expect(sorted.map((m) => m.id)).toEqual(["building", "point"]);
+    expect(sorted[0].distance).toBeCloseTo(77.8, 0);
+  });
 });
 
 describe("visibleMosques and needsSearch", () => {

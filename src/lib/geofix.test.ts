@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { betterFix, freshFix, FRESH_MS } from "./geofix";
+import { atPlace, betterFix, freshFix, FRESH_MS } from "./geofix";
 import type { GeoFix } from "@/types";
 
 const NOW = 1_760_000_000_000;
@@ -25,6 +25,16 @@ describe("betterFix", () => {
   it("takes a rougher reading from clearly elsewhere: the user moved", () => {
     // 1 km away is more than both accuracies together
     expect(betterFix(fix(80), fix(100, 1000))).toBe(true);
+  });
+});
+
+describe("atPlace", () => {
+  it("is within 30 m of the wall, or the fix's own accuracy, from a sharp fix only", () => {
+    expect(atPlace(0, 10)).toBe(true);
+    expect(atPlace(30, 10)).toBe(true);
+    expect(atPlace(31, 10)).toBe(false);
+    expect(atPlace(45, 50)).toBe(true);
+    expect(atPlace(0, 80)).toBe(false);
   });
 });
 

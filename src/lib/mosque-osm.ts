@@ -95,6 +95,12 @@ export interface Place {
   rank: number;
   /** OpenStreetMap links it to Wikidata or Wikipedia: a mosque known well beyond its street */
   notable?: boolean;
+  /**
+   * Half the extent of the building's outline, in degrees of latitude and longitude,
+   * when the source maps it (OpenStreetMap ways and relations); absent for a point
+   */
+  dlat?: number;
+  dlng?: number;
 }
 
 type Position = readonly number[];
@@ -146,6 +152,8 @@ export function placeFromFeature(feature: {
     maxLng = Math.max(maxLng, lng);
   }
   if (!Number.isFinite(minLat) || !Number.isFinite(minLng)) return null;
+  const dlat = (maxLat - minLat) / 2;
+  const dlng = (maxLng - minLng) / 2;
 
   return {
     id,
@@ -157,6 +165,7 @@ export function placeFromFeature(feature: {
     street: tags["addr:street"] || tags["addr:full"] || undefined,
     rank: completeness(tags),
     ...((tags.wikidata || tags.wikipedia) && { notable: true }),
+    ...(dlat > 0 && dlng > 0 && { dlat, dlng }),
   };
 }
 
@@ -194,6 +203,20 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
   const x = dLng * Math.cos((lat1Rad + lat2Rad) / 2);
   const y = dLat;
   return Math.sqrt(x * x + y * y) * R;
+}
+
+/**
+ * Distance in meters from a point to a place: to the nearest edge of the box its
+ * outline spans (`dlat`, `dlng`: half the extent, in degrees), 0 inside it; to the
+ * point itself when there is no outline. At a mosque's gate this is the distance to
+ * its wall, not to the middle of its yard.
+ */
+export function distanceToPlace(lat: number, lng: number, place: { lat: number; lng: number; dlat?: number; dlng?: number }): number {
+  const dlat = place.dlat ?? 0;
+  const dlng = place.dlng ?? 0;
+  const nearestLat = Math.min(Math.max(lat, place.lat - dlat), place.lat + dlat);
+  const nearestLng = Math.min(Math.max(lng, place.lng - dlng), place.lng + dlng);
+  return distanceMeters(lat, lng, nearestLat, nearestLng);
 }
 
 /** Entries with the same name this close describe one place: a point and its building */

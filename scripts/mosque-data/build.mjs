@@ -10,7 +10,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { INDONESIA_BOUNDS } from "../../src/lib/constants.ts";
 import { addMissing, dedupe, placeFromFeature, placeFromOverture } from "../../src/lib/mosque-osm.ts";
-import { toTsv } from "../../src/lib/mosque-tsv.ts";
+import { MAX_HALF_EXTENT_DEG, toTsv } from "../../src/lib/mosque-tsv.ts";
 
 const [input, outDir, osmTimestamp = "", overtureInput, overtureRelease = ""] = process.argv.slice(2);
 if (!input || !outDir) {
@@ -55,7 +55,16 @@ if (overtureInput) {
 candidates.sort((a, b) => b.rank - a.rank || (a.id < b.id ? -1 : 1));
 const overture = addMissing(osm, candidates, (place) => place.sourceName);
 
-const rows = [...osm, ...overture].map(({ id, lat, lng, type, name, street }) => ({ id, lat, lng, type, name, street }));
+// A building's outline is kept as its half-extents, unless it is a complex or a mistaken area
+const rows = [...osm, ...overture].map(({ id, lat, lng, type, name, street, dlat, dlng }) => ({
+  id,
+  lat,
+  lng,
+  type,
+  name,
+  street,
+  ...(dlat && dlng && dlat <= MAX_HALF_EXTENT_DEG && dlng <= MAX_HALF_EXTENT_DEG && { dlat, dlng }),
+}));
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "mosques.tsv"), toTsv(rows));
 
@@ -77,4 +86,4 @@ console.log(`OpenStreetMap: ${features} candidates, ${byId.size} mosques, ${osm.
 if (overtureInput) {
   console.log(`Overture ${overtureRelease}: ${overtureRecords} records, ${candidates.length} named like a mosque and sure enough, ${overture.length} not yet listed`);
 }
-console.log(`${rows.length} places (${meta.masjid} masjid, ${meta.musholla} musholla)`);
+console.log(`${rows.length} places (${meta.masjid} masjid, ${meta.musholla} musholla), ${rows.filter((row) => row.dlat).length} with the building's outline`);

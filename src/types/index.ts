@@ -86,10 +86,13 @@ export interface Mosque {
   name: string;
   lat: number;
   lng: number;
-  /** Meters from the searched position */
+  /** Meters from the searched position, to the building's edge when its outline is known */
   distance: number;
   address?: string;
   type?: "masjid" | "musholla";
+  /** Half the extent of the building's outline (degrees of latitude and longitude), when mapped */
+  dlat?: number;
+  dlng?: number;
 }
 
 export interface MosqueSearchResponse {

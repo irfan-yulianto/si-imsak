@@ -15,6 +15,8 @@ export const MEDIUM_M = 300;
 export const COARSE_M = 1000;
 /** A fix older than this (ms) is sharpened again when the finder opens or comes back */
 export const FRESH_MS = 2 * 60_000;
+/** Within this (meters) of a building's edge, the user is at the place */
+export const NEAR_M = 30;
 
 /**
  * Whether `fix` replaces `best`: when there is none, when it is as accurate, or when it
@@ -29,4 +31,13 @@ export function betterFix(best: GeoFix | null, fix: GeoFix): boolean {
 /** `fix` while it is less than FRESH_MS old, else null */
 export function freshFix(fix: GeoFix | null, now = Date.now()): GeoFix | null {
   return fix && now - fix.at < FRESH_MS ? fix : null;
+}
+
+/**
+ * Whether a place `distance` meters away (to its edge) is where the user stands: only
+ * from a sharp fix, within NEAR_M or the fix's own accuracy. The GPS's few meters of
+ * noise and the gap between a gate and the outline don't allow a finer answer.
+ */
+export function atPlace(distance: number, accuracy: number): boolean {
+  return accuracy <= SHARP_M && distance <= Math.max(NEAR_M, accuracy);
 }

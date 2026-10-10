@@ -315,6 +315,28 @@ describe("MosqueFinder: results", () => {
     expect(screen.getAllByRole("link", { name: /^Navigasi ke / })).toHaveLength(25);
   });
 
+  it("says 'Di lokasi Anda' at a mosque within 30 m of a sharp fix, and only then", async () => {
+    allowLocation("granted");
+    useStore.setState({ userCoords: null });
+    fetchMock.mockImplementation(answering([mosque("m1", "Masjid Dekat", 20, 20), mosque("m2", "Masjid Jauh", 200, 200)]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(geolocation.watchPosition).toHaveBeenCalled());
+
+    // Not from a rough fix
+    act(() => onPosition(gpsFix(400)));
+    await waitFor(() => expect(screen.getByText("Masjid Dekat")).toBeInTheDocument());
+    expect(screen.queryByText("Di lokasi Anda")).toBeNull();
+    act(() => onPosition(gpsFix(10)));
+    await waitFor(() => expect(screen.getByText("Di lokasi Anda")).toBeInTheDocument());
+    expect(screen.getByText("200 m")).toBeInTheDocument();
+
+    // Nor around a city's centre
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "TEST" } });
+    fireEvent.click(screen.getByRole("option", { name: "TEST CITY" }));
+    await waitFor(() => expect(screen.getByText("20 m")).toBeInTheDocument());
+    expect(screen.queryByText("Di lokasi Anda")).toBeNull();
+  });
+
   it("links to Google Maps and OpenStreetMap at the area searched, and credits OpenStreetMap", async () => {
     useStore.setState({ userCoords: { lat: -6.123456, lng: 106.654321, accuracy: 20, at: Date.now() } });
     fetchMock.mockImplementation(around(["m1", "Masjid Raya", 50]));

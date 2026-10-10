@@ -148,9 +148,14 @@ describe("parseMosqueAnswer", () => {
 
   it("keeps the well-formed mosques of a successful answer, and where and how far it searched", () => {
     const meta = { center: { lat: -6.17, lng: 106.83 }, coverage: 1800, dataDate: "2026-10-06" };
+    const building = { ...mosque, id: "w2", dlat: 0.0004, dlng: 0.0005 };
     expect(
-      parseMosqueAnswer({ status: true, data: [mosque, { ...mosque, lat: "x" }, { ...mosque, type: "church" }], meta })
-    ).toEqual({ mosques: [mosque], center: { lat: -6.17, lng: 106.83 }, coverage: 1800 });
+      parseMosqueAnswer({
+        status: true,
+        data: [mosque, building, { ...mosque, lat: "x" }, { ...mosque, type: "church" }, { ...mosque, dlat: -1 }, { ...mosque, dlng: "0.1" }],
+        meta,
+      })
+    ).toEqual({ mosques: [mosque, building], center: { lat: -6.17, lng: 106.83 }, coverage: 1800 });
   });
 
   it("leaves out what an answer of an earlier server doesn't say, or says wrong", () => {

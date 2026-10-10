@@ -20,7 +20,7 @@ test("finds the mosques around the GPS position by itself @desktop", async ({ pa
   expect(response?.headers()["x-data-date"]).toBe("2026-10-06");
   await expect(page.getByRole("listitem").getByRole("heading").first()).toHaveText("Masjid Uji 1");
   await expect(page.getByText("Lokasi GPS Anda", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Navigasi ke / })).toHaveCount(7);
+  await expect(page.getByRole("link", { name: /^Navigasi ke / })).toHaveCount(8);
   await expect(page.getByRole("listitem").filter({ hasText: "Jalan Uji 3" }).getByText("Musholla", { exact: true })).toBeVisible();
 
   const again = page.waitForRequest((r) => r.url().includes("/api/mosques"));
@@ -49,6 +49,20 @@ test("orders the results again as the GPS position sharpens, without asking the 
   await expect(page.getByRole("listitem").first().getByText(/^\d+ m$/)).toBeVisible();
   await expect(page.getByText(/^Jarak diukur dalam garis lurus\./)).toBeVisible();
   expect(searches).toHaveLength(1);
+});
+
+test.describe("at a mosque's gate", () => {
+  // 22 m south of Masjid Uji 8's wall (67 m from the middle of its outline), from a sharp fix
+  test.use({ geolocation: { latitude: JAKARTA.lat - 0.0004 - 22 / 111_195, longitude: JAKARTA.lng + 0.004, accuracy: 10 } });
+
+  test("says the user is at the mosque, measured to its wall", async ({ page }) => {
+    await seedCity(page, JAKARTA);
+    await page.goto("/?tab=masjid");
+    const first = page.getByRole("listitem").first();
+    await expect(first.getByRole("heading")).toHaveText("Masjid Uji 8");
+    await expect(first.getByText("Di lokasi Anda")).toBeVisible();
+    await expect(page.getByText("GPS akurat ±10m")).toBeVisible();
+  });
 });
 
 test.describe("allowed only the approximate location", () => {

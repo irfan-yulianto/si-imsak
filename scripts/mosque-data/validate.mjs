@@ -19,10 +19,11 @@ const problems = datasetProblems(rows, { bounds: INDONESIA_BOUNDS, previous: pre
 const changes = previous ? datasetChanges(previous, rows) : null;
 
 const masjid = rows.filter((row) => row.type === "masjid").length;
+const outlined = rows.filter((row) => row.dlat).length;
 const bySource = countBySource(rows);
 const n = (count) => count.toLocaleString("id-ID");
 const summary = [
-  `**${n(rows.length)}** tempat: ${n(masjid)} masjid, ${n(rows.length - masjid)} musholla.`,
+  `**${n(rows.length)}** tempat: ${n(masjid)} masjid, ${n(rows.length - masjid)} musholla; ${n(outlined)} dengan denah bangunan.`,
   `Dari OpenStreetMap ${n(bySource.openstreetmap)}, dari Overture ${n(bySource.overture)}.`,
   changes
     ? `Dibanding data sebelumnya (${n(previous.length)}): +${n(changes.added)} baru, −${n(changes.removed)} hilang, ${n(changes.changed)} berubah.`

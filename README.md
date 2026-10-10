@@ -13,6 +13,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
   - Bila izin lokasi sudah diberikan, GPS langsung dipakai tanpa perlu menekan tombol.
   - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat: GPS diberi waktu satu menit untuk mengunci sampai ±50 m, dan pembacaan yang lebih kasar tidak menimpa fix yang lebih tajam. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
   - Jarak ditampilkan sejujur posisinya: dari fix yang lebih kasar dari 300 m jarak dibulatkan ("~300 m"), dan dari lokasi perkiraan (izin lokasi perkiraan di Android/iOS, ±2 km) hanya batas atasnya ("≤ 2.5 km"), dengan petunjuk mengaktifkan lokasi akurat.
+  - Untuk masjid yang denah bangunannya dipetakan, jarak diukur ke dindingnya, bukan ke tengah halamannya. Dari fix yang akurat, masjid yang dindingnya dalam 30 m (atau sejauh akurasi fix) berlabel "Di lokasi Anda".
   - Titik dan bangunan untuk masjid yang sama ditampilkan sekali, dan musholla dikenali dari namanya.
 - **Deteksi Lokasi** — Geolocation otomatis dengan reverse geocoding sampai tingkat kota/kabupaten, database 514 kota/kabupaten di seluruh Indonesia
 - **Pencarian Kota** — Cari kota/kabupaten dari database Kemenag RI via MyQuran API v3
@@ -312,9 +313,12 @@ Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/m
 
 ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture berbentuk `o` diikuti ID Overture tanpa tanda hubung.
 
+**Kolom.** `id`, `lat`, `lng` (pusat kotak pembatas, bilangan bulat 1e-5°), `type`, `name`, `street`, lalu `dlat` dan `dlng`: setengah lebar denah bangunan dalam 1e-5° untuk way dan relation OpenStreetMap, 0 untuk titik dan tempat Overture. Jarak diukur ke tepi kotak itu, jadi di gerbang masjid besar jaraknya ke dindingnya, bukan ke tengah halamannya. Denah yang lebih lebar dari 0,005° (~550 m, `MAX_HALF_EXTENT_DEG`) adalah kompleks atau area yang salah, dan disimpan sebagai titik. File dengan header lama (tanpa dua kolom terakhir) tetap terbaca.
+
 **Validasi** (`validate.mjs`) menolak dataset bila:
 - ada ID ganda;
 - ada titik di luar Indonesia;
+- ada denah bangunan yang lebih lebar dari 0,005°;
 - Istiqlal, Baiturrahman, atau Al-Akbar hilang;
 - jumlah dari OpenStreetMap berubah lebih dari 5%, atau jumlah dari Overture lebih dari 10%, dibanding data sebelumnya. Unduhan Overture yang gagal ikut tertangkap aturan ini.
 
