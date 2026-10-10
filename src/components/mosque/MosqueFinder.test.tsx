@@ -357,6 +357,15 @@ describe("MosqueFinder: results", () => {
       "href",
       "https://docs.overturemaps.org/attribution/"
     );
+    expect(screen.getByText(/serta usulan pengguna aplikasi ini/)).toBeInTheDocument();
+  });
+
+  it("marks a place a user suggested, which no map has", async () => {
+    fetchMock.mockImplementation(around(["c12", "Musholla Usulan Warga", 80], ["n1", "Masjid Peta", 200]));
+    render(<MosqueFinder />);
+    await waitFor(() => expect(screen.getByText("Musholla Usulan Warga")).toBeInTheDocument());
+    expect(screen.getByText("Usulan pengguna")).toBeInTheDocument();
+    expect(screen.getByText("Musholla Usulan Warga").closest("li")).toContainElement(screen.getByText("Usulan pengguna"));
   });
 
   it("keeps the location, the search, the results and the links out of Clarity recordings", async () => {

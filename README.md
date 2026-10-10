@@ -9,7 +9,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 - **Tabel Jadwal Bulanan** — Navigasi antar bulan untuk melihat jadwal sepanjang tahun, dalam satu tabel ringkas untuk semua layar: di HP tabelnya bisa digeser ke dua arah dengan kolom tanggal dan judul kolom tetap terlihat, dan dibuka di baris hari ini
 - **Kalender Hijriyah** — Konversi otomatis ke kalender Hijriyah menggunakan `Intl.DateTimeFormat` (`islamic-umalqura`), dihitung di perangkat sehingga tetap jalan offline. Tanggal resmi di Indonesia mengikuti sidang isbat Kemenag, jadi di sekitar awal bulan Hijriyah tanggalnya bisa berbeda satu hari. Endpoint kalender MyQuran v3 sudah dicek sebagai alternatif: metodenya perhitungan "standar", bukan hasil isbat, jadi tidak lebih akurat
 - **Pencari Masjid Terdekat** — Masjid dan musholla terdekat dari posisi GPS, atau di sekitar pusat kota pilihan, dengan navigasi langsung ke Google Maps.
-  - Datanya dari OpenStreetMap, dilengkapi Overture Places untuk masjid yang belum dipetakan di OpenStreetMap, dan dibangun ulang setiap minggu menjadi dataset sendiri (lihat "Data masjid"). Dataset ini dibaca oleh server, tanpa layanan pihak ketiga saat pencarian.
+  - Datanya dari OpenStreetMap, dilengkapi Overture Places untuk masjid yang belum dipetakan di OpenStreetMap, dan usulan pengguna yang sudah diperiksa pemilik; dibangun ulang setiap minggu menjadi dataset sendiri (lihat "Data masjid"). Dataset ini dibaca oleh server, tanpa layanan pihak ketiga saat pencarian.
   - Bila izin lokasi sudah diberikan, GPS langsung dipakai tanpa perlu menekan tombol.
   - Hasil pertama muncul dari fix pertama, lalu urutannya diperbarui saat GPS makin akurat: GPS diberi waktu satu menit untuk mengunci sampai ±50 m, dan pembacaan yang lebih kasar tidak menimpa fix yang lebih tajam. Server hanya ditanya lagi bila jawaban terakhir tidak lagi menjamin urutan terdekat dari posisi itu.
   - Jarak ditampilkan sejujur posisinya: dari fix yang lebih kasar dari 300 m jarak dibulatkan ("~300 m"), dan dari lokasi perkiraan (izin lokasi perkiraan di Android/iOS, ±2 km) hanya batas atasnya ("≤ 2.5 km"), dengan petunjuk mengaktifkan lokasi akurat.
@@ -41,7 +41,7 @@ Aplikasi web jadwal imsakiyah dan waktu sholat real-time untuk seluruh kota/kabu
 | Data | Sumber |
 |------|--------|
 | Jadwal Sholat | [MyQuran API v3](https://api.myquran.com) — data resmi Kemenag RI |
-| Masjid Terdekat | [OpenStreetMap](https://www.openstreetmap.org/copyright) dan [Overture Maps Foundation](https://docs.overturemaps.org/attribution/): `data/mosques.tsv`, dibangun setiap minggu dari ekstrak Geofabrik dan rilis Overture terbaru oleh workflow **Mosque data** (ODbL; bagian Overture juga CDLA-Permissive-2.0). Server menjawab dari dataset ini di memori |
+| Masjid Terdekat | [OpenStreetMap](https://www.openstreetmap.org/copyright) dan [Overture Maps Foundation](https://docs.overturemaps.org/attribution/), serta usulan pengguna aplikasi yang disetujui pemilik (issue GitHub berlabel `usulan-disetujui`): `data/mosques.tsv`, dibangun setiap minggu dari ekstrak Geofabrik, rilis Overture terbaru, dan issue itu oleh workflow **Mosque data** (ODbL; bagian Overture juga CDLA-Permissive-2.0, usulan pengguna CC0). Server menjawab dari dataset ini di memori |
 | Deteksi Kota | [Nominatim](https://nominatim.org) (OpenStreetMap) — reverse geocoding |
 | Sinkronisasi Waktu | Endpoint `/api/time` (jam server) — fallback ke waktu lokal perangkat |
 
@@ -124,6 +124,7 @@ src/
 │   ├── log.ts                   # Log JSON satu baris untuk route API
 │   ├── messages.ts              # Pesan error dan status untuk pengguna (pencari masjid: mosque-messages.ts)
 │   ├── mosque-osm.ts            # Nama, jenis (masjid/musholla), dan duplikat dari OpenStreetMap; tambahan dari Overture; tanpa import
+│   ├── mosque-contrib.ts        # Usulan pengguna sebagai issue GitHub: isi issue dan cara membacanya kembali; tanpa import
 │   ├── mosque-index.ts          # Dataset di memori: grid 0,01°, masjid terdekat dan cakupannya (server)
 │   ├── mosques.ts               # Aturan cakupan di klien: urutan dari posisi persis, kapan bertanya lagi
 │   ├── mosque-tsv.ts            # Format data/mosques.tsv dan validasinya; tanpa import
@@ -149,7 +150,7 @@ public/
 └── .well-known/security.txt
 e2e/                             # Tes Playwright + mock upstream (mock-upstream.mjs)
 scripts/                         # Anggaran bundle, diff screenshot, screenshot PWA, synthetic monitoring
-└── mosque-data/                 # Pembangun data/mosques.tsv dari OpenStreetMap dan Overture (lihat "Data masjid")
+└── mosque-data/                 # Pembangun data/mosques.tsv dari OpenStreetMap, Overture, dan usulan pengguna (lihat "Data masjid")
 data/                            # data/mosques.tsv (ODbL dan CDLA-Permissive-2.0, data/LICENSE), diperbarui workflow Mosque data
 ```
 
@@ -292,7 +293,7 @@ GitHub mematikan workflow terjadwal setelah 60 hari tanpa aktivitas di repo. Bil
 
 ### Data masjid
 
-Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/mosques.tsv`, yaitu masjid dan musholla di Indonesia dari OpenStreetMap, ditambah yang hanya ada di Overture Places. Datanya diambil dari ekstrak Geofabrik dan rilis Overture terbaru, dan diperbarui setiap Selasa pukul 02.23 WIB. Workflow ini juga bisa dijalankan manual dari tab Actions.
+Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/mosques.tsv`, yaitu masjid dan musholla di Indonesia dari OpenStreetMap, ditambah yang hanya ada di Overture Places, ditambah usulan pengguna aplikasi yang disetujui pemilik. Datanya diambil dari ekstrak Geofabrik, rilis Overture terbaru, dan issue repo ini, dan diperbarui setiap Selasa pukul 02.23 WIB. Workflow ini juga bisa dijalankan manual dari tab Actions.
 
 **Cara dataset dibangun** (`scripts/mosque-data/build.sh`):
 1. `osmium tags-filter` menyaring calon dengan `filters.txt`.
@@ -311,7 +312,11 @@ Workflow **Mosque data** (`.github/workflows/mosque-data.yml`) membangun `data/m
    - tempat Overture juga dilewati bila ada tempat lain dalam 60 m, tempat bernama mirip dalam 300 m, atau tempat sejenis dengan nama yang sama dalam jarak tertentu. Untuk nama langka (paling banyak 10 di Indonesia) jaraknya 2 km, dan untuk nama yang lebih umum makin pendek, sampai 300 m. Nama dibandingkan tanpa keterangan lokasi di belakangnya, misalnya "Masjid Istiqlal - Jakarta". Dua sumber sering menaruh satu masjid di titik yang berbeda, dan Overture kadang punya beberapa halaman untuk satu masjid; sebagian halaman dipasangi pin di alun-alun kota;
    - masjid terkenal (di OpenStreetMap bertag `wikidata` atau `wikipedia`) punya banyak halaman yang pinnya tersebar di kotanya. Karena itu, tempat Overture sejenis yang namanya diawali nama masjid terkenal dalam 10 km juga dilewati, misalnya "Masjid Istiqlal Jakarta Pusat" 1,3 km dari Istiqlal. Aturan ini tidak berlaku bila nama itu dipakai lebih dari 50 tempat di Indonesia, misalnya "Al-Azhar".
 
-ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture berbentuk `o` diikuti ID Overture tanpa tanda hubung.
+5. `contributions.mjs` mengambil issue berlabel `usulan-masjid` lewat `gh api`, menyisakan yang berlabel `usulan-disetujui` (dan tidak `usulan-ditolak`), lalu membaca blok JSON di badan tiap issue (`src/lib/mosque-contrib.ts`). `build.mjs` memasukkannya sebagai sumber ketiga dengan aturan duplikat yang sama: begitu OpenStreetMap atau Overture memetakan tempat itu, entri sumber peta yang dipakai. Usulan yang blok JSON-nya tidak terbaca dilewati dengan peringatan, dan workflow mencatat berapa usulan terbuka yang belum diberi label.
+
+ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture berbentuk `o` diikuti ID Overture tanpa tanda hubung. ID dari usulan pengguna berbentuk `c` diikuti nomor issue-nya.
+
+**Usulan pengguna.** Setiap usulan adalah satu issue berlabel `usulan-masjid` (dibuat aplikasi; lihat rilis berikutnya) yang memuat nama, jenis, jalan, posisi, dan tautan peta. Pemilik memeriksanya di peta, lalu memberi label `usulan-disetujui` atau `usulan-ditolak` dan menutup issue-nya; bila ada yang perlu dibetulkan, blok JSON di badan issue diubah dulu. Usulan masuk ke dataset pada build berikutnya dan tampil berlabel "Usulan pengguna"; mengganti labelnya menjadi `usulan-ditolak` menariknya kembali. Kontributor melepaskan usulannya ke domain publik (CC0), jadi ikut lisensi ODbL dataset.
 
 **Kolom.** `id`, `lat`, `lng` (pusat kotak pembatas, bilangan bulat 1e-5°), `type`, `name`, `street`, lalu `dlat` dan `dlng`: setengah lebar denah bangunan dalam 1e-5° untuk way dan relation OpenStreetMap, 0 untuk titik dan tempat Overture. Jarak diukur ke tepi kotak itu, jadi di gerbang masjid besar jaraknya ke dindingnya, bukan ke tengah halamannya. Denah yang lebih lebar dari 0,005° (~550 m, `MAX_HALF_EXTENT_DEG`) adalah kompleks atau area yang salah, dan disimpan sebagai titik. File dengan header lama (tanpa dua kolom terakhir) tetap terbaca.
 
@@ -320,7 +325,7 @@ ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture be
 - ada titik di luar Indonesia;
 - ada denah bangunan yang lebih lebar dari 0,005°;
 - Istiqlal, Baiturrahman, atau Al-Akbar hilang;
-- jumlah dari OpenStreetMap berubah lebih dari 5%, atau jumlah dari Overture lebih dari 10%, dibanding data sebelumnya. Unduhan Overture yang gagal ikut tertangkap aturan ini.
+- jumlah dari OpenStreetMap berubah lebih dari 5%, atau jumlah dari Overture lebih dari 10%, dibanding data sebelumnya. Unduhan Overture yang gagal ikut tertangkap aturan ini. Jumlah usulan pengguna tidak dibatasi: beberapa usulan saja bisa melipatgandakannya.
 
 **Publikasi.** Bila datanya berubah, `publish.sh` membuka pull request dari branch `data/mosques`, menjalankan CI di atasnya, lalu me-merge-nya bila hijau.
 - Dataset pertama tidak di-merge otomatis.
@@ -329,7 +334,7 @@ ID dari OpenStreetMap berbentuk `n…`, `w…`, atau `r…`. ID dari Overture be
 
 **Uji coba perubahan.** Pull request yang mengubah pipeline ini juga menjalankan build dan validasi pada data sungguhan, tanpa membuka PR data. Datasetnya bisa diunduh dari artifact `mosques`.
 
-**Lisensi.** Datanya © kontributor OpenStreetMap dan Overture Maps Foundation, berlisensi ODbL 1.0. Bagian dari Overture juga berlisensi CDLA-Permissive-2.0, yang mewajibkan teksnya disertakan bersama data. Teks itu ada di `data/LICENSE`, dan UI menampilkan kedua sumber.
+**Lisensi.** Datanya © kontributor OpenStreetMap dan Overture Maps Foundation, berlisensi ODbL 1.0. Bagian dari Overture juga berlisensi CDLA-Permissive-2.0, yang mewajibkan teksnya disertakan bersama data; usulan pengguna dilepaskan dengan CC0 1.0. Semuanya tercatat di `data/LICENSE`, dan UI menyebut ketiga sumber.
 
 ### Dependensi
 

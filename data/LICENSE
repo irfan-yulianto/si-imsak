@@ -1,4 +1,4 @@
-The mosque dataset in this directory (mosques.tsv and mosques.meta.json) combines two
+The mosque dataset in this directory (mosques.tsv and mosques.meta.json) combines three
 sources, and is made available under the Open Database License (ODbL) 1.0:
 https://opendatacommons.org/licenses/odbl/1-0/
 
@@ -7,14 +7,20 @@ https://opendatacommons.org/licenses/odbl/1-0/
 - Overture Maps Foundation's places (ids o…: Overture's ids without their dashes):
   Community Data License Agreement – Permissive 2.0, whose text follows below —
   https://docs.overturemaps.org/attribution/
+- Suggestions from users of the app (ids c…: the number of the GitHub issue that holds
+  the suggestion), sent from the place itself, released by their contributors under
+  CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/) and checked by the
+  maintainer before they enter the dataset.
 
-How it is made: scripts/mosque-data (build.sh, overture.py, build.mjs) and the workflow
-.github/workflows/mosque-data.yml, which rebuilds it every week from Geofabrik's
-extract of Indonesia (https://download.geofabrik.de/asia/indonesia.html) and Overture's
-latest release of places (https://docs.overturemaps.org/guides/places/).
+How it is made: scripts/mosque-data (build.sh, overture.py, contributions.mjs, build.mjs)
+and the workflow .github/workflows/mosque-data.yml, which rebuilds it every week from
+Geofabrik's extract of Indonesia (https://download.geofabrik.de/asia/indonesia.html),
+Overture's latest release of places (https://docs.overturemaps.org/guides/places/), and
+the approved suggestions among this repository's issues.
 
-Data masjid di direktori ini berasal dari OpenStreetMap (ODbL 1.0) dan Overture Maps
-Foundation (CDLA-Permissive-2.0), dan tersedia dengan lisensi ODbL 1.0.
+Data masjid di direktori ini berasal dari OpenStreetMap (ODbL 1.0), Overture Maps
+Foundation (CDLA-Permissive-2.0), dan usulan pengguna aplikasi (CC0 1.0), dan tersedia
+dengan lisensi ODbL 1.0.
 
 --------------------------------------------------------------------------------
 

@@ -96,6 +96,8 @@ export default function MosqueList({ mosques, loading, error, coords, accuracy, 
                       <Badge tone={mosque.type === "musholla" ? "neutral" : "accent"}>
                         {mosque.type === "musholla" ? "Musholla" : "Masjid"}
                       </Badge>
+                      {/* Suggested by a user of the app and checked by hand, not from a map */}
+                      {mosque.id.startsWith("c") && <Badge tone="neutral">Usulan pengguna</Badge>}
                     </div>
                     {mosque.address && <p className="mt-0.5 truncate text-xs text-fg-subtle">{mosque.address}</p>}
                   </div>
@@ -156,6 +158,7 @@ export default function MosqueList({ mosques, loading, error, coords, accuracy, 
               Overture Maps Foundation
               <span className="sr-only"> (buka di tab baru)</span>
             </a>
+            , serta usulan pengguna aplikasi ini
             {noteUrl && (
               <>
                 .{" "}Ada yang belum tercantum?{" "}

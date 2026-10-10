@@ -20,7 +20,9 @@ test("finds the mosques around the GPS position by itself @desktop", async ({ pa
   expect(response?.headers()["x-data-date"]).toBe("2026-10-06");
   await expect(page.getByRole("listitem").getByRole("heading").first()).toHaveText("Masjid Uji 1");
   await expect(page.getByText("Lokasi GPS Anda", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Navigasi ke / })).toHaveCount(8);
+  await expect(page.getByRole("link", { name: /^Navigasi ke / })).toHaveCount(9);
+  // A place a user suggested, approved by hand, says so
+  await expect(page.getByRole("listitem").filter({ hasText: "Musholla Usulan Warga" }).getByText("Usulan pengguna")).toBeVisible();
   await expect(page.getByRole("listitem").filter({ hasText: "Jalan Uji 3" }).getByText("Musholla", { exact: true })).toBeVisible();
 
   const again = page.waitForRequest((r) => r.url().includes("/api/mosques"));

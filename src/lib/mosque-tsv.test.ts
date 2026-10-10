@@ -84,7 +84,15 @@ describe("toTsv and parseTsv", () => {
   it("tells each row's source by its id", () => {
     expect(sourceOf("w5")).toBe("openstreetmap");
     expect(sourceOf(overtureId(1))).toBe("overture");
-    expect(countBySource([row("n1"), row("r2"), row(overtureId(3))])).toEqual({ openstreetmap: 2, overture: 1 });
+    expect(sourceOf("c12")).toBe("contributions");
+    expect(countBySource([row("n1"), row("r2"), row(overtureId(3)), row("c12")])).toEqual({ openstreetmap: 2, overture: 1, contributions: 1 });
+  });
+
+  it("reads and orders a user's suggestion by its issue number, after the map sources", () => {
+    const back = parseTsv(`${TSV_HEADER}\nc12\t-620000\t10680000\tmusholla\tMusholla Usulan\tGang Damai\t0\t0\n`);
+    expect(back).toEqual([{ id: "c12", lat: -6.2, lng: 106.8, type: "musholla", name: "Musholla Usulan", street: "Gang Damai" }]);
+    expect(["c12", overtureId(1), "c3", "n7"].sort(compareIds)).toEqual(["n7", overtureId(1), "c3", "c12"]);
+    expect(() => parseTsv(`${TSV_HEADER}\nc\t1\t2\tmasjid\tMasjid\t\t0\t0\n`)).toThrow(/Line 2/);
   });
 });
 
@@ -115,20 +123,25 @@ describe("datasetProblems", () => {
 
   it("refuses an OpenStreetMap count that moved more than 5% in a week", () => {
     const rows = [...landmarks, ...Array.from({ length: 97 }, (_, i) => row(`n${i}`))];
-    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 98, overture: 0 } })).toEqual([]);
-    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 120, overture: 0 } })[0]).toMatch(
+    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 98, overture: 0, contributions: 0 } })).toEqual([]);
+    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 120, overture: 0, contributions: 0 } })[0]).toMatch(
       /100 places from openstreetmap, -16\.7% from 120/
     );
+  });
+
+  it("lets the suggestions' count move freely: a handful can double in a week", () => {
+    const rows = [...landmarks, row("c1"), row("c2"), row("c3")];
+    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 3, overture: 0, contributions: 1 } })).toEqual([]);
   });
 
   it("allows Overture's count 10%, and compares it only once the dataset had Overture", () => {
     const osm = [...landmarks, ...Array.from({ length: 97 }, (_, i) => row(`n${i}`))];
     const rows = [...osm, ...Array.from({ length: 46 }, (_, i) => row(overtureId(i)))];
     // The first dataset with Overture
-    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 100, overture: 0 } })).toEqual([]);
-    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 100, overture: 50 } })).toEqual([]);
+    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 100, overture: 0, contributions: 0 } })).toEqual([]);
+    expect(datasetProblems(rows, { ...opts, previous: { openstreetmap: 100, overture: 50, contributions: 0 } })).toEqual([]);
     // A download that failed would leave none
-    expect(datasetProblems(osm, { ...opts, previous: { openstreetmap: 100, overture: 50 } })).toEqual([
+    expect(datasetProblems(osm, { ...opts, previous: { openstreetmap: 100, overture: 50, contributions: 0 } })).toEqual([
       "0 places from overture, -100.0% from 50: more than 10%",
     ]);
   });

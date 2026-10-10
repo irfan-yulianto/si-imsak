@@ -2,6 +2,15 @@
 
 Semua perubahan penting dicatat di sini. Formatnya mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/), dan nomor versinya mengikuti [Semantic Versioning](https://semver.org/lang/id/). Setiap versi bersesuaian dengan satu pull request yang di-merge ke `main`, dan setiap merge langsung di-deploy ke production.
 
+## [2.6.0] — 2026-10-10 ([#503](https://github.com/irfan-yulianto/si-imsak/pull/503))
+
+Langkah pertama kontribusi pengguna: dataset bisa memuat masjid dan musholla yang diusulkan pengguna aplikasi dan disetujui pemilik. Tombol usulannya sendiri menyusul di rilis berikutnya; sampai saat itu dataset tidak berubah.
+
+### Ditambahkan
+- **Sumber ketiga: usulan pengguna.** Workflow **Mosque data** mengambil issue repo ini yang berlabel `usulan-masjid` dan `usulan-disetujui` (`scripts/mosque-data/contributions.mjs`), membaca blok JSON di badannya (`src/lib/mosque-contrib.ts`, dipakai juga aplikasi nanti), dan `build.mjs` memasukkannya setelah OpenStreetMap dan Overture dengan aturan duplikat yang sama: begitu sumber peta memetakan tempat itu, entri peta yang dipakai. Mengganti label menjadi `usulan-ditolak` menarik usulan pada build berikutnya.
+- **ID `c<nomor issue>`** di `data/mosques.tsv`; `validate.mjs` dan `mosques.meta.json` menghitung sumber ketiga, dan jumlahnya tidak dibatasi aturan perubahan mingguan.
+- **Badge "Usulan pengguna"** pada tempat dari sumber itu, dan atribusi di bawah daftar menyebutnya. `data/LICENSE` mencatat lisensinya (CC0 dari kontributor, digabung ke dataset ODbL).
+
 ## [2.5.0] — 2026-10-10 ([#501](https://github.com/irfan-yulianto/si-imsak/pull/501))
 
 Lanjutan v2.4.0 untuk permintaan agar masjid dalam 10 m dan 10–50 m ikut terdeteksi. Galat posisinya (GPS ±5–15 m di luar ruangan; pusat denah 10–40 m dari dinding) lebih besar dari selisih 10 m, jadi yang jujur adalah satu label untuk keduanya.

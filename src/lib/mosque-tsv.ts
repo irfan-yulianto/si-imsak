@@ -1,5 +1,6 @@
 // The mosque dataset's file, data/mosques.tsv: a header, then one place per line, sorted
-// by id (OpenStreetMap's, then Overture's) so that a week's changes make a small diff.
+// by id (OpenStreetMap's, then Overture's, then the users' suggestions) so that a week's
+// changes make a small diff.
 // Coordinates, and the half-extents of a building's outline, are whole numbers of 1e-5
 // degrees (~1 m). Written by the dataset build (scripts/mosque-data), read by
 // /api/mosques. No imports: plain Node reads this file too.
@@ -15,7 +16,7 @@ export const TSV_HEADER_V1 = "id\tlat\tlng\ttype\tname\tstreet";
 export const MAX_HALF_EXTENT_DEG = 0.005;
 
 export interface DatasetRow {
-  /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture */
+  /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture; "c" and an issue's number from a user's suggestion */
   id: string;
   lat: number;
   lng: number;
@@ -27,10 +28,10 @@ export interface DatasetRow {
   dlng?: number;
 }
 
-const ID = /^(?:[nwr]\d+|o[0-9a-f]{32})$/;
-const TYPE_ORDER = { n: 0, w: 1, r: 2, o: 3 } as const;
+const ID = /^(?:[nwr]\d+|o[0-9a-f]{32}|c\d+)$/;
+const TYPE_ORDER = { n: 0, w: 1, r: 2, o: 3, c: 4 } as const;
 
-/** OpenStreetMap's nodes, ways and relations, each by number; then Overture's places */
+/** OpenStreetMap's nodes, ways and relations, each by number; then Overture's places; then the suggestions, by issue number */
 export function compareIds(a: string, b: string): number {
   const byType = TYPE_ORDER[a[0] as keyof typeof TYPE_ORDER] - TYPE_ORDER[b[0] as keyof typeof TYPE_ORDER];
   if (byType) return byType;
@@ -38,16 +39,18 @@ export function compareIds(a: string, b: string): number {
   return Number(a.slice(1)) - Number(b.slice(1));
 }
 
-export type DataSource = "openstreetmap" | "overture";
+/** OpenStreetMap, Overture Places, and the suggestions of the app's users the owner approved */
+export type DataSource = "openstreetmap" | "overture" | "contributions";
+export const DATA_SOURCES: readonly DataSource[] = ["openstreetmap", "overture", "contributions"];
 
 /** Where a row of the dataset comes from, by its id */
 export function sourceOf(id: string): DataSource {
-  return id[0] === "o" ? "overture" : "openstreetmap";
+  return id[0] === "o" ? "overture" : id[0] === "c" ? "contributions" : "openstreetmap";
 }
 
 /** How many rows each source gave */
 export function countBySource(rows: readonly DatasetRow[]): Record<DataSource, number> {
-  const counts = { openstreetmap: 0, overture: 0 };
+  const counts = { openstreetmap: 0, overture: 0, contributions: 0 };
   for (const row of rows) counts[sourceOf(row.id)]++;
   return counts;
 }
@@ -126,8 +129,11 @@ export const LANDMARKS = [
   { name: /akbar/i, lat: -7.3366, lng: 112.715, where: "Surabaya" },
 ] as const;
 
-/** How far each source's count may move in a week: OpenStreetMap's mapping is steady, Overture's monthly releases less so */
-const MAX_CHANGE: Record<DataSource, number> = { openstreetmap: 0.05, overture: 0.1 };
+/**
+ * How far each source's count may move in a week: OpenStreetMap's mapping is steady,
+ * Overture's monthly releases less so, and a handful of suggestions can double
+ */
+const MAX_CHANGE: Record<DataSource, number> = { openstreetmap: 0.05, overture: 0.1, contributions: Infinity };
 
 /**
  * Why a freshly built dataset can't replace the committed one (none: it can): rows out
@@ -170,7 +176,7 @@ export function datasetProblems(
   }
   if (previous) {
     const counts = countBySource(rows);
-    for (const source of ["openstreetmap", "overture"] as const) {
+    for (const source of DATA_SOURCES) {
       const before = previous[source];
       if (!before) continue;
       const change = (counts[source] - before) / before;
