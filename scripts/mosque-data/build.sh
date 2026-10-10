@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Builds data/mosques.tsv and data/mosques.meta.json from an OpenStreetMap extract of
-# Indonesia, such as Geofabrik's indonesia-latest.osm.pbf, and the Overture places that
-# overture.py found in it (optional):
+# Indonesia, such as Geofabrik's indonesia-latest.osm.pbf, the Overture places that
+# overture.py found in it (optional), and the users' suggestions contributions.mjs
+# collected (optional):
 #
-#   scripts/mosque-data/build.sh indonesia-latest.osm.pbf [work dir] [overture.jsonl] [Overture release]
+#   scripts/mosque-data/build.sh indonesia-latest.osm.pbf [work dir] [overture.jsonl] [Overture release] [contrib.jsonl]
 #
 # Needs osmium-tool and Node 22. The workflow mosque-data.yml runs it every week.
 set -euo pipefail
@@ -21,4 +22,4 @@ osmium export --overwrite -f geojsonseq -u type_id --geometry-types=point,linest
 timestamp=$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$pbf" 2>/dev/null || true)
 
 # The build imports the app's TypeScript (Node strips the types)
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$here/build.mjs" "$work/candidates.geojsonseq" data "$timestamp" "${3:-}" "${4:-}"
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$here/build.mjs" "$work/candidates.geojsonseq" data "$timestamp" "${3:-}" "${4:-}" "${5:-}"

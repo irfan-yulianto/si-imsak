@@ -12,6 +12,7 @@ import {
   osmIdOf,
   OVERTURE_MIN_CONFIDENCE,
   OVERTURE_SHARED_POINT,
+  placeFromContribution,
   placeFromFeature,
   placeFromOverture,
 } from "./mosque-osm";
@@ -302,6 +303,36 @@ describe("placeFromOverture", () => {
   });
 });
 
+describe("placeFromContribution", () => {
+  const record = { number: 12, type: "musholla", name: " Musholla  Al-Ikhlas ", street: "Gang Damai 3", lat: -6.20123, lng: 106.80456 };
+
+  it("takes an approved suggestion named like a mosque, of the kind it says", () => {
+    expect(placeFromContribution(record)).toEqual({
+      id: "c12",
+      lat: -6.20123,
+      lng: 106.80456,
+      type: "musholla",
+      name: "Musholla Al-Ikhlas",
+      sourceName: "Musholla Al-Ikhlas",
+      street: "Gang Damai 3",
+      rank: 0,
+    });
+    // A bare name is told apart by its street, as from the other sources
+    expect(placeFromContribution({ ...record, type: "masjid", name: "Masjid", street: "Jl. Kenanga" })).toMatchObject({ name: "Masjid (Jl. Kenanga)" });
+    expect(placeFromContribution({ ...record, street: "" })?.street).toBeUndefined();
+  });
+
+  it.each([
+    ["no issue number", { number: undefined }],
+    ["a number that isn't an issue's", { number: 0 }],
+    ["a name that isn't a mosque's", { name: "Warung Barokah" }],
+    ["a kind the name disagrees with", { type: "masjid" }],
+    ["no position", { lat: "x" }],
+  ])("leaves out %s", (_what, overrides) => {
+    expect(placeFromContribution({ ...record, ...overrides })).toBeNull();
+  });
+});
+
 describe("addMissing", () => {
   // ~11 m per 0.0001°
   const at = (name: string | undefined, dLat: number, type: "masjid" | "musholla" = "masjid") => ({ name, type, lat: -6.2 + dLat, lng: 106.8 });
@@ -311,6 +342,16 @@ describe("addMissing", () => {
   it("adds what isn't listed nearby", () => {
     const other = at("Masjid Nurul Huda", 0.001);
     expect(add([at("Masjid Al-Ikhlas", 0)], [other])).toEqual([other]);
+  });
+
+  it("keeps a user's suggestion only until a map source has the place", () => {
+    const suggested = at("Musholla Al-Barokah", 0.0005, "musholla");
+    expect(add([], [suggested])).toEqual([suggested]);
+    // Mapped since, 50 m away under another name: the map's entry takes over
+    expect(add([at("Musholla Al Barokah 2", 0)], [suggested])).toEqual([]);
+    // Another place 200 m away is no reason to drop it
+    const kept = at("Musholla Al-Barokah", 0.0018, "musholla");
+    expect(add([at("Masjid Nurul Huda", 0)], [kept])).toEqual([kept]);
   });
 
   it("leaves out what is within 60 m of a listed place, whatever the names", () => {

@@ -1,8 +1,9 @@
 name: Mosque data
 
 # The mosques and mushollas of Indonesia as data/mosques.tsv: OpenStreetMap's, from
-# Geofabrik's daily extract, and those Overture Places adds where OpenStreetMap has none
-# (scripts/mosque-data/build.sh). Every week, or by hand, a change becomes a pull request
+# Geofabrik's daily extract, those Overture Places adds where OpenStreetMap has none, and
+# the suggestions of the app's users that the owner approved, kept as issues of this
+# repository (scripts/mosque-data/build.sh). Every week, or by hand, a change becomes a pull request
 # from the branch data/mosques, which this workflow merges once CI passes; the first
 # dataset waits for a person (publish.sh). On a pull request that changes the build, it
 # only builds and checks: the change meets real data before it is merged.
@@ -15,6 +16,7 @@ on:
     paths:
       - ".github/workflows/mosque-data.yml"
       - "scripts/mosque-data/**"
+      - "src/lib/mosque-contrib.ts"
       - "src/lib/mosque-osm.ts"
       - "src/lib/mosque-tsv.ts"
 
@@ -36,6 +38,7 @@ jobs:
       contents: write # push the branch data/mosques
       pull-requests: write # open and merge its pull request
       actions: write # start CI on it
+      issues: read # the users' suggestions
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -71,10 +74,19 @@ jobs:
           overturemaps download --release="$release" --bbox=95,-11,141,6 -f geoparquet --type=place -o places.parquet
           python3 "$GITHUB_WORKSPACE/scripts/mosque-data/overture.py" places.parquet overture.jsonl
 
+      - name: Collect the users' suggestions the owner approved
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/issues?labels=usulan-masjid&state=all&per_page=100" \
+            --jq '.[] | tojson' > "$RUNNER_TEMP/suggestions.jsonl"
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/mosque-data/contributions.mjs \
+            "$RUNNER_TEMP/suggestions.jsonl" "$RUNNER_TEMP/contrib.jsonl"
+
       - name: Build
         run: |
           git show HEAD:data/mosques.tsv > "$RUNNER_TEMP/previous.tsv" 2>/dev/null || rm -f "$RUNNER_TEMP/previous.tsv"
-          scripts/mosque-data/build.sh "$RUNNER_TEMP/indonesia-latest.osm.pbf" "$RUNNER_TEMP" "$RUNNER_TEMP/overture.jsonl" "$OVERTURE_RELEASE"
+          scripts/mosque-data/build.sh "$RUNNER_TEMP/indonesia-latest.osm.pbf" "$RUNNER_TEMP" "$RUNNER_TEMP/overture.jsonl" "$OVERTURE_RELEASE" "$RUNNER_TEMP/contrib.jsonl"
 
       - name: Check
         run: |

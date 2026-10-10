@@ -81,7 +81,7 @@ export function completeness(tags: Tags): number {
 
 /** A place in the mosque dataset, before duplicates are dropped */
 export interface Place {
-  /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture */
+  /** n123, w123 or r123 from OpenStreetMap; "o" and 32 hex digits from Overture; "c" and an issue's number from a user's suggestion */
   id: string;
   lat: number;
   lng: number;
@@ -326,6 +326,46 @@ export function placeFromOverture(record: OvertureRecord): Place | null {
     sourceName: name,
     street,
     rank: confidence,
+  };
+}
+
+/** A line of scripts/mosque-data/contributions.mjs's output: a suggestion the owner approved */
+export interface ContributionRecord {
+  /** The issue's number */
+  number?: unknown;
+  type?: unknown;
+  name?: unknown;
+  street?: unknown;
+  lat?: unknown;
+  lng?: unknown;
+}
+
+/** Of two entries for one place, a suggestion ranks below anything a map source has */
+const CONTRIBUTION_RANK = 0;
+
+/**
+ * An approved suggestion as a place of the dataset; null unless it has an issue number, a
+ * position, and a name that starts like a mosque's and is of the kind it says. Its id is
+ * "c" and the issue's number.
+ */
+export function placeFromContribution(record: ContributionRecord): Place | null {
+  const { number, lat, lng } = record;
+  const name = trimmed(record.name);
+  if (!Number.isInteger(number) || (number as number) <= 0) return null;
+  if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (!isIslamicName(name)) return null;
+  const type = classifyType({ name });
+  if (record.type !== type) return null;
+  const street = trimmed(record.street) || undefined;
+  return {
+    id: `c${number}`,
+    lat,
+    lng,
+    type,
+    name: displayName({ name, "addr:full": street }),
+    sourceName: name,
+    street,
+    rank: CONTRIBUTION_RANK,
   };
 }
 
