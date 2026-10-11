@@ -100,6 +100,9 @@ export function useNextPrayer(): {
       if (previous) {
         const late = nowMs - previous.targetMs;
         if (late >= 0 && late <= STALE_ARRIVAL_MS) announce(previous);
+
+        // Optimization: if the target hasn't arrived yet, no need to recalculate
+        if (late < 0) return;
       }
 
       const next = getNextPrayer(days, nowMs, tz);
