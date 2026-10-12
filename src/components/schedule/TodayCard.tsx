@@ -1,7 +1,7 @@
 "use client";
 
 import { useCountdownDays, useCurrentMonth } from "@/hooks/useSchedule";
-import { useCityMinute, useCityToday } from "@/hooks/useCityClock";
+import { useCurrentPrayerIdx, useCityToday } from "@/hooks/useCityClock";
 import { getHijriDate } from "@/lib/hijri";
 import { formatLongDate } from "@/lib/city-time";
 import { MESSAGES } from "@/lib/messages";
@@ -21,7 +21,6 @@ export default function TodayCard() {
   const loading = !currentMonth || currentMonth.status === "loading";
   // Both follow the city's clock; the build date (and no time) while hydrating
   const todayDateStr = useCityToday();
-  const minuteOfDay = useCityMinute();
 
   const todaySchedule = useMemo(
     () => countdownSchedule.find((s) => s.date === todayDateStr),
@@ -39,15 +38,8 @@ export default function TodayCard() {
   }, [todaySchedule]);
 
   // The time in progress: the last one that has begun
-  let currentPrayerIdx = -1;
-  if (minuteOfDay !== null) {
-    for (let i = prayerMinutes.length - 1; i >= 0; i--) {
-      if (minuteOfDay >= prayerMinutes[i]) {
-        currentPrayerIdx = i;
-        break;
-      }
-    }
-  }
+  const currentPrayerIdxRaw = useCurrentPrayerIdx(prayerMinutes);
+  const currentPrayerIdx = currentPrayerIdxRaw === null ? -1 : currentPrayerIdxRaw;
 
   if (!todaySchedule) {
     if (loading) {
