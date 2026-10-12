@@ -23,3 +23,20 @@ export function useCityMinute(): number | null {
   const getSnapshot = useCallback(() => Math.floor(citySecondsOfDay(Date.now() + offset, tz) / 60), [tz, offset]);
   return useSyncExternalStore(subscribeToClock, getSnapshot, () => null);
 }
+
+/** The active prayer index for the given minutes list; null until hydrated */
+export function useCurrentPrayerIdx(prayerMinutes: number[]): number | null {
+  const tz = useStore((s) => s.location.timezone);
+  const offset = useStore((s) => s.timeOffset);
+  const getSnapshot = useCallback(() => {
+    if (prayerMinutes.length === 0) return -1;
+    const minuteOfDay = Math.floor(citySecondsOfDay(Date.now() + offset, tz) / 60);
+    for (let i = prayerMinutes.length - 1; i >= 0; i--) {
+      if (minuteOfDay >= prayerMinutes[i]) {
+        return i;
+      }
+    }
+    return -1;
+  }, [tz, offset, prayerMinutes]);
+  return useSyncExternalStore(subscribeToClock, getSnapshot, () => null);
+}
