@@ -80,6 +80,14 @@ export function useNextPrayer(): {
 
     function run() {
       const nowMs = Date.now() + timeOffset;
+
+      const previous = targetRef.current;
+      // Optimization: avoid recalculating next prayer and cityDate if the current target hasn't expired.
+      // This prevents expensive date formatting and array searching in the 3s background interval.
+      if (previous && nowMs < previous.targetMs) {
+        return;
+      }
+
       const today = cityDate(nowMs, tz).iso;
 
       // A new day: tomorrow's Imsak may be in a month that isn't loaded yet
@@ -96,7 +104,6 @@ export function useNextPrayer(): {
       }
 
       // The target passed since the last check: announce it, unless that was long ago
-      const previous = targetRef.current;
       if (previous) {
         const late = nowMs - previous.targetMs;
         if (late >= 0 && late <= STALE_ARRIVAL_MS) announce(previous);
