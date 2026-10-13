@@ -1,0 +1,3 @@
+## 2024-10-15 - Early returns in high-frequency React intervals
+**Learning:** The `useNextPrayer` hook runs a background `setInterval` every 3 seconds to check for the next prayer time. Without an early return, it redundantly recalculates dates, searches arrays, and queues React state updates even when the target prayer time is still hours away. While the updater function eventually bails out of re-renders, the frequent object allocation and queued updaters create measurable background overhead.
+**Action:** Always implement early returns based on expiration checks (e.g., `nowMs < targetRef.current.targetMs`) for high-frequency interval ticks to bypass unnecessary data processing and React state update queues.
