@@ -93,12 +93,16 @@ describe("ScheduleTable", () => {
     useStore.setState({ viewYear: 2023, viewMonth: 1 });
     seedMonth(2023, 1, [day("2023-01-01")]);
     render(<ScheduleTable />);
-    expect(screen.getByRole("button", { name: "Bulan sebelumnya" })).toBeDisabled();
+    const prevButton = screen.getByRole("button", { name: "Bulan sebelumnya" });
+    expect(prevButton).toBeDisabled();
+    expect(prevButton.parentElement).toHaveAttribute("title", "Jadwal tahun 2022 tidak tersedia");
     expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toBeEnabled();
 
     act(() => useStore.setState({ viewYear: 2025, viewMonth: 12 }));
     act(() => seedMonth(2025, 12, [day("2025-12-01")]));
-    expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toBeDisabled();
+    const nextButton = screen.getByRole("button", { name: "Bulan berikutnya" });
+    expect(nextButton).toBeDisabled();
+    expect(nextButton.parentElement).toHaveAttribute("title", "Jadwal tahun 2026 belum tersedia");
   });
 
   it("never shows another city's month", () => {
