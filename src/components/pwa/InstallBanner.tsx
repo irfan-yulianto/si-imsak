@@ -109,7 +109,7 @@ export default function InstallBanner() {
           </div>
         )}
 
-        <Button variant="ghost" size="icon" onClick={handleDismiss} aria-label="Tutup">
+        <Button variant="ghost" size="icon" onClick={handleDismiss} aria-label="Tutup" title="Tutup">
           <XIcon size={16} />
         </Button>
       </div>
