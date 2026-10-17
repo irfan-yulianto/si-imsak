@@ -40,7 +40,9 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 /** A complete day, with the given times overridden */
 export function day(date: string, overrides: Partial<ScheduleDay> = {}): ScheduleDay {
-  const [year, month, dayOfMonth] = date.split("-").map(Number);
+  const year = +date.substring(0, 4);
+  const month = +date.substring(5, 7);
+  const dayOfMonth = +date.substring(8, 10);
   const weekday = new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay();
   return {
     tanggal: `${DAY_NAMES[weekday]}, ${pad(dayOfMonth)}/${pad(month)}/${year}`,
