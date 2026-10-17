@@ -1,0 +1,3 @@
+## 2024-10-17 - Added native tooltips for icon-only buttons
+**Learning:** Icon-only buttons often have an `aria-label` for screen reader accessibility, but sighted users might not understand their function without an explicit visual label or native tooltip (`title`).
+**Action:** When creating or modifying a shared `<Button>` component that supports an `icon` size, map the `aria-label` attribute directly to the `title` attribute (if `title` isn't already provided). This ensures both screen readers and sighted users have access to the button's intent without adding redundant code throughout the app.
