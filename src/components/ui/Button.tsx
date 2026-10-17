@@ -39,6 +39,7 @@ export const buttonClass = (variant: ButtonVariant = "primary", size: keyof type
     SIZES[size]
   );
 
-export default function Button({ variant = "primary", size = "md", pill, type = "button", className, ...props }: ButtonProps) {
-  return <button type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
+export default function Button({ variant = "primary", size = "md", pill, type = "button", className, title, ...props }: ButtonProps & { title?: string }) {
+  const tooltip = title ?? (size === "icon" && "aria-label" in props ? props["aria-label"] : undefined);
+  return <button type={type} title={tooltip} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
 }
