@@ -36,7 +36,7 @@ export default function MonthNav() {
 
   return (
     <div className="z-30 flex h-[var(--monthnav-h)] items-center justify-between gap-2 rounded-t-card border-b border-border bg-surface px-2 md:sticky md:top-[calc(var(--header-h)+var(--safe-t)+0.75rem)]">
-      <Button variant="secondary" size="icon" onClick={() => goTo(-1)} disabled={!canGoPrev} aria-label="Bulan sebelumnya">
+      <Button variant="secondary" size="icon" onClick={(e) => { if (!canGoPrev) e.preventDefault(); else goTo(-1); }} aria-disabled={!canGoPrev} aria-label="Bulan sebelumnya" title="Bulan sebelumnya">
         <ChevronLeftIcon size={16} />
       </Button>
 
@@ -55,7 +55,7 @@ export default function MonthNav() {
         <p className="truncate text-xs font-medium text-gold">{hijriLabel}</p>
       </div>
 
-      <Button variant="secondary" size="icon" onClick={() => goTo(1)} disabled={!canGoNext} aria-label="Bulan berikutnya">
+      <Button variant="secondary" size="icon" onClick={(e) => { if (!canGoNext) e.preventDefault(); else goTo(1); }} aria-disabled={!canGoNext} aria-label="Bulan berikutnya" title="Bulan berikutnya">
         <ChevronRightIcon size={16} />
       </Button>
     </div>
