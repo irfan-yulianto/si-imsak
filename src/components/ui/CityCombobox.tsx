@@ -160,6 +160,7 @@ export default function CityCombobox<T>({
             variant="ghost"
             size="icon"
             aria-label="Bersihkan pencarian"
+            title="Bersihkan pencarian"
             onClick={() => {
               onQueryChange("");
               setOpen(false);

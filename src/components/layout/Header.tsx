@@ -37,6 +37,7 @@ export default function Header() {
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label={theme === "dark" ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
+          title={theme === "dark" ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
         >
           {theme === "dark" ? <SunIcon size={20} /> : <MoonIcon size={20} />}
         </Button>
