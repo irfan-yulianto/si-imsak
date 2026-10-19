@@ -33,12 +33,22 @@ export type ButtonProps = BaseProps & ({ size?: "md" | "sm" } | { size: "icon"; 
 export const buttonClass = (variant: ButtonVariant = "primary", size: keyof typeof SIZES = "md", pill = false) =>
   cx(
     "focus-ring inline-flex cursor-pointer items-center justify-center font-semibold transition-colors",
-    "disabled:cursor-not-allowed disabled:opacity-40",
+    "disabled:cursor-not-allowed disabled:opacity-40 aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
     pill ? "rounded-full" : "rounded-control",
     VARIANTS[variant],
     SIZES[size]
   );
 
-export default function Button({ variant = "primary", size = "md", pill, type = "button", className, ...props }: ButtonProps) {
-  return <button type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
+export default function Button({ variant = "primary", size = "md", pill, type = "button", className, disabled, onClick, ...props }: ButtonProps) {
+  const title = size === "icon" && "aria-label" in props ? props["aria-label"] : props.title;
+  return (
+    <button
+      type={type}
+      aria-disabled={disabled ? "true" : undefined}
+      className={cx(buttonClass(variant, size, pill), className)}
+      title={title}
+      onClick={disabled ? (e) => { e.preventDefault(); e.stopPropagation(); } : onClick}
+      {...props}
+    />
+  );
 }
