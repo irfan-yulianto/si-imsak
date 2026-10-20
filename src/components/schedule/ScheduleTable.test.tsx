@@ -93,12 +93,12 @@ describe("ScheduleTable", () => {
     useStore.setState({ viewYear: 2023, viewMonth: 1 });
     seedMonth(2023, 1, [day("2023-01-01")]);
     render(<ScheduleTable />);
-    expect(screen.getByRole("button", { name: "Bulan sebelumnya" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Bulan sebelumnya" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toBeEnabled();
 
     act(() => useStore.setState({ viewYear: 2025, viewMonth: 12 }));
     act(() => seedMonth(2025, 12, [day("2025-12-01")]));
-    expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Bulan berikutnya" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("never shows another city's month", () => {
