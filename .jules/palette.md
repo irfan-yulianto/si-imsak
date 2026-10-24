@@ -1,0 +1,3 @@
+## 2026-10-24 - Auto-generated Title Fallbacks for Icon-Only Buttons
+**Learning:** Adding a `title` fallback dynamically based on `aria-label` for icon-only buttons improves accessibility for sighted users while retaining semantic value for screen readers. Using ternary operators to evaluate strictly to `undefined` rather than `false` prevents React from rendering `title="false"` in the DOM.
+**Action:** Always verify how optional props like `aria-label` map to visible tooltips (like `title`), and ensure spread props (`{...props}`) are passed *after* defaults/fallbacks so explicit implementations can still override them.
