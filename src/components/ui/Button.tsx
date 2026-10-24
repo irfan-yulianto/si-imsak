@@ -40,5 +40,15 @@ export const buttonClass = (variant: ButtonVariant = "primary", size: keyof type
   );
 
 export default function Button({ variant = "primary", size = "md", pill, type = "button", className, ...props }: ButtonProps) {
-  return <button type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
+  // If it's an icon button with an aria-label, auto-generate a title fallback so sighted users see a tooltip
+  const fallbackTitle = size === "icon" && "aria-label" in props ? props["aria-label"] : undefined;
+
+  return (
+    <button
+      type={type}
+      className={cx(buttonClass(variant, size, pill), className)}
+      title={fallbackTitle}
+      {...props}
+    />
+  );
 }
