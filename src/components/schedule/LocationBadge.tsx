@@ -42,9 +42,9 @@ export default function LocationBadge() {
         type="button"
         data-clarity-mask="True"
         onClick={refresh}
-        disabled={refreshing}
+        aria-disabled={refreshing ? "true" : undefined}
         aria-label={`${location.cityName}, ${location.province}. Perbarui lokasi dengan GPS`}
-        className="focus-ring group mb-3 flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-tile bg-on-hero/[0.07] px-3 py-2 text-left transition-colors hover:bg-on-hero/[0.12] disabled:opacity-60"
+        className="focus-ring group mb-3 flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-tile bg-on-hero/[0.07] px-3 py-2 text-left transition-colors hover:bg-on-hero/[0.12] aria-disabled:opacity-60"
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-on-hero/10">
           <MapPinIcon size={16} className="text-on-hero-muted" />
