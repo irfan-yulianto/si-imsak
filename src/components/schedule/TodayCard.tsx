@@ -33,7 +33,10 @@ export default function TodayCard() {
   const prayerMinutes = useMemo(() => {
     if (!todaySchedule) return [];
     return PRAYER_KEYS.map((key) => {
-      const [h, m] = todaySchedule[key].split(":").map(Number);
+      // Optimization: Replace array allocations with substring parsing for fixed-format strings
+      const time = todaySchedule[key];
+      const h = +time.substring(0, 2);
+      const m = +time.substring(3, 5);
       return h * 60 + m;
     });
   }, [todaySchedule]);
