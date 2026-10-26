@@ -57,8 +57,12 @@ export function citySecondsOfDay(epochMs: number, tz: TimezoneLabel): number {
 
 /** The instant (epoch ms) when the city's clock shows `hhmm` on date `iso` */
 export function cityInstant(iso: string, hhmm: string, tz: TimezoneLabel): number {
-  const [year, month, day] = iso.split("-").map(Number);
-  const [hours, minutes] = hhmm.split(":").map(Number);
+  // Optimization: use substring and unary + instead of split().map(Number) to avoid array allocations
+  const year = +(iso.substring(0, 4));
+  const month = +(iso.substring(5, 7));
+  const day = +(iso.substring(8, 10));
+  const hours = +(hhmm.substring(0, 2));
+  const minutes = +(hhmm.substring(3, 5));
   return Date.UTC(year, month - 1, day, hours, minutes) - offsetMs(tz);
 }
 
@@ -74,14 +78,20 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
 
 /** The date `days` after (or before) `iso` */
 export function addDays(iso: string, days: number): string {
-  const [year, month, day] = iso.split("-").map(Number);
+  // Optimization: use substring and unary + instead of split().map(Number) to avoid array allocations
+  const year = +(iso.substring(0, 4));
+  const month = +(iso.substring(5, 7));
+  const day = +(iso.substring(8, 10));
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return isoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
 }
 
 /** "9 Oktober 2026", without depending on the browser's locale data */
 export function formatLongDate(iso: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
+  // Optimization: use substring and unary + instead of split().map(Number) to avoid array allocations
+  const year = +(iso.substring(0, 4));
+  const month = +(iso.substring(5, 7));
+  const day = +(iso.substring(8, 10));
   return `${day} ${MONTH_NAMES[month - 1]} ${year}`;
 }
 
