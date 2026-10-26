@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { useState } from "react";
 import CityCombobox from "./CityCombobox";
@@ -90,12 +90,18 @@ describe("CityCombobox", () => {
     render(<Harness />);
     const input = screen.getByRole("combobox");
     input.focus();
-    fireEvent.change(input, { target: { value: "band" } });
-    fireEvent.keyDown(input, { key: "Escape" });
+    act(() => {
+      fireEvent.change(input, { target: { value: "band" } });
+    });
+    act(() => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
     expect(input).toHaveAttribute("aria-expanded", "false");
     expect(input).toHaveValue("band");
     expect(input).toHaveFocus();
-    fireEvent.keyDown(input, { key: "Escape" });
+    act(() => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
     expect(input).toHaveValue("");
   });
 

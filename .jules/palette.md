@@ -1,0 +1,3 @@
+## 2026-10-26 - Add title attribute to icon-only buttons
+**Learning:** In this design system, icon-only buttons (`Button` component with `size="icon"`) must have an `aria-label` for screen readers, but sighted keyboard and mouse users also need to know what they do. By automatically falling back the native `title` tooltip to match the `aria-label`, we bridge the gap between accessibility and usability without requiring developers to manually specify both props.
+**Action:** Always ensure that when creating or updating custom UI controls (especially icon-only ones), the accessible name is also surfaced visually to sighted users via a native tooltip or a custom tooltip component.
