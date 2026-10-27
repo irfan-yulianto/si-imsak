@@ -1,0 +1,3 @@
+## 2023-10-27 - Icon Button Tooltips
+**Learning:** Icon-only buttons with `aria-label` are accessible to screen readers, but sighted mouse users often hover over icon-only buttons to discover their function. Without a visual tooltip (like a native browser `title` attribute), they are left guessing.
+**Action:** When creating a central `Button` component, automatically forward the `aria-label` attribute to the native `title` attribute if the button is an icon-only variant and no explicit `title` is provided. This small enhancement improves discoverability for sighted mouse users while preserving accessibility for screen reader users and respecting explicit overrides.
