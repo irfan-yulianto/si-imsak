@@ -58,11 +58,14 @@ export function citySecondsOfDay(epochMs: number, tz: TimezoneLabel): number {
 /** The instant (epoch ms) when the city's clock shows `hhmm` on date `iso` */
 export function cityInstant(iso: string, hhmm: string, tz: TimezoneLabel): number {
   // Optimization: use primitive substring math instead of .split().map(Number) array allocations
-  const year = +iso.substring(0, 4);
-  const month = +iso.substring(5, 7);
-  const day = +iso.substring(8, 10);
-  const hours = +hhmm.substring(0, 2);
-  const minutes = +hhmm.substring(3, 5);
+  const dash1 = iso.indexOf("-");
+  const dash2 = iso.indexOf("-", dash1 + 1);
+  const year = +iso.slice(0, dash1);
+  const month = +iso.slice(dash1 + 1, dash2);
+  const day = +iso.slice(dash2 + 1);
+  const colon = hhmm.indexOf(":");
+  const hours = +hhmm.slice(0, colon);
+  const minutes = +hhmm.slice(colon + 1);
   return Date.UTC(year, month - 1, day, hours, minutes) - offsetMs(tz);
 }
 
@@ -79,9 +82,11 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
 /** The date `days` after (or before) `iso` */
 export function addDays(iso: string, days: number): string {
   // Optimization: use primitive substring math instead of .split().map(Number) array allocations
-  const year = +iso.substring(0, 4);
-  const month = +iso.substring(5, 7);
-  const day = +iso.substring(8, 10);
+  const dash1 = iso.indexOf("-");
+  const dash2 = iso.indexOf("-", dash1 + 1);
+  const year = +iso.slice(0, dash1);
+  const month = +iso.slice(dash1 + 1, dash2);
+  const day = +iso.slice(dash2 + 1);
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return isoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
 }
@@ -89,9 +94,11 @@ export function addDays(iso: string, days: number): string {
 /** "9 Oktober 2026", without depending on the browser's locale data */
 export function formatLongDate(iso: string): string {
   // Optimization: use primitive substring math instead of .split().map(Number) array allocations
-  const year = +iso.substring(0, 4);
-  const month = +iso.substring(5, 7);
-  const day = +iso.substring(8, 10);
+  const dash1 = iso.indexOf("-");
+  const dash2 = iso.indexOf("-", dash1 + 1);
+  const year = +iso.slice(0, dash1);
+  const month = +iso.slice(dash1 + 1, dash2);
+  const day = +iso.slice(dash2 + 1);
   return `${day} ${MONTH_NAMES[month - 1]} ${year}`;
 }
 
