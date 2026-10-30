@@ -40,5 +40,6 @@ export const buttonClass = (variant: ButtonVariant = "primary", size: keyof type
   );
 
 export default function Button({ variant = "primary", size = "md", pill, type = "button", className, ...props }: ButtonProps) {
-  return <button type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
+  const title = "aria-label" in props ? props["aria-label"] : undefined;
+  return <button title={title} type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
 }
