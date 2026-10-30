@@ -1,0 +1,1 @@
+## 2024-05-24 - Accessible tooltips for icon buttons\n**Learning:** Sighted users lose context when icon-only buttons only have an `aria-label`. A `title` attribute provides a native tooltip to solve this natively.\n**Action:** Add `title={props['aria-label']}` to `Button.tsx` when `size='icon'` so all icon buttons automatically get native tooltips matching their accessible name.
