@@ -17,7 +17,9 @@ export const TIME_COLUMNS = PRAYER_KEYS.map((key, i) => ({ key, label: PRAYER_NA
 export function toTableDays(days: ScheduleDay[]): TableDay[] {
   return days.map((day) => {
     const { day: hijriDay, monthName: hijriMonth } = getHijriParts(day.date);
-    return { ...day, hijriDay, hijriMonth, dayName: day.tanggal.split(",")[0], dateNum: day.date.slice(8, 10) };
+    // Optimization: use substring with indexOf instead of split to avoid array allocations for string separation
+    const dayName = day.tanggal.substring(0, day.tanggal.indexOf(','));
+    return { ...day, hijriDay, hijriMonth, dayName, dateNum: day.date.slice(8, 10) };
   });
 }
 
