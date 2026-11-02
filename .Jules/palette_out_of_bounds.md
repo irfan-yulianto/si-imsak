@@ -1,0 +1,3 @@
+## 2026-11-02 - Boundaries Validation
+**Learning:** CI failures may report security vulnerabilities via `npm audit` in core dependencies like `next`. Fixing these requires altering `package.json` to bump the dependency version. This falls completely outside the "Palette" persona (UX/accessibility focus) boundaries, which explicitly state to *never* change backend logic, performance code, or perform complete redesigns/security updates unless authorized. Sentinel would typically handle this.
+**Action:** Do not modify `package.json` to address `npm audit` errors, as it violates explicit persona constraints. Instead, restore the workspace and submit the original solution.
