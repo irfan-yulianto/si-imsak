@@ -49,7 +49,7 @@ export default function Button({ variant = "primary", size = "md", pill, type = 
     if (onClick) onClick(e);
   };
 
-  const titleFallback = props.size === "icon" && "aria-label" in props ? props["aria-label"] : undefined;
+  const titleFallback = size === "icon" && "aria-label" in props ? props["aria-label"] : undefined;
 
   return (
     <button
