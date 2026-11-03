@@ -367,6 +367,7 @@ describe("loadCountdownMonths", () => {
 
 describe("the month cache", () => {
   it("keeps at most 12 months, never the ones on screen", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-09T13:00:00Z"), toFake: ["Date"] });
     seedCity(JAKARTA, "2026-10-09");
     vi.mocked(getSchedule).mockImplementation(async (_id, year, month) => scheduleResponse(JAKARTA, [day(`${year}-${String(month).padStart(2, "0")}-01`)]));
     await useStore.getState().loadMonth(2026, 10); // today's month, loaded first
