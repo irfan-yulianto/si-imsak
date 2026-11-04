@@ -1,0 +1,3 @@
+## 2026-11-04 - Accessible Tooltips for Disabled Icon Buttons
+**Learning:** Native `disabled` buttons swallow pointer events (hover/focus), which makes them unable to display native `title` tooltips. This is problematic for icon-only buttons since users cannot determine what the inert button does or why it's there.
+**Action:** Use `aria-disabled="true"` instead of the native `disabled` attribute to preserve the button's focusability and pointer events, allowing the `title` tooltip to work. We then must manually intercept `onClick` events to prevent interaction and apply inert styling using Tailwind's `aria-disabled:*` variants (e.g., `aria-disabled:opacity-40 aria-disabled:cursor-not-allowed`).
