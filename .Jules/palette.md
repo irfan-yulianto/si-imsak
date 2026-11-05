@@ -1,0 +1,3 @@
+## 2026-11-05 - Disabled Button Tooltips
+**Learning:** Native `disabled` attributes on buttons prevent pointer events, meaning `title` tooltips won't show. Wrapping disabled buttons in focusable spans breaks screen reader context.
+**Action:** Use `aria-disabled="true"` instead of `disabled`, applying `aria-disabled:*` Tailwind classes for visual state and manually calling `e.preventDefault()` in `onClick`. For icon buttons, default the `title` attribute to the `aria-label` to provide built-in tooltips without breaking a11y. For submit buttons, also prevent submission in the form handler if state is sending to replicate disabled behavior on "Enter".
