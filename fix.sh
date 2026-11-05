@@ -1,0 +1,5 @@
+mkdir -p .jules && cat << 'EOF2' > .jules/bolt.md
+## 2024-05-18 - Fast String Parsing for Fixed Formats
+**Learning:** In tight loops or frequent helper functions, parsing dates and times using \`.split("-").map(Number)\` or \`.split(":").map(Number)\` allocates intermediate arrays, strings, and map callbacks. Since ISO dates (\`YYYY-MM-DD\`) and zero-padded times (\`HH:mm\`) have strict fixed lengths, substring parsing with the unary \`+\` operator avoids allocations entirely and performs significantly better.
+**Action:** Use \`+iso.substring(0, 4)\` and similar fixed offsets for fixed-format dates and times in utility functions, especially those called frequently inside \`useMemo\` or countdown logic.
+EOF2
