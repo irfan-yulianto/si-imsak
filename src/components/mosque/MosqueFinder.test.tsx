@@ -5,10 +5,10 @@ import { useStore } from "@/store/useStore";
 
 // Mock the icons to keep the DOM simple
 vi.mock("@/components/ui/Icons", () => ({
-  MosqueIcon: () => <div data-testid="mosque-icon" />,
-  MapPinIcon: () => <div data-testid="map-pin-icon" />,
-  SearchIcon: () => <div data-testid="search-icon" />,
-  XIcon: () => <div data-testid="x-icon" />,
+  MosqueIcon: () => <span data-testid="mosque-icon" />,
+  MapPinIcon: () => <span data-testid="map-pin-icon" />,
+  SearchIcon: () => <span data-testid="search-icon" />,
+  XIcon: () => <span data-testid="x-icon" />,
   // For the finder's own icons (./icons)
   defaultProps: () => ({}),
 }));
