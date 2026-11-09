@@ -645,7 +645,13 @@ export function findCityCoords(name: string): { lat: number; lng: number } | nul
     byBaseName = new Map();
     for (const city of CITIES) {
       const { kind, base } = splitCityName(city.name);
-      byBaseName.set(base, [...(byBaseName.get(base) ?? []), { kind, city }]);
+      // Optimization: Avoid array spreading in loop to reduce garbage collection overhead and improve initialization speed.
+      const existing = byBaseName.get(base);
+      if (existing) {
+        existing.push({ kind, city });
+      } else {
+        byBaseName.set(base, [{ kind, city }]);
+      }
     }
   }
   const { kind, base } = splitCityName(name);
