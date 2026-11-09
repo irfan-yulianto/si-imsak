@@ -145,7 +145,7 @@ export default function SuggestPlace({
           </p>
         )}
         <div className="flex gap-2">
-          <Button type="submit" disabled={sending} className="flex-1">
+          <Button type="submit" disabled={sending} disabledReason="Sedang mengirim" className="flex-1">
             {sending ? (
               <>
                 <Spinner size="sm" />
@@ -155,7 +155,7 @@ export default function SuggestPlace({
               "Kirim Usulan"
             )}
           </Button>
-          <Button variant="secondary" onClick={onClose} disabled={sending}>
+          <Button variant="secondary" onClick={onClose} disabled={sending} disabledReason="Sedang mengirim">
             Batal
           </Button>
         </div>
