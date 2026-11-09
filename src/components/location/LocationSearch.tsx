@@ -122,7 +122,7 @@ export default function LocationSearch() {
             </p>
           )}
           <div className="mt-3 flex gap-2">
-            <Button ref={promptButtonRef} onClick={detectLocation} disabled={isDetecting} className="flex-1">
+            <Button ref={promptButtonRef} onClick={detectLocation} disabled={isDetecting} disabledReason="Sedang mendeteksi" className="flex-1">
               {isDetecting ? (
                 <>
                   <Spinner size="sm" />

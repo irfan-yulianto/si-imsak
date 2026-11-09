@@ -22,6 +22,8 @@ type BaseProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   /** Fully rounded instead of the control radius */
   pill?: boolean;
   type?: "button" | "submit";
+  /** A tooltip to explain why the button is disabled */
+  disabledReason?: string;
   ref?: Ref<HTMLButtonElement>;
 };
 
@@ -33,12 +35,32 @@ export type ButtonProps = BaseProps & ({ size?: "md" | "sm" } | { size: "icon"; 
 export const buttonClass = (variant: ButtonVariant = "primary", size: keyof typeof SIZES = "md", pill = false) =>
   cx(
     "focus-ring inline-flex cursor-pointer items-center justify-center font-semibold transition-colors",
-    "disabled:cursor-not-allowed disabled:opacity-40",
+    "aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
     pill ? "rounded-full" : "rounded-control",
     VARIANTS[variant],
     SIZES[size]
   );
 
-export default function Button({ variant = "primary", size = "md", pill, type = "button", className, ...props }: ButtonProps) {
-  return <button type={type} className={cx(buttonClass(variant, size, pill), className)} {...props} />;
+export default function Button({ variant = "primary", size = "md", pill, type = "button", className, disabled, disabledReason, onClick, ...props }: ButtonProps) {
+  const isDisabled = disabled === true;
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (isDisabled) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onClick?.(e);
+  };
+
+  return (
+    <button
+      type={type}
+      aria-disabled={isDisabled ? "true" : undefined}
+      title={isDisabled ? disabledReason : props.title}
+      className={cx(buttonClass(variant, size, pill), className)}
+      onClick={handleClick}
+      {...props}
+    />
+  );
 }
