@@ -124,13 +124,13 @@ export default function MosqueControls({
       </div>
 
       {/* Where the search is; the coordinates themselves aren't worth showing */}
-      <p
+      <div
         data-clarity-mask="True"
         className={`flex items-center gap-1.5 text-xs ${mode === "centre" ? "text-warning" : "text-fg-subtle"}`}
       >
         <MapPinIcon size={14} className="shrink-0" />
         {mode === "gps" ? "Lokasi GPS Anda" : cityCentreLabel(placeName, mode === "picked")}
-      </p>
+      </div>
 
       {mode === "gps" && accuracy !== null && (
         <div className="mt-2">
