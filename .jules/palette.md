@@ -1,0 +1,3 @@
+## 2024-11-10 - Accessible Disabled Buttons
+**Learning:** Replacing native HTML `disabled` attributes with `aria-disabled="true"` preserves focusability for screen readers, allowing them to announce the button's "dimmed" or "disabled" state and read tooltips.
+**Action:** When applying `aria-disabled="true"`, remember to handle its visual inertness with CSS (e.g., Tailwind's `aria-disabled:cursor-not-allowed`) and intercept the `onClick` event manually by checking the disabled condition and calling `e.preventDefault()` and `e.stopPropagation()`. Furthermore, if this technique is applied to a `<button type="submit">`, manual mitigation is required in the form's submission handler to block Enter key form submissions.
