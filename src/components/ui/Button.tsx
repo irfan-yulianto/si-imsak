@@ -40,13 +40,13 @@ export const buttonClass = (variant: ButtonVariant = "primary", size: keyof type
   );
 
 export default function Button({ variant = "primary", size = "md", pill, type = "button", className, disabled, onClick, title, children, ...props }: ButtonProps) {
-  const disabledTitle = disabled ? (title ?? ('aria-label' in props ? props['aria-label'] : (typeof children === 'string' ? children : undefined))) : undefined;
+  const resolvedTitle = title ?? (disabled ? ('aria-label' in props ? props['aria-label'] : (typeof children === 'string' ? children : undefined)) : undefined);
   return (
     <button
       type={type}
       className={cx(buttonClass(variant, size, pill), className)}
       aria-disabled={disabled ? "true" : undefined}
-      title={disabledTitle}
+      title={resolvedTitle}
       onClick={(e) => {
         if (disabled) {
           e.preventDefault();
