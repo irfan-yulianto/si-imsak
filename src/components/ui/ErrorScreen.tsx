@@ -1,6 +1,6 @@
 /** Button's primary class list, written out (ErrorScreen.test.tsx keeps the two equal) */
 const RETRY_BUTTON_CLASS =
-  "focus-ring inline-flex cursor-pointer items-center justify-center font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 rounded-control bg-accent text-on-accent hover:bg-accent-hover min-h-11 gap-2 px-4 text-sm";
+  "focus-ring inline-flex cursor-pointer items-center justify-center font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 aria-disabled:cursor-not-allowed aria-disabled:opacity-40 rounded-control bg-accent text-on-accent hover:bg-accent-hover min-h-11 gap-2 px-4 text-sm";
 
 /**
  * What error.tsx and global-error.tsx show: something broke, and a way to try again.
