@@ -1,0 +1,3 @@
+## 2026-11-11 - Button Accessibility Enhancement
+**Learning:** Moving from native `disabled` to `aria-disabled="true"` improves button accessibility for screen reader and keyboard users, ensuring the disabled state is correctly announced while remaining focusable.
+**Action:** When updating core components like Button to use `aria-disabled`, ensure that any components intentionally duplicating the button's class strings (e.g., ErrorScreen) are updated in sync to prevent test failures. Also, handle form submission edge cases (like preventing duplicate submissions via Enter key) that were previously blocked by the native `disabled` attribute.
