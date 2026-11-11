@@ -40,6 +40,7 @@ export default function SuggestPlace({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const trimmedName = name.trim();
+    if (phase.name === "sending") return;
     if (trimmedName.length < NAME_MIN) return setPhase({ name: "failed", error: MOSQUE_MESSAGES.suggestionNameMissing });
     setPhase({ name: "sending" });
     try {
